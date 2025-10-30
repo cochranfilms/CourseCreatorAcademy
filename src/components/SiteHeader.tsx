@@ -10,6 +10,7 @@ import { db, firebaseReady } from '@/lib/firebaseClient';
 import { SupportChat } from './SupportChat';
 import { Messages } from './Messages';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessagesCount';
+import { Search } from './Search';
 
 const links = [
   { href: '/home', label: "What's New" },
@@ -37,6 +38,7 @@ export function SiteHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSupportChat, setShowSupportChat] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -207,10 +209,7 @@ export function SiteHeader() {
                   {/* Icons */}
                   <div className="hidden md:flex items-center gap-3">
                     <button 
-                      onClick={() => {
-                        // TODO: Implement search functionality
-                        alert('Search functionality coming soon!');
-                      }}
+                      onClick={() => setShowSearch(true)}
                       className="text-neutral-400 hover:text-white transition"
                       aria-label="Search"
                     >
@@ -219,7 +218,7 @@ export function SiteHeader() {
                       </svg>
                     </button>
                     <a
-                      href="https://www.facebook.com/coursecreatoracademy"
+                      href="https://www.facebook.com/coursecreatoracademyllc"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-neutral-400 hover:text-white transition"
@@ -356,6 +355,9 @@ export function SiteHeader() {
 
       {/* Messages Component */}
       {user && <Messages isOpen={showMessages} onClose={() => setShowMessages(false)} />}
+
+      {/* Search Component */}
+      <Search isOpen={showSearch} onClose={() => setShowSearch(false)} />
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && user && typeof window !== 'undefined' && createPortal(
