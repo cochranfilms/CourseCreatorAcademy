@@ -94,7 +94,7 @@ export default function LearnPage() {
           {courses.map((course) => (
             <Link
               key={course.id}
-              href={`/learn/${course.slug}`}
+              href={`/learn/${course.slug}` as any}
               className="rounded-2xl overflow-hidden border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 hover:border-ccaBlue transition cursor-pointer group"
             >
               <div className="h-40 bg-neutral-800 group-hover:bg-neutral-700 transition">
