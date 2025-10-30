@@ -30,23 +30,85 @@ export async function isSaved(userId: string, type: SavedType, targetId: string)
 }
 
 // Progress tracking: users/{uid}/progress/courses/{courseId}
-export async function markLessonWatched(userId: string, courseId: string, lessonPath: string) {
+// Structure: 
+// {
+//   completedLessons: string[], // lessonPaths that are 80%+ watched
+//   lessonProgress: { [lessonPath]: { progressPercent: number, lastPosition: number } },
+//   lastLessonPath: string,
+//   updatedAt: timestamp
+// }
+
+const COMPLETION_THRESHOLD = 80; // Minimum percentage to mark as complete
+
+export async function updateLessonProgress(
+  userId: string, 
+  courseId: string, 
+  lessonPath: string, 
+  progressPercent: number,
+  lastPosition: number // seconds
+) {
   if (!db) return;
   const ref = doc(db, `users/${userId}/progress/courses/${courseId}`);
   const snap = await getDoc(ref);
+  
+  const progressData = {
+    progressPercent: Math.min(100, Math.max(0, Math.round(progressPercent))),
+    lastPosition,
+    updatedAt: serverTimestamp(),
+  };
+
   if (!snap.exists()) {
     await setDoc(ref, {
-      completedLessons: [lessonPath],
+      completedLessons: progressPercent >= COMPLETION_THRESHOLD ? [lessonPath] : [],
+      lessonProgress: {
+        [lessonPath]: progressData,
+      },
       lastLessonPath: lessonPath,
       updatedAt: serverTimestamp(),
     });
     return;
   }
+
+  const data = snap.data();
+  const lessonProgress = data.lessonProgress || {};
+  lessonProgress[lessonPath] = progressData;
+
+  const completedLessons = new Set(data.completedLessons || []);
+  
+  // Add to completed if >= threshold, remove if not
+  if (progressPercent >= COMPLETION_THRESHOLD) {
+    completedLessons.add(lessonPath);
+  } else {
+    completedLessons.delete(lessonPath);
+  }
+
   await updateDoc(ref, {
-    completedLessons: arrayUnion(lessonPath),
+    completedLessons: Array.from(completedLessons),
+    lessonProgress,
     lastLessonPath: lessonPath,
     updatedAt: serverTimestamp(),
   });
+}
+
+// Legacy function - kept for backward compatibility but now uses updateLessonProgress
+export async function markLessonWatched(userId: string, courseId: string, lessonPath: string) {
+  // This is now handled by updateLessonProgress
+  // Keep for backward compatibility but updateLessonProgress should be used instead
+  await updateLessonProgress(userId, courseId, lessonPath, 100, 0);
+}
+
+export async function getLessonProgress(
+  userId: string, 
+  courseId: string, 
+  lessonPath: string
+): Promise<{ progressPercent: number; lastPosition: number } | null> {
+  if (!db) return null;
+  const ref = doc(db, `users/${userId}/progress/courses/${courseId}`);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  
+  const lessonProgress = snap.data()?.lessonProgress || {};
+  return lessonProgress[lessonPath] || null;
 }
 
 export async function unmarkLessonWatched(userId: string, courseId: string, lessonPath: string) {
@@ -74,6 +136,12 @@ export async function getCompletedLessons(userId: string, courseId: string): Pro
   const snap = await getDoc(ref);
   if (!snap.exists()) return [];
   return (snap.data()?.completedLessons || []) as string[];
+}
+
+// Get lesson progress percentage
+export async function getLessonProgressPercent(userId: string, courseId: string, lessonPath: string): Promise<number> {
+  const progress = await getLessonProgress(userId, courseId, lessonPath);
+  return progress?.progressPercent || 0;
 }
 
 // Get course progress percentage

@@ -7,7 +7,7 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { isLessonWatched, toggleSaved, isSaved, getCompletedLessons, getModuleProgress } from '@/lib/userData';
+import { isLessonWatched, toggleSaved, isSaved, getCompletedLessons, getModuleProgress, getLessonProgressPercent } from '@/lib/userData';
 
 type Lesson = {
   id: string;
@@ -50,6 +50,7 @@ export default function CourseDetailPage() {
   const [completedLessons, setCompletedLessons] = useState<string[]>([]);
   const [courseProgress, setCourseProgress] = useState<number>(0);
   const [moduleProgress, setModuleProgress] = useState<Record<string, number>>({});
+  const [lessonProgress, setLessonProgress] = useState<Record<string, number>>({});
 
   useEffect(() => {
     async function fetchCourse() {
@@ -169,12 +170,21 @@ export default function CourseDetailPage() {
 
         // Calculate module progress
         const modProgress: Record<string, number> = {};
+        const lessonProgressMap: Record<string, number> = {};
         for (const mod of course.modules) {
           const moduleLessonPaths = mod.lessons.map(les => `${mod.id}/${les.id}`);
           modProgress[mod.id] = getModuleProgress(completed, mod.id, moduleLessonPaths);
+          
+          // Get individual lesson progress
+          for (const les of mod.lessons) {
+            const lessonPath = `${mod.id}/${les.id}`;
+            const progress = await getLessonProgressPercent(user.uid, course.slug, lessonPath);
+            lessonProgressMap[lessonPath] = progress;
+          }
         }
         // Initialize all modules with progress (even if 0)
         setModuleProgress(modProgress);
+        setLessonProgress(lessonProgressMap);
       } catch (error) {
         console.error('Error fetching progress:', error);
       }
@@ -373,6 +383,23 @@ export default function CourseDetailPage() {
                             <p className="text-sm text-neutral-500 mt-1">
                               {formatDuration(lesson.durationSec)}
                             </p>
+                          )}
+                          {user && lessonProgress[`${module.id}/${lesson.id}`] !== undefined && lessonProgress[`${module.id}/${lesson.id}`] > 0 && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <div className="flex-1 h-1 bg-neutral-800 rounded-full overflow-hidden max-w-[200px]">
+                                <div 
+                                  className={`h-full transition-all duration-300 ${
+                                    lessonProgress[`${module.id}/${lesson.id}`] >= 80 
+                                      ? 'bg-green-500' 
+                                      : 'bg-ccaBlue'
+                                  }`}
+                                  style={{ width: `${lessonProgress[`${module.id}/${lesson.id}`]}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-neutral-400">
+                                {lessonProgress[`${module.id}/${lesson.id}`]}%
+                              </span>
+                            </div>
                           )}
                         </div>
                       </div>

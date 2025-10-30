@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import MuxPlayer from '@mux/mux-player-react';
 import { collection, doc, getDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { markLessonWatched, toggleSaved, isSaved } from '@/lib/userData';
+import { updateLessonProgress, getLessonProgress, toggleSaved, isSaved } from '@/lib/userData';
 
 type Lesson = {
   id: string;
@@ -31,6 +31,10 @@ export default function LessonPage() {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
+  const [currentProgress, setCurrentProgress] = useState(0);
+  const [resumePosition, setResumePosition] = useState<number | null>(null);
+  const playerRef = useRef<any>(null);
+  const progressUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     async function fetchLesson() {
@@ -90,11 +94,73 @@ export default function LessonPage() {
     fetchLesson();
   }, [slug, moduleId, lessonId]);
 
-  // Mark watched when lesson loads
+  // Load saved progress and resume playback
   useEffect(() => {
+    async function loadProgress() {
+      if (!user || !lesson) return;
+      
+      try {
+        const progress = await getLessonProgress(user.uid, slug, `${moduleId}/${lessonId}`);
+        if (progress) {
+          setCurrentProgress(progress.progressPercent);
+          
+          // Save resume position if there's meaningful progress (> 5 seconds)
+          if (progress.lastPosition > 5) {
+            setResumePosition(progress.lastPosition);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading progress:', error);
+      }
+    }
+    
+    loadProgress();
+  }, [user, lesson, slug, moduleId, lessonId]);
+
+  // Handle progress updates with debouncing
+  const handleTimeUpdate = (e: any) => {
+    if (!user || !lesson || !lesson.durationSec || lesson.durationSec === 0) return;
+    
+    const player = e.target;
+    const currentTime = player.currentTime || 0;
+    const duration = lesson.durationSec;
+    const progressPercent = (currentTime / duration) * 100;
+    
+    setCurrentProgress(progressPercent);
+
+    // Clear existing timeout
+    if (progressUpdateTimeoutRef.current) {
+      clearTimeout(progressUpdateTimeoutRef.current);
+    }
+    
+    // Debounce progress updates (save every 5 seconds)
+    progressUpdateTimeoutRef.current = setTimeout(() => {
+      updateLessonProgress(
+        user.uid,
+        slug,
+        `${moduleId}/${lessonId}`,
+        progressPercent,
+        currentTime
+      ).catch(error => {
+        console.error('Error updating progress:', error);
+      });
+    }, 5000);
+  };
+
+  const handleEnded = () => {
     if (!user || !lesson) return;
-    markLessonWatched(user.uid, slug, `${moduleId}/${lessonId}`);
-  }, [user, lesson]);
+    // Video ended - mark as 100% complete
+    updateLessonProgress(
+      user.uid,
+      slug,
+      `${moduleId}/${lessonId}`,
+      100,
+      lesson.durationSec || 0
+    ).catch(error => {
+      console.error('Error updating progress on video end:', error);
+    });
+    setCurrentProgress(100);
+  };
 
   useEffect(() => {
     async function checkSaved() {
@@ -104,6 +170,15 @@ export default function LessonPage() {
     }
     checkSaved();
   }, [user, slug, moduleId, lessonId]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (progressUpdateTimeoutRef.current) {
+        clearTimeout(progressUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '';
@@ -171,15 +246,37 @@ export default function LessonPage() {
 
       <div className="mt-6 rounded-2xl overflow-hidden border border-neutral-800 bg-black">
         {lesson.muxPlaybackId ? (
-          <MuxPlayer
-            className="w-full h-full"
-            style={{ aspectRatio: '16 / 9' }}
-            playbackId={lesson.muxPlaybackId}
-            autoPlay={false}
-            streamType="on-demand"
-            primaryColor="#3B82F6"
-            accentColor="#1f2937"
-          />
+          <>
+            {currentProgress > 0 && currentProgress < 100 && (
+              <div className="px-4 py-2 bg-neutral-900/80 text-sm text-neutral-400 border-b border-neutral-800">
+                <div className="flex items-center justify-between mb-1">
+                  <span>Progress: {Math.round(currentProgress)}%</span>
+                  {currentProgress >= 80 && (
+                    <span className="text-green-400 text-xs">✓ Ready to complete</span>
+                  )}
+                </div>
+                <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-ccaBlue transition-all duration-300"
+                    style={{ width: `${currentProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            <MuxPlayer
+              ref={playerRef}
+              className="w-full h-full"
+              style={{ aspectRatio: '16 / 9' }}
+              playbackId={lesson.muxPlaybackId}
+              autoPlay={false}
+              streamType="on-demand"
+              primaryColor="#3B82F6"
+              accentColor="#1f2937"
+              startTime={resumePosition || undefined}
+              onTimeUpdate={handleTimeUpdate}
+              onEnded={handleEnded}
+            />
+          </>
         ) : (
           <div className="aspect-video flex items-center justify-center text-neutral-400">
             Video not available yet.
