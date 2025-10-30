@@ -47,8 +47,9 @@ export default function HomePage() {
   useEffect(() => {
     if (user && firebaseReady && db) {
       // Get member since date from Firebase Auth metadata
-      if (user.metadata.creationTime) {
-        setUserMemberSince(new Date(user.metadata.creationTime));
+      const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime) : null;
+      if (creationTime) {
+        setUserMemberSince(creationTime);
       }
 
       // Try to fetch additional profile data from Firestore
@@ -60,7 +61,7 @@ export default function HomePage() {
             setUserProfile({
               displayName: data.displayName || user.displayName,
               photoURL: (data.photoURL || user.photoURL) || undefined,
-              memberSince: data.memberSince || formatMemberSince(user.metadata.creationTime ? new Date(user.metadata.creationTime) : null),
+              memberSince: data.memberSince || formatMemberSince(creationTime),
               memberTag: data.memberTag || 'Member'
             });
           } else {
@@ -68,7 +69,7 @@ export default function HomePage() {
             setUserProfile({
               displayName: user.displayName || user.email?.split('@')[0] || 'Creator',
               photoURL: user.photoURL || undefined,
-              memberSince: formatMemberSince(userMemberSince),
+              memberSince: formatMemberSince(creationTime),
               memberTag: 'Member'
             });
           }
@@ -78,15 +79,19 @@ export default function HomePage() {
           setUserProfile({
             displayName: user.displayName || user.email?.split('@')[0] || 'Creator',
             photoURL: user.photoURL || undefined,
-            memberSince: formatMemberSince(userMemberSince),
+            memberSince: formatMemberSince(creationTime),
             memberTag: 'Member'
           });
         }
       };
 
       fetchProfile();
+    } else {
+      // Reset profile when user logs out
+      setUserProfile(null);
+      setUserMemberSince(null);
     }
-  }, [user, userMemberSince]);
+  }, [user]);
 
   const displayName = userProfile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Creator';
   const photoURL = userProfile?.photoURL || user?.photoURL;

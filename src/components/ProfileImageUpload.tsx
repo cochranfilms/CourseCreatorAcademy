@@ -1,0 +1,137 @@
+"use client";
+import { useState, useRef } from 'react';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
+import { storage, db, auth, firebaseReady } from '@/lib/firebaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface ProfileImageUploadProps {
+  onUploadComplete?: (url: string) => void;
+}
+
+export function ProfileImageUpload({ onUploadComplete }: ProfileImageUploadProps) {
+  const { user } = useAuth();
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+
+    if (!user || !firebaseReady || !storage || !db) {
+      setError('Firebase is not configured');
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    setProgress(0);
+
+    try {
+      // Create storage reference
+      const storageRef = ref(storage, `profile-images/${user.uid}/${Date.now()}_${file.name}`);
+      
+      // Upload file
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setProgress(percent);
+        },
+        (error) => {
+          console.error('Upload error:', error);
+          setError('Failed to upload image. Please try again.');
+          setUploading(false);
+        },
+        async () => {
+          try {
+            // Get download URL
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+            // Update Firebase Auth profile
+            if (auth.currentUser) {
+              await updateProfile(auth.currentUser, {
+                photoURL: downloadURL
+              });
+            }
+
+            // Update Firestore user document
+            const userDocRef = doc(db, 'users', user.uid);
+            await setDoc(userDocRef, {
+              photoURL: downloadURL,
+              displayName: user.displayName || user.email?.split('@')[0],
+              updatedAt: new Date()
+            }, { merge: true });
+
+            setUploading(false);
+            setProgress(0);
+            
+            // Reload the page to refresh auth state and profile image
+            window.location.reload();
+            
+            if (onUploadComplete) {
+              onUploadComplete(downloadURL);
+            }
+          } catch (error) {
+            console.error('Error updating profile:', error);
+            setError('Failed to update profile. Please try again.');
+            setUploading(false);
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Error starting upload:', error);
+      setError('Failed to upload image. Please try again.');
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        className="hidden"
+        disabled={uploading}
+      />
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="px-4 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {uploading ? `Uploading... ${Math.round(progress)}%` : 'Upload Profile Image'}
+      </button>
+      {error && (
+        <p className="text-sm text-red-400">{error}</p>
+      )}
+      {uploading && (
+        <div className="w-full bg-neutral-900 rounded-full h-2">
+          <div
+            className="bg-ccaBlue h-2 rounded-full transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+

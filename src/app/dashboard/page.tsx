@@ -5,7 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { collection, query, where, onSnapshot, orderBy, getDocs } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
+import { ProfileImageUpload } from '@/components/ProfileImageUpload';
 import Link from 'next/link';
+import Image from 'next/image';
 
 type Listing = { id: string; title: string; price: number; condition: string; createdAt?: any; };
 type Opportunity = { id: string; title: string; company: string; location: string; type: string; posted?: any; };
@@ -41,9 +43,30 @@ export default function DashboardPage() {
       setListings(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Listing[]);
     });
 
-    const unsubscribeOpportunities = onSnapshot(opportunitiesQuery, (snap) => {
-      setOpportunities(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Opportunity[]);
-    });
+    const unsubscribeOpportunities = onSnapshot(
+      opportunitiesQuery,
+      (snap) => {
+        const opps = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Opportunity[];
+        setOpportunities(opps);
+      },
+      (error) => {
+        console.error('Error fetching opportunities:', error);
+        // Fallback: fetch without orderBy and sort client-side
+        const fallbackQuery = query(
+          collection(db, 'opportunities'),
+          where('posterId', '==', user.uid)
+        );
+        onSnapshot(fallbackQuery, (snap) => {
+          const opps = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Opportunity[];
+          const sortedOpps = opps.sort((a, b) => {
+            const aTime = a.posted?.toDate?.() || a.posted || 0;
+            const bTime = b.posted?.toDate?.() || b.posted || 0;
+            return bTime - aTime;
+          });
+          setOpportunities(sortedOpps);
+        });
+      }
+    );
 
     setLoading(false);
 
@@ -84,6 +107,22 @@ export default function DashboardPage() {
               <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6">
                 <h2 className="text-xl font-semibold mb-4">Account</h2>
                 <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="relative w-16 h-16 rounded-full overflow-hidden bg-neutral-800 border-2 border-neutral-700">
+                        {user?.photoURL ? (
+                          <Image src={user.photoURL} alt={user.email || 'User'} fill className="object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-2xl font-semibold bg-ccaBlue text-white">
+                            {user?.email?.charAt(0).toUpperCase() || 'U'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <ProfileImageUpload />
+                      </div>
+                    </div>
+                  </div>
                   <div>
                     <label className="text-sm text-neutral-400">Email</label>
                     <p className="text-white">{user?.email}</p>

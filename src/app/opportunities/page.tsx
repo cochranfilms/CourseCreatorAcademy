@@ -58,9 +58,30 @@ export default function OpportunitiesPage() {
       where('posterId', '==', user.uid),
       orderBy('posted', 'desc')
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setMyJobs(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Job[]);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const jobs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Job[];
+        setMyJobs(jobs);
+      },
+      (error) => {
+        console.error('Error fetching user jobs:', error);
+        // Try without orderBy if index doesn't exist
+        const fallbackQuery = query(
+          collection(db, 'opportunities'),
+          where('posterId', '==', user.uid)
+        );
+        onSnapshot(fallbackQuery, (snap) => {
+          const jobs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Job[];
+          const sortedJobs = jobs.sort((a, b) => {
+            const aTime = a.posted?.toDate?.() || a.posted || 0;
+            const bTime = b.posted?.toDate?.() || b.posted || 0;
+            return bTime - aTime;
+          });
+          setMyJobs(sortedJobs);
+        });
+      }
+    );
     return () => unsub();
   }, [user]);
 
