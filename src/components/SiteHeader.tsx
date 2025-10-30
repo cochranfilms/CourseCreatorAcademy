@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 
@@ -30,6 +31,8 @@ export function SiteHeader() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
 
   // Fetch user profile from Firestore
   useEffect(() => {
@@ -92,6 +95,17 @@ export function SiteHeader() {
     }
   };
 
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (showDropdown && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right
+      });
+    }
+  }, [showDropdown]);
+
   const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Creator';
   const handle = profile?.handle;
   const photoURL = profile?.photoURL || user?.photoURL;
@@ -99,11 +113,11 @@ export function SiteHeader() {
   return (
     <>
       {/* Top Menu Bar with Profile */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 border-b border-red-800/30 w-full overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 w-full">
-          <Link href="/" className="flex-shrink-0">
-            <Image src="/logo-hat.png" alt="Course Creator Academy" width={48} height={48} />
-          </Link>
+      <div className="sticky top-0 z-[60] bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 border-b border-red-800/30 w-full overflow-x-hidden overflow-y-visible">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 w-full relative">
+        <Link href="/" className="flex-shrink-0">
+          <Image src="/logo-hat.png" alt="Course Creator Academy" width={48} height={48} />
+        </Link>
 
           {!loading && (
             <div className="flex items-center gap-4 flex-shrink-0">
@@ -142,8 +156,9 @@ export function SiteHeader() {
                   </div>
 
                   {/* Profile Image with Dropdown */}
-                  <div className="relative" ref={dropdownRef}>
+                  <div className="relative z-[100]" ref={dropdownRef}>
                     <button
+                      ref={buttonRef}
                       onClick={() => setShowDropdown(!showDropdown)}
                       className="flex items-center gap-2 hover:opacity-80 transition"
                     >
@@ -169,8 +184,14 @@ export function SiteHeader() {
                     </button>
 
                     {/* Dropdown Menu */}
-                    {showDropdown && (
-                      <div className="absolute right-0 mt-2 w-48 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl overflow-hidden z-50">
+                    {showDropdown && typeof window !== 'undefined' && createPortal(
+                      <div 
+                        className="fixed w-48 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl overflow-hidden z-[200]"
+                        style={{
+                          top: `${dropdownPosition.top}px`,
+                          right: `${dropdownPosition.right}px`
+                        }}
+                      >
                         <div className="p-3 border-b border-neutral-800">
                           <div className="font-semibold text-white truncate">{displayName}</div>
                           {handle && <div className="text-sm text-neutral-400 truncate">@{handle}</div>}
@@ -198,7 +219,8 @@ export function SiteHeader() {
                         >
                           Sign Out
                         </button>
-                      </div>
+                      </div>,
+                      document.body
                     )}
                   </div>
                 </>
@@ -225,18 +247,18 @@ export function SiteHeader() {
 
       {/* Navigation Bar Below */}
       {user && (
-        <div className="sticky top-[60px] z-40 bg-gradient-to-r from-red-950 via-red-900 to-red-950 border-b border-red-800/50 w-full overflow-x-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+        <div className="sticky top-[60px] z-40 bg-gradient-to-r from-red-950/60 via-red-900/60 to-red-950/60 backdrop-blur-sm border-b border-red-800/30 w-full overflow-x-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-center gap-2 overflow-x-auto scrollbar-hide">
             {links.map((l) => {
               const active = pathname === l.href;
               return (
                 <Link
                   key={l.href}
                   href={l.href as any}
-                  className={`px-4 py-2 text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                  className={`px-5 py-2.5 text-sm font-semibold transition-all duration-300 whitespace-nowrap flex-shrink-0 rounded-lg ${
                     active
-                      ? 'bg-white text-black border-2 border-ccaBlue'
-                      : 'bg-white text-black hover:bg-neutral-100 border-2 border-transparent'
+                      ? 'bg-white text-black shadow-lg border-2 border-ccaBlue transform scale-105'
+                      : 'bg-transparent text-white hover:text-gray-200 border-2 border-transparent hover:border-white/20'
                   }`}
                 >
                   {l.label}
