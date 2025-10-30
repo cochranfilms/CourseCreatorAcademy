@@ -8,7 +8,15 @@ import { db, firebaseReady } from '@/lib/firebaseClient';
 import { ProfileImageUpload } from '@/components/ProfileImageUpload';
 import Link from 'next/link';
 
-type Listing = { id: string; title: string; price: number; condition: string; createdAt?: any; };
+type Listing = { 
+  id: string; 
+  title: string; 
+  price: number; 
+  condition: string; 
+  createdAt?: any;
+  images?: string[];
+  shipping?: number;
+};
 type Opportunity = { id: string; title: string; company: string; location: string; type: string; posted?: any; };
 
 export default function DashboardPage() {
@@ -38,9 +46,29 @@ export default function DashboardPage() {
       orderBy('posted', 'desc')
     );
 
-    const unsubscribeListings = onSnapshot(listingsQuery, (snap) => {
-      setListings(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Listing[]);
-    });
+    const unsubscribeListings = onSnapshot(
+      listingsQuery,
+      (snap) => {
+        setListings(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Listing[]);
+      },
+      (error) => {
+        console.error('Error fetching listings:', error);
+        // Fallback: fetch without orderBy and sort client-side
+        const fallbackQuery = query(
+          collection(db, 'listings'),
+          where('creatorId', '==', user.uid)
+        );
+        onSnapshot(fallbackQuery, (snap) => {
+          const listingsData = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Listing[];
+          const sorted = listingsData.sort((a, b) => {
+            const aTime = a.createdAt?.toDate?.() || a.createdAt || 0;
+            const bTime = b.createdAt?.toDate?.() || b.createdAt || 0;
+            return bTime - aTime;
+          });
+          setListings(sorted);
+        });
+      }
+    );
 
     const unsubscribeOpportunities = onSnapshot(
       opportunitiesQuery,
@@ -203,12 +231,39 @@ export default function DashboardPage() {
                     {listings.slice(0, 4).map((listing) => (
                       <div
                         key={listing.id}
-                        className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 p-4"
+                        className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 hover:border-neutral-700 transition-all"
                       >
-                        <div className="h-32 bg-neutral-800 mb-3 rounded-lg" />
-                        <div className="font-semibold">{listing.title}</div>
-                        <div className="text-sm text-neutral-400">{listing.condition}</div>
-                        <div className="mt-2 text-ccaBlue font-bold">${listing.price}</div>
+                        {/* Image Section */}
+                        <div className="relative h-32 bg-neutral-800 overflow-hidden">
+                          {listing.images && listing.images.length > 0 ? (
+                            <img
+                              src={listing.images[0]}
+                              alt={listing.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : null}
+                          <div className={`w-full h-full bg-neutral-800 flex items-center justify-center ${listing.images && listing.images.length > 0 ? 'hidden' : ''}`}>
+                            <span className="text-neutral-600 text-sm">No Image</span>
+                          </div>
+                        </div>
+                        {/* Content Section */}
+                        <div className="p-4">
+                          <div className="font-semibold">{listing.title}</div>
+                          <div className="text-sm text-neutral-400">{listing.condition}</div>
+                          <div className="mt-2 text-ccaBlue font-bold">
+                            ${listing.price}
+                            {listing.shipping !== undefined && listing.shipping > 0 && (
+                              <span className="text-xs text-neutral-400 font-normal ml-1">+ ${listing.shipping} shipping</span>
+                            )}
+                            {listing.shipping === 0 && (
+                              <span className="text-xs text-green-400 font-normal ml-1">Free shipping</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
