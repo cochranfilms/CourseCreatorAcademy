@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
+import { isLessonWatched, toggleSaved, isSaved } from '@/lib/userData';
 
 type Lesson = {
   id: string;
@@ -41,6 +43,10 @@ export default function CourseDetailPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const slug = params?.slug as string || '';
+  const { user } = useAuth();
+  const [savedCourse, setSavedCourse] = useState(false);
+  const [savedLessons, setSavedLessons] = useState<Record<string, boolean>>({});
+  const [watchedLessons, setWatchedLessons] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function fetchCourse() {
@@ -128,6 +134,29 @@ export default function CourseDetailPage() {
     }
   }, [slug]);
 
+  useEffect(() => {
+    async function computeStates() {
+      if (!user || !course) return;
+      try {
+        const sc = await isSaved(user.uid, 'course', course.id);
+        setSavedCourse(sc);
+      } catch {}
+
+      const saved: Record<string, boolean> = {};
+      const watched: Record<string, boolean> = {};
+      for (const mod of course.modules) {
+        for (const les of mod.lessons) {
+          const key = `${mod.id}/${les.id}`;
+          try { saved[key] = await isSaved(user.uid, 'lesson', `${course.slug}|${mod.id}|${les.id}`); } catch { saved[key] = false; }
+          try { watched[key] = await isLessonWatched(user.uid, course.slug, key); } catch { watched[key] = false; }
+        }
+      }
+      setSavedLessons(saved);
+      setWatchedLessons(watched);
+    }
+    computeStates();
+  }, [user, course]);
+
   if (loading) {
     return (
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -186,7 +215,22 @@ export default function CourseDetailPage() {
       </Link>
 
       <div className="mt-6">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">{course.title}</h1>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold">{course.title}</h1>
+          {user && (
+            <button
+              onClick={async () => {
+                if (!user || !course) return;
+                const nowSaved = await toggleSaved(user.uid, 'course', course.id, { title: course.title, slug: course.slug });
+                setSavedCourse(nowSaved);
+              }}
+              className={`inline-flex items-center gap-2 text-sm px-3 py-1 border ${savedCourse ? 'border-red-500 text-red-400' : 'border-neutral-700 text-neutral-400'} hover:bg-neutral-800`}
+            >
+              <svg className={`w-4 h-4 ${savedCourse ? 'fill-red-500' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1 4.13 2.44C11.09 5 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              {savedCourse ? 'Saved' : 'Save Course'}
+            </button>
+          )}
+        </div>
         {course.summary && (
           <p className="text-lg text-neutral-400 mb-6 max-w-3xl">{course.summary}</p>
         )}
@@ -245,6 +289,12 @@ export default function CourseDetailPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{lesson.title}</span>
+                            {watchedLessons[`${module.id}/${lesson.id}`] && (
+                              <span className="inline-flex items-center text-xs text-green-400 gap-1">
+                                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                                Watched
+                              </span>
+                            )}
                             {lesson.freePreview && (
                               <span className="text-xs px-2 py-1 rounded bg-ccaBlue/20 text-ccaBlue border border-ccaBlue/30">
                                 Preview
@@ -262,18 +312,37 @@ export default function CourseDetailPage() {
                         </div>
                       </div>
                       
-                      {lesson.muxPlaybackId ? (
-                        <Link
-                          href={`/learn/${course.slug}/module/${module.id}/lesson/${lesson.id}` as any}
-                          className="text-ccaBlue hover:text-white transition px-4 py-2 rounded hover:bg-ccaBlue/20"
-                        >
-                          Watch →
-                        </Link>
-                      ) : (
-                        <span className="text-neutral-600 text-sm px-4 py-2">
-                          Coming Soon
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {user && (
+                          <button
+                            onClick={async () => {
+                              if (!user || !course) return;
+                              const key = `${module.id}/${lesson.id}`;
+                              const nowSaved = await toggleSaved(user.uid, 'lesson', `${course.slug}|${module.id}|${lesson.id}`, {
+                                courseSlug: course.slug,
+                                moduleId: module.id,
+                                lessonId: lesson.id,
+                                title: lesson.title,
+                              });
+                              setSavedLessons(prev => ({ ...prev, [key]: nowSaved }));
+                            }}
+                            className={`inline-flex items-center gap-1 text-xs px-2 py-1 border ${savedLessons[`${module.id}/${lesson.id}`] ? 'border-red-500 text-red-400' : 'border-neutral-700 text-neutral-400'} hover:bg-neutral-800`}
+                          >
+                            <svg className={`w-4 h-4 ${savedLessons[`${module.id}/${lesson.id}`] ? 'fill-red-500' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1 4.13 2.44C11.09 5 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                            {savedLessons[`${module.id}/${lesson.id}`] ? 'Saved' : 'Save'}
+                          </button>
+                        )}
+                        {lesson.muxPlaybackId ? (
+                          <Link
+                            href={`/learn/${course.slug}/module/${module.id}/lesson/${lesson.id}` as any}
+                            className="text-ccaBlue hover:text-white transition px-3 py-1 rounded hover:bg-ccaBlue/20 text-sm"
+                          >
+                            Watch →
+                          </Link>
+                        ) : (
+                          <span className="text-neutral-600 text-sm px-3 py-1">Coming Soon</span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
