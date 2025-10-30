@@ -13,17 +13,30 @@ if (!getApps().length) {
 
   if (projectId && clientEmail && privateKey) {
     try {
-      adminApp = initializeApp({
-        credential: cert({
-          projectId,
-          clientEmail,
-          privateKey
-        })
-      });
-      adminAuth = getAuth(adminApp);
-      adminDb = getFirestore(adminApp);
-    } catch (error) {
+      // Validate private key format
+      if (!privateKey.includes('BEGIN PRIVATE KEY')) {
+        console.error('Firebase Admin private key is missing BEGIN marker');
+      } else if (!privateKey.includes('END PRIVATE KEY')) {
+        console.error('Firebase Admin private key is missing END marker');
+      } else {
+        adminApp = initializeApp({
+          credential: cert({
+            projectId,
+            clientEmail,
+            privateKey
+          })
+        });
+        adminAuth = getAuth(adminApp);
+        adminDb = getFirestore(adminApp);
+      }
+    } catch (error: any) {
       console.error('Failed to initialize Firebase Admin:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      if (error.message?.includes('UNAUTHENTICATED')) {
+        console.error('This usually means the private key format is incorrect in Vercel.');
+        console.error('Make sure FIREBASE_ADMIN_PRIVATE_KEY includes the entire key with BEGIN/END markers.');
+      }
     }
   } else {
     console.warn('Firebase Admin credentials not found. Some features may not work.');
