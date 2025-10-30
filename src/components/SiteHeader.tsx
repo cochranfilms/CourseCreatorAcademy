@@ -1,7 +1,8 @@
 "use client";
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 const links = [
   { href: '/home', label: "What's New" },
@@ -15,6 +16,18 @@ const links = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { user, loading, logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
     <div className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-black/60 border-b border-neutral-900">
       <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
@@ -24,16 +37,42 @@ export function SiteHeader() {
             <span className="hidden md:inline text-sm text-neutral-400">Course Creator Academy</span>
           </div>
         </Link>
-        <nav className="hidden md:flex gap-2">
-          {links.map((l) => {
-            const active = pathname === l.href;
-            return (
-              <Link key={l.href} href={l.href as any} className={`px-3 py-1.5 rounded-full text-sm ${active ? 'bg-ccaBlue text-white' : 'bg-neutral-900 text-neutral-300 hover:bg-neutral-800'}`}>
-                {l.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="flex items-center gap-4">
+          <nav className="hidden md:flex gap-2">
+            {links.map((l) => {
+              const active = pathname === l.href;
+              return (
+                <Link key={l.href} href={l.href as any} className={`px-3 py-1.5 rounded-full text-sm ${active ? 'bg-ccaBlue text-white' : 'bg-neutral-900 text-neutral-300 hover:bg-neutral-800'}`}>
+                  {l.label}
+                </Link>
+              );
+            })}
+          </nav>
+          {!loading && (
+            <div className="flex items-center gap-3">
+              {user ? (
+                <>
+                  <span className="hidden md:inline text-sm text-neutral-400">{user.email}</span>
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-1.5 rounded-full text-sm bg-neutral-900 text-neutral-300 hover:bg-neutral-800 transition"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="px-4 py-1.5 rounded-full text-sm bg-neutral-900 text-neutral-300 hover:bg-neutral-800 transition">
+                    Sign In
+                  </Link>
+                  <Link href="/signup" className="px-4 py-1.5 rounded-full text-sm bg-ccaBlue text-white hover:opacity-90 transition">
+                    Sign Up
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -24,6 +24,12 @@
       ],
       "@/components/*": [
         "src/components/*"
+      ],
+      "@/contexts/*": [
+        "src/contexts/*"
+      ],
+      "@/styles/*": [
+        "src/styles/*"
       ]
     },
     "plugins": [

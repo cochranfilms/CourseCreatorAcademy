@@ -1,0 +1,143 @@
+"use client";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import Image from 'next/image';
+import Link from 'next/link';
+
+export default function SignupPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { signUp } = useAuth();
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await signUp(email, password);
+      router.push('/');
+    } catch (err: any) {
+      setError(err.message || 'Failed to create account. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-6 py-12 -mt-16">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-block">
+            <Image src="/logo-cca.png" alt="CCA" width={180} height={46} className="mx-auto mb-4" />
+          </Link>
+          <h1 className="text-3xl font-bold mb-2">Join Course Creator Academy</h1>
+          <p className="text-neutral-400">Create your account to get started</p>
+        </div>
+
+        <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium mb-2 text-neutral-300">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+                placeholder="your@email.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium mb-2 text-neutral-300">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+                placeholder="At least 6 characters"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2 text-neutral-300">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+                placeholder="Confirm your password"
+              />
+            </div>
+
+            <div className="flex items-start text-sm">
+              <input type="checkbox" className="mt-1 mr-2 rounded border-neutral-700 bg-neutral-900" required />
+              <span className="text-neutral-400">
+                I agree to the{' '}
+                <Link href={"/terms" as any} className="text-ccaBlue hover:text-ccaBlue/80">
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link href={"/privacy" as any} className="text-ccaBlue hover:text-ccaBlue/80">
+                  Privacy Policy
+                </Link>
+              </span>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-ccaBlue text-white py-3 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Creating account...' : 'Create Account'}
+            </button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-neutral-800">
+            <p className="text-center text-sm text-neutral-400">
+              Already have an account?{' '}
+              <Link href="/login" className="text-ccaBlue hover:text-ccaBlue/80 font-medium">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
