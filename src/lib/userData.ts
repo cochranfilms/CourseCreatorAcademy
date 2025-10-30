@@ -67,4 +67,25 @@ export async function isLessonWatched(userId: string, courseId: string, lessonPa
   return arr.includes(lessonPath);
 }
 
+// Get completed lessons for a course
+export async function getCompletedLessons(userId: string, courseId: string): Promise<string[]> {
+  if (!db) return [];
+  const ref = doc(db, `users/${userId}/progress/courses/${courseId}`);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return [];
+  return (snap.data()?.completedLessons || []) as string[];
+}
 
+// Get course progress percentage
+export async function getCourseProgress(userId: string, courseId: string, totalLessons: number): Promise<number> {
+  if (!db || totalLessons === 0) return 0;
+  const completed = await getCompletedLessons(userId, courseId);
+  return Math.round((completed.length / totalLessons) * 100);
+}
+
+// Get module progress percentage
+export function getModuleProgress(completedLessons: string[], moduleId: string, moduleLessons: string[]): number {
+  if (moduleLessons.length === 0) return 0;
+  const completed = moduleLessons.filter(lessonPath => completedLessons.includes(lessonPath)).length;
+  return Math.round((completed / moduleLessons.length) * 100);
+}

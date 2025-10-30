@@ -6,7 +6,7 @@ import { db } from '@/lib/firebaseClient';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { isSaved, toggleSaved } from '@/lib/userData';
+import { isSaved, toggleSaved, getCourseProgress } from '@/lib/userData';
 
 type Course = {
   id: string;
@@ -32,6 +32,7 @@ export default function LearnPage() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const [savedCourses, setSavedCourses] = useState<Record<string, boolean>>({});
+  const [courseProgress, setCourseProgress] = useState<Record<string, number>>({});
 
   useEffect(() => {
     async function fetchCourses() {
@@ -113,10 +114,15 @@ export default function LearnPage() {
     async function computeSaved() {
       if (!user || courses.length === 0) return;
       const saved: Record<string, boolean> = {};
+      const progress: Record<string, number> = {};
+      
       for (const course of courses) {
         saved[course.id] = await isSaved(user.uid, 'course', course.id);
+        progress[course.id] = await getCourseProgress(user.uid, course.slug, course.lessonsCount);
       }
+      
       setSavedCourses(saved);
+      setCourseProgress(progress);
     }
     computeSaved();
   }, [user, courses]);
@@ -191,9 +197,23 @@ export default function LearnPage() {
                     {course.modulesCount > 0 && (
                       <span className="ml-2">• {course.modulesCount} module{course.modulesCount !== 1 ? 's' : ''}</span>
                     )}
+                    {user && courseProgress[course.id] !== undefined && courseProgress[course.id] > 0 && (
+                      <span className="ml-2 text-ccaBlue">• {courseProgress[course.id]}% Complete</span>
+                    )}
                   </div>
                   {course.summary && (
                     <p className="text-sm text-neutral-500 mt-2 line-clamp-2">{course.summary}</p>
+                  )}
+                  {/* Course Progress Bar */}
+                  {user && courseProgress[course.id] !== undefined && courseProgress[course.id] > 0 && (
+                    <div className="mt-3">
+                      <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-ccaBlue to-ccaBlue/80 transition-all duration-300"
+                          style={{ width: `${courseProgress[course.id]}%` }}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
               </Link>

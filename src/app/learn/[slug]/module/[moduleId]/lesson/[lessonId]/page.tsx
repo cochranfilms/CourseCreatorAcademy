@@ -153,6 +153,8 @@ export default function LessonPage() {
               moduleId,
               lessonId,
               title: lesson.title,
+              muxPlaybackId: lesson.muxPlaybackId,
+              durationSec: lesson.durationSec,
             });
             setSaved(nowSaved);
           }}

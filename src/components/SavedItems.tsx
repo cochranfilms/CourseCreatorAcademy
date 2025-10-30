@@ -20,6 +20,8 @@ type SavedItem = {
   lessonId?: string;
   price?: number;
   image?: string;
+  muxPlaybackId?: string;
+  durationSec?: number;
   createdAt?: any;
   [key: string]: any;
 };

@@ -7,7 +7,7 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { isLessonWatched, toggleSaved, isSaved } from '@/lib/userData';
+import { isLessonWatched, toggleSaved, isSaved, getCompletedLessons, getModuleProgress } from '@/lib/userData';
 
 type Lesson = {
   id: string;
@@ -47,6 +47,9 @@ export default function CourseDetailPage() {
   const [savedCourse, setSavedCourse] = useState(false);
   const [savedLessons, setSavedLessons] = useState<Record<string, boolean>>({});
   const [watchedLessons, setWatchedLessons] = useState<Record<string, boolean>>({});
+  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  const [courseProgress, setCourseProgress] = useState<number>(0);
+  const [moduleProgress, setModuleProgress] = useState<Record<string, number>>({});
 
   useEffect(() => {
     async function fetchCourse() {
@@ -153,6 +156,27 @@ export default function CourseDetailPage() {
       }
       setSavedLessons(saved);
       setWatchedLessons(watched);
+
+      // Get completed lessons and calculate progress
+      try {
+        const completed = await getCompletedLessons(user.uid, course.slug);
+        setCompletedLessons(completed);
+
+        // Calculate course progress
+        const totalLessons = course.modules.reduce((sum, mod) => sum + mod.lessons.length, 0);
+        const courseProgressValue = totalLessons > 0 ? Math.round((completed.length / totalLessons) * 100) : 0;
+        setCourseProgress(courseProgressValue);
+
+        // Calculate module progress
+        const modProgress: Record<string, number> = {};
+        for (const mod of course.modules) {
+          const moduleLessonPaths = mod.lessons.map(les => `${mod.id}/${les.id}`);
+          modProgress[mod.id] = getModuleProgress(completed, mod.id, moduleLessonPaths);
+        }
+        setModuleProgress(modProgress);
+      } catch (error) {
+        console.error('Error fetching progress:', error);
+      }
     }
     computeStates();
   }, [user, course]);
@@ -239,7 +263,29 @@ export default function CourseDetailPage() {
           <span>{course.lessonsCount} lesson{course.lessonsCount !== 1 ? 's' : ''}</span>
           <span>•</span>
           <span>{course.modulesCount} module{course.modulesCount !== 1 ? 's' : ''}</span>
+          {user && courseProgress > 0 && (
+            <>
+              <span>•</span>
+              <span className="text-ccaBlue font-medium">{courseProgress}% Complete</span>
+            </>
+          )}
         </div>
+
+        {/* Course Progress Bar */}
+        {user && courseProgress > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-neutral-400">Overall Progress</span>
+              <span className="text-ccaBlue font-medium">{courseProgress}%</span>
+            </div>
+            <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-ccaBlue to-ccaBlue/80 transition-all duration-300"
+                style={{ width: `${courseProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {course.modules.length === 0 ? (
           <div className="text-center text-neutral-400 py-12">
@@ -253,12 +299,30 @@ export default function CourseDetailPage() {
                 className="border border-neutral-800 rounded-lg bg-neutral-950/60 backdrop-blur-sm overflow-hidden"
               >
                 <div className="bg-neutral-900/60 px-6 py-4 border-b border-neutral-800">
-                  <h2 className="text-xl font-semibold">
-                    {module.title}
-                  </h2>
-                  <p className="text-sm text-neutral-400 mt-1">
-                    {module.lessons.length} lesson{module.lessons.length !== 1 ? 's' : ''}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold">
+                        {module.title}
+                      </h2>
+                      <p className="text-sm text-neutral-400 mt-1">
+                        {module.lessons.length} lesson{module.lessons.length !== 1 ? 's' : ''}
+                        {user && moduleProgress[module.id] !== undefined && moduleProgress[module.id] > 0 && (
+                          <span className="ml-2 text-ccaBlue">• {moduleProgress[module.id]}% Complete</span>
+                        )}
+                      </p>
+                    </div>
+                    {user && moduleProgress[module.id] !== undefined && moduleProgress[module.id] > 0 && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-neutral-400">{moduleProgress[module.id]}%</span>
+                        <div className="w-24 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-ccaBlue to-ccaBlue/80 transition-all duration-300"
+                            style={{ width: `${moduleProgress[module.id]}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="divide-y divide-neutral-800">
@@ -323,6 +387,8 @@ export default function CourseDetailPage() {
                                 moduleId: module.id,
                                 lessonId: lesson.id,
                                 title: lesson.title,
+                                muxPlaybackId: lesson.muxPlaybackId,
+                                durationSec: lesson.durationSec,
                               });
                               setSavedLessons(prev => ({ ...prev, [key]: nowSaved }));
                             }}
