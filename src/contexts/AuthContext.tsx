@@ -1,6 +1,16 @@
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
+import { 
+  User, 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  sendPasswordResetEmail,
+  signInWithPopup,
+  GoogleAuthProvider,
+  FacebookAuthProvider
+} from 'firebase/auth';
 import { auth, firebaseReady } from '@/lib/firebaseClient';
 
 interface AuthContextType {
@@ -8,6 +18,8 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithFacebook: () => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
 }
@@ -17,6 +29,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signIn: async () => {},
   signUp: async () => {},
+  signInWithGoogle: async () => {},
+  signInWithFacebook: async () => {},
   logout: async () => {},
   resetPassword: async () => {}
 });
@@ -49,6 +63,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await createUserWithEmailAndPassword(auth, email, password);
   };
 
+  const signInWithGoogle = async () => {
+    if (!auth) throw new Error('Firebase Auth not initialized');
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
+  const signInWithFacebook = async () => {
+    if (!auth) throw new Error('Firebase Auth not initialized');
+    const provider = new FacebookAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
   const logout = async () => {
     if (!auth) throw new Error('Firebase Auth not initialized');
     await signOut(auth);
@@ -60,7 +86,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, logout, resetPassword }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      signIn, 
+      signUp, 
+      signInWithGoogle, 
+      signInWithFacebook,
+      logout, 
+      resetPassword 
+    }}>
       {children}
     </AuthContext.Provider>
   );
