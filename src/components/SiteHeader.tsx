@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const links = [
   { href: '/home', label: "What's New" },
   { href: '/learn', label: 'Learn' },
-  { href: '/show', label: 'FTF Show' },
+  { href: '/show', label: 'CCA Show' },
   { href: '/opportunities', label: 'Opportunities' },
   { href: '/assets', label: 'Assets' },
   { href: '/marketplace', label: 'Marketplace' },

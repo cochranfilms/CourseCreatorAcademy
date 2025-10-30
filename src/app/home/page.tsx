@@ -100,8 +100,8 @@ export default function HomePage() {
   // Sample data - replace with actual data from Firestore/Firebase
   const featuredShow = {
     thumbnail: '/placeholder-video.jpg',
-    title: 'FTF Show Episode 006: Ezra Cohen - Building Creative Momentum',
-    description: 'In this FTF Show episode, Ezra Cohen opens up about his creative journey, the challenges of building a brand, and the mindset shifts that keep him inspired. From the early days of experimenting with...',
+    title: 'CCA Show Episode 006: Ezra Cohen - Building Creative Momentum',
+    description: 'In this CCA Show episode, Ezra Cohen opens up about his creative journey, the challenges of building a brand, and the mindset shifts that keep him inspired. From the early days of experimenting with...',
     guest: 'Ezra Cohen',
     handle: '@ezcohen'
   };
@@ -231,7 +231,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="p-6">
-                <div className="text-xs text-neutral-400 mb-2">FTF SHOW</div>
+                <div className="text-xs text-neutral-400 mb-2">CCA SHOW</div>
                 <h2 className="text-xl font-bold mb-2">{featuredShow.title}</h2>
                 <p className="text-sm text-neutral-400 line-clamp-2">{featuredShow.description}</p>
                 <Link href="/show" className="inline-flex items-center gap-2 mt-4 text-sm font-medium text-white hover:text-ccaBlue transition">
