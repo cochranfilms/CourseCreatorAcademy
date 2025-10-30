@@ -73,15 +73,15 @@ export default function Page() {
           {/* Video Player */}
           <div className="mt-12 mb-8 w-full max-w-5xl mx-auto">
             <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-neutral-800 bg-black shadow-2xl">
-              <iframe
-                className="w-full h-full"
-                src="https://www.youtube.com/embed/3-msojt4yuk?start=9&rel=0&modestbranding=1"
-                title="CCA Promo Video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-              />
-            </div>
+            <iframe
+              className="w-full h-full"
+              src="https://www.youtube.com/embed/3-msojt4yuk?start=9&rel=0&modestbranding=1"
+              title="CCA Promo Video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          </div>
           </div>
 
           {/* Testimonial Quote */}

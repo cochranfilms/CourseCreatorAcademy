@@ -6,6 +6,8 @@ import Link from 'next/link';
 import MuxPlayer from '@mux/mux-player-react';
 import { collection, doc, getDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { markLessonWatched, toggleSaved, isSaved } from '@/lib/userData';
 
 type Lesson = {
   id: string;
@@ -27,6 +29,8 @@ export default function LessonPage() {
   const [courseTitle, setCourseTitle] = useState('');
   const [moduleTitle, setModuleTitle] = useState('');
   const [lesson, setLesson] = useState<Lesson | null>(null);
+  const { user } = useAuth();
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     async function fetchLesson() {
@@ -86,6 +90,21 @@ export default function LessonPage() {
     fetchLesson();
   }, [slug, moduleId, lessonId]);
 
+  // Mark watched when lesson loads
+  useEffect(() => {
+    if (!user || !lesson) return;
+    markLessonWatched(user.uid, slug, `${moduleId}/${lessonId}`);
+  }, [user, lesson]);
+
+  useEffect(() => {
+    async function checkSaved() {
+      if (!user) return;
+      const s = await isSaved(user.uid, 'lesson', `${slug}|${moduleId}|${lessonId}`);
+      setSaved(s);
+    }
+    checkSaved();
+  }, [user, slug, moduleId, lessonId]);
+
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '';
     const mins = Math.floor(seconds / 60);
@@ -125,6 +144,24 @@ export default function LessonPage() {
       </div>
 
       <h1 className="text-2xl md:text-3xl font-bold">{lesson.title}</h1>
+      <div className="mt-2">
+        <button
+          onClick={async () => {
+            if (!user) return;
+            const nowSaved = await toggleSaved(user.uid, 'lesson', `${slug}|${moduleId}|${lessonId}`, {
+              courseSlug: slug,
+              moduleId,
+              lessonId,
+              title: lesson.title,
+            });
+            setSaved(nowSaved);
+          }}
+          className={`inline-flex items-center gap-2 text-sm px-3 py-1 border ${saved ? 'border-red-500 text-red-400' : 'border-neutral-700 text-neutral-400'} hover:bg-neutral-800`}
+        >
+          <svg className={`w-4 h-4 ${saved ? 'fill-red-500' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1 4.13 2.44C11.09 5 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          {saved ? 'Saved' : 'Save'}
+        </button>
+      </div>
       <p className="text-neutral-400 mt-1">{moduleTitle} • {lesson.index > 0 ? `Lesson ${lesson.index}` : 'Lesson'}</p>
       {lesson.durationSec ? (
         <p className="text-neutral-500 text-sm mt-1">{formatDuration(lesson.durationSec)}</p>
