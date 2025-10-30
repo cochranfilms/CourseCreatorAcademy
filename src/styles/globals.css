@@ -2,24 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #__next { height: 100%; }
-body { 
-  color: white;
+html, body, #__next { 
+  height: 100%;
   background: 
     /* Top-left subtle blue glow */
-    radial-gradient(ellipse 1200px 800px at 15% 0%, rgba(27,0,255,0.2) 0%, transparent 50%),
-    /* Top-right blue accent */
-    radial-gradient(ellipse 1000px 600px at 85% -10%, rgba(59,130,246,0.15) 0%, transparent 50%),
-    /* Bottom-right subtle purple */
-    radial-gradient(ellipse 800px 800px at 90% 100%, rgba(147,51,234,0.1) 0%, transparent 50%),
-    /* Bottom-left dark accent */
-    radial-gradient(ellipse 600px 600px at 10% 95%, rgba(27,0,255,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 1200px 600px at 80% -100px, rgba(27,0,255,0.25), transparent 60%),
+    /* Top-left blue accent */
+    radial-gradient(ellipse 800px 400px at 0% -40px, rgba(27,0,255,0.15), transparent 60%),
     /* Base dark gradient */
-    linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
+    linear-gradient(180deg, #0a0a0a 0%, #000 100%);
   background-attachment: fixed;
-  background-size: cover;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center center;
+}
+
+body { 
+  color: white;
+  margin: 0;
+  padding: 0;
 }
 
 .cta-button { @apply bg-ccaBlue text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition; }
@@ -33,7 +34,7 @@ body {
 
 /* Fallback for mobile devices where fixed backgrounds can be problematic */
 @media (max-width: 768px) {
-  body {
+  html, body {
     background-attachment: scroll;
   }
 }
