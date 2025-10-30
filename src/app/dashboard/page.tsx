@@ -502,7 +502,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Profile Section */}
         <div className="bg-neutral-950 border border-neutral-800  p-6 mb-6">
           <div className="flex items-start justify-between gap-6">
@@ -641,7 +641,7 @@ export default function DashboardPage() {
                 {projects.map((project) => (
                   <div key={project.id} className="border border-neutral-800 bg-neutral-900 p-4 hover:border-neutral-700 transition">
                     {project.imageUrl && (
-                      <img src={project.imageUrl} alt={project.title} className="w-full h-48 object-cover mb-4" />
+                      <img src={project.imageUrl} alt={project.title} className="w-full h-48 object-cover mb-4" loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" />
                     )}
                     <h3 className="font-semibold text-lg mb-2">{project.title}</h3>
                     {project.description && (
@@ -1205,7 +1205,7 @@ export default function DashboardPage() {
                   </div>
                   {projectImagePreview && (
                     <div className="mt-4">
-                      <img src={projectImagePreview} alt="Preview" className="max-w-full h-64 object-contain border border-neutral-800" />
+                      <img src={projectImagePreview} alt="Preview" className="max-w-full h-64 object-contain border border-neutral-800" loading="lazy" decoding="async" />
                     </div>
                   )}
                 </div>

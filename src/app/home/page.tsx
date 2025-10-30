@@ -123,7 +123,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
@@ -135,7 +135,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
@@ -151,6 +151,9 @@ export default function HomePage() {
                       src={photoURL} 
                       alt={displayName} 
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                      sizes="64px"
                       onError={(e) => {
                         // Fallback to placeholder if image fails to load
                         e.currentTarget.style.display = 'none';

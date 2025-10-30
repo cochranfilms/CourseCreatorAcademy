@@ -11,12 +11,15 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.firebasestorage.app',
+        hostname: 'course-creator-academy-866d6.firebasestorage.app',
         pathname: '/**',
       },
     ],
-    unoptimized: false, // Keep optimization enabled
+    formats: ['image/avif', 'image/webp'],
+    unoptimized: false,
   },
+  reactStrictMode: true,
+  compress: true,
 };
 
 export default nextConfig;

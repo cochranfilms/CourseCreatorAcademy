@@ -256,7 +256,7 @@ export default function MarketplacePage() {
   const displayListings = filteredListings.length > 0 ? filteredListings : listings;
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <div className="mb-6">
         <h1 className="text-3xl md:text-4xl font-bold">Marketplace</h1>
       </div>
@@ -541,6 +541,9 @@ export default function MarketplacePage() {
                       src={listing.images[imageIndex] || listing.images[0]}
                       alt={listing.title}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                         e.currentTarget.nextElementSibling?.classList.remove('hidden');
