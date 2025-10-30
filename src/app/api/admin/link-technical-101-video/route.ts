@@ -6,10 +6,17 @@ async function linkVideo() {
   try {
     // Validate Firebase Admin is initialized
     if (!adminDb) {
+      const missingVars = [];
+      if (!process.env.FIREBASE_ADMIN_PROJECT_ID) missingVars.push('FIREBASE_ADMIN_PROJECT_ID');
+      if (!process.env.FIREBASE_ADMIN_CLIENT_EMAIL) missingVars.push('FIREBASE_ADMIN_CLIENT_EMAIL');
+      if (!process.env.FIREBASE_ADMIN_PRIVATE_KEY) missingVars.push('FIREBASE_ADMIN_PRIVATE_KEY');
+      
       return NextResponse.json(
         { 
           error: 'Firebase Admin not initialized',
-          details: 'Check that FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, and FIREBASE_ADMIN_PRIVATE_KEY are set in .env.local'
+          details: 'Firebase Admin credentials are missing or invalid',
+          missingVariables: missingVars,
+          instructions: 'Please set these environment variables in Vercel: FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, FIREBASE_ADMIN_PRIVATE_KEY'
         },
         { status: 500 }
       );
