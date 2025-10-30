@@ -256,7 +256,7 @@ export function Search({ isOpen, onClose }: SearchProps) {
   }, [searchQuery, isOpen, user]);
 
   const handleResultClick = (href: string) => {
-    router.push(href);
+    router.push(href as any);
     onClose();
     setSearchQuery('');
   };
