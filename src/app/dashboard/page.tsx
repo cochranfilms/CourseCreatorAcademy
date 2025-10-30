@@ -504,7 +504,7 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full overflow-x-hidden">
         {/* Profile Section */}
-        <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 mb-6 w-full overflow-x-hidden">
+        <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 w-full overflow-x-hidden">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 w-full">
             {/* Left Side - Profile Info */}
             <div className="flex-1 w-full min-w-0">
@@ -603,8 +603,8 @@ export default function DashboardPage() {
               onClick={() => setActiveTab(tab)}
               className={`px-4 sm:px-6 py-2 text-sm font-medium transition whitespace-nowrap flex-shrink-0 ${
                 activeTab === tab
-                  ? 'bg-neutral-800 text-white border border-neutral-700'
-                  : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
+                  ? 'bg-neutral-800/60 backdrop-blur-sm text-white border border-neutral-700/50'
+                  : 'bg-neutral-900/60 backdrop-blur-sm text-neutral-400 hover:text-white border border-neutral-800/50'
               }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -614,7 +614,7 @@ export default function DashboardPage() {
 
         {/* Tab Content */}
         {activeTab === 'projects' && (
-          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-xl sm:text-2xl font-semibold">Projects</h2>
               <button 
@@ -683,7 +683,7 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'social' && (
-          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <h2 className="text-2xl font-semibold mb-6">Social Profiles</h2>
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               <div>
@@ -770,7 +770,7 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'email' && (
-          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <div className="flex items-center gap-2 mb-2">
               <svg className="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -825,7 +825,7 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'privacy' && (
-          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <h2 className="text-2xl font-semibold mb-2">Privacy Settings</h2>
             <p className="text-neutral-400 mb-6">Control who can see your profile and information</p>
             
@@ -874,7 +874,7 @@ export default function DashboardPage() {
 
         {/* Marketplace Listings */}
         {activeTab === 'projects' && listings.length > 0 && (
-          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 mt-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mt-6 w-full overflow-x-hidden">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg sm:text-xl font-semibold">My Marketplace Listings</h2>
               <Link
@@ -941,7 +941,7 @@ export default function DashboardPage() {
 
         {/* Opportunities */}
         {activeTab === 'projects' && opportunities.length > 0 && (
-          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 mt-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mt-6 w-full overflow-x-hidden">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg sm:text-xl font-semibold">My Posted Opportunities</h2>
               <Link
