@@ -4,7 +4,7 @@
 
 html, body, #__next { height: 100%; }
 body { 
-  @apply text-white;
+  color: white;
   background: 
     /* Top-left subtle blue glow */
     radial-gradient(ellipse 1200px 800px at 15% 0%, rgba(27,0,255,0.2) 0%, transparent 50%),
@@ -26,7 +26,7 @@ body {
 
 /* Brand gradient background - fixed and non-repeating */
 .cca-gradient {
-  background: transparent;
+  background: transparent !important;
   min-height: 100vh;
   position: relative;
 }
