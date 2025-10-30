@@ -16,6 +16,7 @@ type Listing = {
   createdAt?: any;
   images?: string[];
   shipping?: number;
+  description?: string;
 };
 type Opportunity = { id: string; title: string; company: string; location: string; type: string; posted?: any; };
 
@@ -227,14 +228,14 @@ export default function DashboardPage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {listings.slice(0, 4).map((listing) => (
                       <div
                         key={listing.id}
-                        className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 hover:border-neutral-700 transition-all"
+                        className="rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-all"
                       >
                         {/* Image Section */}
-                        <div className="relative h-32 bg-neutral-800 overflow-hidden">
+                        <div className="relative h-64 bg-neutral-900 overflow-hidden">
                           {listing.images && listing.images.length > 0 ? (
                             <img
                               src={listing.images[0]}
@@ -252,16 +253,40 @@ export default function DashboardPage() {
                         </div>
                         {/* Content Section */}
                         <div className="p-4">
-                          <div className="font-semibold">{listing.title}</div>
-                          <div className="text-sm text-neutral-400">{listing.condition}</div>
-                          <div className="mt-2 text-ccaBlue font-bold">
-                            ${listing.price}
-                            {listing.shipping !== undefined && listing.shipping > 0 && (
-                              <span className="text-xs text-neutral-400 font-normal ml-1">+ ${listing.shipping} shipping</span>
+                          <h3 className="font-semibold text-lg mb-1 line-clamp-1">{listing.title}</h3>
+                          
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xl font-bold text-white">${listing.price}</span>
+                            {listing.shipping !== undefined && listing.shipping > 0 ? (
+                              <span className="text-sm text-neutral-400">+ ${listing.shipping} shipping</span>
+                            ) : (
+                              <span className="text-sm text-green-400">Free shipping</span>
                             )}
-                            {listing.shipping === 0 && (
-                              <span className="text-xs text-green-400 font-normal ml-1">Free shipping</span>
-                            )}
+                          </div>
+
+                          {listing.description && (
+                            <p className="text-sm text-neutral-300 mb-3 line-clamp-2">{listing.description}</p>
+                          )}
+
+                          <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-800">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-semibold text-neutral-400">
+                                {user?.email?.charAt(0).toUpperCase() || 'U'}
+                              </div>
+                              <div className="text-xs text-neutral-500">
+                                <div>{user?.email?.split('@')[0] || 'Creator'}</div>
+                                <div>
+                                  {listing.createdAt 
+                                    ? (listing.createdAt.toDate 
+                                      ? listing.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                      : new Date(listing.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))
+                                    : ''}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-neutral-800 text-neutral-300 border border-neutral-700">
+                              {listing.condition}
+                            </span>
                           </div>
                         </div>
                       </div>
