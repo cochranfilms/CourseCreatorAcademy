@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { SupportChat } from './SupportChat';
+import { Messages } from './Messages';
 
 const links = [
   { href: '/home', label: "What's New" },
@@ -33,6 +34,7 @@ export function SiteHeader() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSupportChat, setShowSupportChat] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -135,7 +137,7 @@ export function SiteHeader() {
   return (
     <>
       {/* Top Menu Bar with Profile */}
-      <div className="sticky top-0 z-[60] bg-white/80 backdrop-blur-sm border-b border-neutral-200 w-full overflow-x-hidden overflow-y-visible">
+      <div className="sticky top-0 z-[60] bg-neutral-950/90 backdrop-blur-sm border-b border-neutral-800 w-full overflow-x-hidden overflow-y-visible">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 w-full relative">
         <div className="flex items-center gap-3">
           <Link href="/" className="flex-shrink-0">
@@ -147,7 +149,7 @@ export function SiteHeader() {
             <button
               data-mobile-menu-button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-neutral-900 p-2 hover:bg-neutral-100 rounded-lg transition"
+              className="md:hidden text-white p-2 hover:bg-neutral-800 rounded-lg transition"
               aria-label="Toggle menu"
             >
               <svg
@@ -181,7 +183,7 @@ export function SiteHeader() {
               {user ? (
                 <>
                   {/* Your Creator label */}
-                  <span className="hidden md:inline text-sm text-neutral-700">Your Creator:</span>
+                  <span className="hidden md:inline text-sm text-neutral-400">Your Creator:</span>
                   
                   {/* Upgrade Button */}
                   <button className="hidden md:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition font-medium text-sm rounded-lg whitespace-nowrap">
@@ -190,22 +192,26 @@ export function SiteHeader() {
 
                   {/* Icons */}
                   <div className="hidden md:flex items-center gap-3">
-                    <button className="text-neutral-600 hover:text-neutral-900 transition">
+                    <button className="text-neutral-400 hover:text-white transition">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                     </button>
-                    <button className="text-neutral-600 hover:text-neutral-900 transition">
+                    <button className="text-neutral-400 hover:text-white transition">
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                       </svg>
                     </button>
-                    <button className="text-neutral-600 hover:text-neutral-900 transition">
+                    <button className="text-neutral-400 hover:text-white transition">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                       </svg>
                     </button>
-                    <button className="text-neutral-600 hover:text-neutral-900 transition">
+                    <button 
+                      onClick={() => setShowMessages(true)}
+                      className="text-neutral-400 hover:text-white transition"
+                      aria-label="Open messages"
+                    >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
@@ -219,7 +225,7 @@ export function SiteHeader() {
                       onClick={() => setShowDropdown(!showDropdown)}
                       className="flex items-center gap-2 hover:opacity-80 transition"
                     >
-                      <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-200 border-2 border-neutral-300 flex-shrink-0">
+                      <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-800 border-2 border-neutral-700 flex-shrink-0">
                         {photoURL ? (
                           <img
                             src={photoURL}
@@ -243,38 +249,43 @@ export function SiteHeader() {
                     {/* Dropdown Menu */}
                     {showDropdown && typeof window !== 'undefined' && createPortal(
                       <div 
-                        className="fixed w-48 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl overflow-hidden z-[200]"
+                        className="fixed w-48 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl overflow-hidden z-[200] pointer-events-auto"
                         style={{
                           top: `${dropdownPosition.top}px`,
                           right: `${dropdownPosition.right}px`
                         }}
                       >
-                        <div className="p-3 border-b border-neutral-800">
+                        <div className="p-3 border-b border-neutral-800 pointer-events-none">
                           <div className="font-semibold text-white truncate">{displayName}</div>
                           {handle && <div className="text-sm text-neutral-400 truncate">@{handle}</div>}
                         </div>
                         <Link
                           href="/dashboard"
-                          className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
-                          onClick={() => setShowDropdown(false)}
+                          className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm pointer-events-auto"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDropdown(false);
+                          }}
                         >
                           Your Profile
                         </Link>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setShowDropdown(false);
                             setShowSupportChat(true);
                           }}
-                          className="w-full text-left px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
+                          className="w-full text-left px-4 py-2 text-white hover:bg-neutral-800 transition text-sm pointer-events-auto"
                         >
                           Support
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setShowDropdown(false);
                             handleLogout();
                           }}
-                          className="w-full text-left px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
+                          className="w-full text-left px-4 py-2 text-white hover:bg-neutral-800 transition text-sm pointer-events-auto"
                         >
                           Sign Out
                         </button>
@@ -306,6 +317,9 @@ export function SiteHeader() {
 
       {/* Support Chat Popup */}
       <SupportChat isOpen={showSupportChat} onClose={() => setShowSupportChat(false)} />
+
+      {/* Messages Component */}
+      {user && <Messages isOpen={showMessages} onClose={() => setShowMessages(false)} />}
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && user && typeof window !== 'undefined' && createPortal(
@@ -386,6 +400,18 @@ export function SiteHeader() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
+                    setShowMessages(true);
+                  }}
+                  className="w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  Messages
+                </button>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
                     router.push('/dashboard');
                   }}
                   className="w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium"
@@ -427,7 +453,7 @@ export function SiteHeader() {
 
       {/* Navigation Bar Below - Desktop Only */}
       {user && (
-        <div className="hidden md:block sticky top-[60px] z-40 bg-gradient-to-r from-red-950/60 via-red-900/60 to-red-950/60 backdrop-blur-sm border-b border-red-800/30 w-full overflow-x-hidden">
+        <div className="hidden md:block sticky top-[60px] z-40 bg-white/90 backdrop-blur-sm border-b border-neutral-200 w-full overflow-x-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-center gap-2 overflow-x-auto scrollbar-hide">
             {links.map((l) => {
               const active = pathname === l.href;
@@ -437,8 +463,8 @@ export function SiteHeader() {
                   href={l.href as any}
                   className={`px-5 py-2.5 text-sm font-semibold transition-all duration-300 whitespace-nowrap flex-shrink-0 rounded-lg ${
                     active
-                      ? 'bg-white text-black shadow-lg border-2 border-ccaBlue transform scale-105'
-                      : 'bg-transparent text-white hover:text-gray-200 border-2 border-transparent hover:border-white/20'
+                      ? 'bg-neutral-900 text-white shadow-lg border-2 border-ccaBlue transform scale-105'
+                      : 'bg-transparent text-neutral-900 hover:text-neutral-700 border-2 border-transparent hover:border-neutral-300'
                   }`}
                 >
                   {l.label}
