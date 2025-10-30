@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { db, auth, firebaseReady } from '@/lib/firebaseClient';
+import { db, auth, firebaseReady, storage } from '@/lib/firebaseClient';
 import { ProfileImageUpload } from '@/components/ProfileImageUpload';
 import Link from 'next/link';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 type UserProfile = {
   displayName?: string;
@@ -51,6 +52,27 @@ export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'projects' | 'social' | 'email' | 'privacy'>('projects');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  
+  // Project form state
+  const [projectTitle, setProjectTitle] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
+  const [projectContent, setProjectContent] = useState('');
+  const [projectPreview, setProjectPreview] = useState('');
+  const [projectUrl, setProjectUrl] = useState('');
+  const [projectImage, setProjectImage] = useState<File | null>(null);
+  const [projectImagePreview, setProjectImagePreview] = useState<string>('');
+  const [projectSkills, setProjectSkills] = useState<string[]>([]);
+  const [customSkill, setCustomSkill] = useState('');
+  const [projectUploading, setProjectUploading] = useState(false);
+  const [projects, setProjects] = useState<any[]>([]);
+  
+  const recommendedSkills = [
+    'After Effects', 'Color Grading', 'Editor', 'Cinematography', 
+    'Motion Graphics', 'Sound Design', 'Directing', 'Producer',
+    'DaVinci Resolve', 'Premiere Pro', 'Final Cut Pro', 'Avid',
+    'Photoshop', 'Illustrator'
+  ];
   
   // Profile state
   const [profile, setProfile] = useState<UserProfile>({});
