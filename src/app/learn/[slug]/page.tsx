@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 type Lesson = {
   id: string;
@@ -35,19 +34,22 @@ type Course = {
   modules: Module[];
 };
 
-export default function CourseDetailPage({ params }: { params: { slug: string } }) {
-  const router = useRouter();
+export default function CourseDetailPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [slug, setSlug] = useState<string>('');
 
   useEffect(() => {
-    // Handle both server and client-side params
-    if (typeof params === 'object' && params.slug) {
-      setSlug(params.slug);
-    } else if (typeof params === 'string') {
-      setSlug(params);
+    // Handle both Promise and sync params (Next.js 15 compatibility)
+    async function extractSlug() {
+      if (params instanceof Promise) {
+        const resolved = await params;
+        setSlug(resolved.slug);
+      } else if (params && typeof params === 'object' && 'slug' in params) {
+        setSlug(params.slug);
+      }
     }
+    extractSlug();
   }, [params]);
 
   useEffect(() => {
