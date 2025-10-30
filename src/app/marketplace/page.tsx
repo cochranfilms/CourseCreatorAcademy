@@ -5,6 +5,8 @@ import { db, auth, firebaseReady } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { ListingImageUpload } from '@/components/ListingImageUpload';
 import Link from 'next/link';
+import Image from 'next/image';
+import { Messages } from '@/components/Messages';
 
 type Listing = { 
   id: string; 
@@ -36,6 +38,9 @@ export default function MarketplacePage() {
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState<Record<string, number>>({});
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [showListingModal, setShowListingModal] = useState(false);
+  const [showMessageToSeller, setShowMessageToSeller] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -533,7 +538,11 @@ export default function MarketplacePage() {
             const hasMultipleImages = listingImages.length > 1;
 
             return (
-              <div key={listing.id} className=" overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-all">
+              <div 
+                key={listing.id} 
+                className=" overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-all cursor-pointer"
+                onClick={() => { setSelectedListing(listing); setShowListingModal(true); }}
+              >
                 {/* Image Section */}
                 <div className="relative h-64 bg-neutral-900 group">
                   {listing.images && listing.images.length > 0 ? (
@@ -639,6 +648,124 @@ export default function MarketplacePage() {
             );
           })}
         </div>
+      )}
+
+      {/* Listing Detail Modal */}
+      {showListingModal && selectedListing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setShowListingModal(false)}>
+          <div className="relative bg-neutral-950 border border-neutral-800 max-w-5xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowListingModal(false)}
+              className="absolute right-3 top-3 z-10 text-neutral-400 hover:text-white"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="grid md:grid-cols-2 gap-0">
+              {/* Left: Image gallery */}
+              <div className="relative bg-neutral-900">
+                {selectedListing.images && selectedListing.images.length > 0 ? (
+                  <Image
+                    src={selectedListing.images[ currentImageIndex[selectedListing.id] || 0 ] || selectedListing.images[0]}
+                    alt={selectedListing.title}
+                    width={1024}
+                    height={768}
+                    className="w-full h-full object-cover max-h-[90vh]"
+                    priority
+                  />
+                ) : (
+                  <div className="h-full min-h-[300px] flex items-center justify-center text-neutral-500">No Image</div>
+                )}
+
+                {/* Gallery controls */}
+                {selectedListing.images && selectedListing.images.length > 1 && (
+                  <div>
+                    <button
+                      onClick={() => setCurrentImageIndex({
+                        ...currentImageIndex,
+                        [selectedListing.id]: (currentImageIndex[selectedListing.id] || 0) > 0
+                          ? (currentImageIndex[selectedListing.id] || 0) - 1
+                          : selectedListing.images!.length - 1,
+                      })}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white flex items-center justify-center"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <button
+                      onClick={() => setCurrentImageIndex({
+                        ...currentImageIndex,
+                        [selectedListing.id]: (currentImageIndex[selectedListing.id] || 0) < (selectedListing.images!.length - 1)
+                          ? (currentImageIndex[selectedListing.id] || 0) + 1
+                          : 0,
+                      })}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white flex items-center justify-center"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Details */}
+              <div className="p-6 space-y-4 overflow-y-auto">
+                <h2 className="text-2xl font-bold">{selectedListing.title}</h2>
+                <div className="text-3xl font-extrabold">${selectedListing.price}</div>
+                <div className="text-sm text-neutral-400">{selectedListing.shipping ? `+$${selectedListing.shipping} shipping` : 'Free shipping'}</div>
+                <div className="pt-4 border-t border-neutral-800" />
+                <div>
+                  <div className="text-sm text-neutral-400">Condition</div>
+                  <div className="font-medium">{selectedListing.condition}</div>
+                </div>
+                {selectedListing.location && (
+                  <div>
+                    <div className="text-sm text-neutral-400">Location</div>
+                    <div className="font-medium">{selectedListing.location}</div>
+                  </div>
+                )}
+                {selectedListing.description && (
+                  <div>
+                    <div className="text-sm text-neutral-400 mb-1">Description</div>
+                    <p className="text-neutral-300 whitespace-pre-line">{selectedListing.description}</p>
+                  </div>
+                )}
+
+                <div className="pt-2 flex items-center gap-3">
+                  <div className="w-8 h-8 bg-neutral-800 flex items-center justify-center text-xs font-semibold text-neutral-400">
+                    {getInitials(selectedListing.creatorName || '', selectedListing.creatorEmail)}
+                  </div>
+                  <div className="text-sm text-neutral-400">
+                    <div>Listed by {selectedListing.creatorName || selectedListing.creatorEmail?.split('@')[0] || 'Creator'}</div>
+                    <div className="text-xs">{formatDate(selectedListing.createdAt)}</div>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button
+                    onClick={() => {
+                      if (!user) { alert('Please sign in to message the seller.'); return; }
+                      setShowListingModal(false);
+                      setShowMessageToSeller(true);
+                    }}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
+                  >
+                    Send Message
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Messages pre-targeted to seller */}
+      {showMessageToSeller && selectedListing && (
+        <Messages
+          isOpen={showMessageToSeller}
+          onClose={() => setShowMessageToSeller(false)}
+          initialRecipientUserId={selectedListing.creatorId || ''}
+        />
       )}
     </main>
   );

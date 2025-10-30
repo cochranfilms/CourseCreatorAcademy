@@ -32,9 +32,11 @@ type Message = {
 type MessagesProps = {
   isOpen: boolean;
   onClose: () => void;
+  // Optional: when provided, open/create a DM with this user immediately
+  initialRecipientUserId?: string;
 };
 
-export function Messages({ isOpen, onClose }: MessagesProps) {
+export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesProps) {
   const { user } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -165,6 +167,17 @@ export function Messages({ isOpen, onClose }: MessagesProps) {
 
     return () => unsubscribe();
   }, [isOpen, user]);
+
+  // Auto-open a DM with a specific user when provided
+  useEffect(() => {
+    if (!isOpen || !initialRecipientUserId || !user) return;
+    if (initialRecipientUserId === user.uid) return;
+    // debounce slightly to allow threads to load
+    const timeout = setTimeout(() => {
+      handleCreateThread(initialRecipientUserId);
+    }, 200);
+    return () => clearTimeout(timeout);
+  }, [isOpen, initialRecipientUserId, user]);
 
   // Fetch messages for selected thread
   useEffect(() => {
