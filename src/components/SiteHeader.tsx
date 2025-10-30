@@ -28,7 +28,7 @@ export function SiteHeader() {
           {links.map((l) => {
             const active = pathname === l.href;
             return (
-              <Link key={l.href} href={l.href} className={`px-3 py-1.5 rounded-full text-sm ${active ? 'bg-ccaBlue text-white' : 'bg-neutral-900 text-neutral-300 hover:bg-neutral-800'}`}>
+              <Link key={l.href} href={l.href as any} className={`px-3 py-1.5 rounded-full text-sm ${active ? 'bg-ccaBlue text-white' : 'bg-neutral-900 text-neutral-300 hover:bg-neutral-800'}`}>
                 {l.label}
               </Link>
             );
