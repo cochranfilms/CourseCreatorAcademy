@@ -53,8 +53,8 @@ export default function CourseDetailPage() {
         const coursesRef = collection(db, 'courses');
         const snapshot = await getDocs(coursesRef);
         
-        let courseDoc = null;
-        let courseId = null;
+        let courseDoc: any = null;
+        let courseId: string | null = null;
         
         snapshot.forEach((doc) => {
           const data = doc.data();
