@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
         hostname: 'course-creator-academy-866d6.firebasestorage.app',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'image.mux.com',
+        pathname: '/**',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
     unoptimized: false,

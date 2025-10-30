@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Image from 'next/image';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import Link from 'next/link';
@@ -171,6 +172,13 @@ export default function CourseDetailPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getMuxThumbnailUrl = (playbackId?: string, durationSec?: number) => {
+    if (!playbackId) return '';
+    const time = durationSec && durationSec > 0 ? Math.floor(durationSec / 2) : 1;
+    // See Mux Image API: https://docs.mux.com/guides/video/create-video-thumbnails
+    return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=${time}&width=320&fit_mode=preserve`;
+  };
+
   return (
     <main className="max-w-7xl mx-auto px-6 py-8">
       <Link href="/learn" className="text-ccaBlue hover:underline mb-4 inline-block">
@@ -216,6 +224,21 @@ export default function CourseDetailPage() {
                       className="px-6 py-4 hover:bg-neutral-900/40 transition flex items-center justify-between group"
                     >
                       <div className="flex items-center gap-4 flex-1">
+                        {/* Lesson thumbnail from Mux */}
+                        {lesson.muxPlaybackId ? (
+                          <div className="relative w-24 h-14 rounded overflow-hidden bg-neutral-800 flex-shrink-0">
+                            <Image
+                              src={getMuxThumbnailUrl(lesson.muxPlaybackId, lesson.durationSec) || ''}
+                              alt={`${lesson.title} thumbnail`}
+                              fill
+                              sizes="96px"
+                              className="object-cover"
+                              priority={false}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-24 h-14 rounded bg-neutral-800 flex-shrink-0" />
+                        )}
                         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-sm text-neutral-400 group-hover:bg-ccaBlue group-hover:text-white transition">
                           {lesson.index}
                         </div>
