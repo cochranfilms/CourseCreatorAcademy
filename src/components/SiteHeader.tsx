@@ -32,10 +32,7 @@ export function SiteHeader() {
     <div className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-black/60 border-b border-neutral-900">
       <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
         <Link href="/" className="flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <Image src="/logo-cca.png" alt="CCA" width={140} height={36} />
-            <span className="hidden md:inline text-sm text-neutral-400">Course Creator Academy</span>
-          </div>
+          <Image src="/logo-hat.png" alt="Course Creator Academy" width={48} height={48} />
         </Link>
         <div className="flex items-center gap-3 flex-1 justify-end min-w-0">
           <nav className="hidden md:flex gap-2 flex-wrap">
