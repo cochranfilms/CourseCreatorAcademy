@@ -1,10 +1,13 @@
 "use client";
 import Image from 'next/image';
+import { useState } from 'react';
 import { Trustbar } from '@/components/Trustbar';
 import { FAQ } from '@/components/FAQ';
 import { StickyCTA } from '@/components/StickyCTA';
 
 export default function Page() {
+  const [activeTab, setActiveTab] = useState<'learn' | 'community' | 'opportunities' | 'marketplace'>('learn');
+
   const handleJoin = async () => {
     const res = await fetch('/api/checkout/course', { method: 'POST' });
     const data = await res.json();
@@ -16,112 +19,450 @@ export default function Page() {
   const categories = ['Lighting','Composition','Cinematography','Editing','Audio','Business','YouTube','Weddings','Real Estate','Commercial','Travel','Photo','Color','FPV','After Effects','Gear'];
   const perks = ['Software Discounts','Private Community','Case Studies','Mentorship Calls','Video Contests','Budget Calculator','100+ Custom SFX','Keyboard Shortcuts','Access to Future Content'];
 
+  const testimonials = [
+    {
+      quote: "This platform LITERALLY pays for itself.",
+      author: "Emily S",
+      role: "CCA Member",
+      revenue: "$100K+"
+    },
+    {
+      quote: "Officially at 100k/mo recurring with our agency at 18 years old.",
+      author: "Xavier C",
+      role: "XC Productions",
+      revenue: "$100K/mo"
+    },
+    {
+      quote: "We hit 500k in revenue for 2024 in the 2 areas we service.",
+      author: "Tyler F",
+      role: "Owner, TFREP Media",
+      revenue: "$500K+"
+    },
+    {
+      quote: "FTF has been one of the best investments I have made.",
+      author: "Trevor M",
+      role: "Creator, Filmmaker",
+      revenue: null
+    }
+  ];
+
   return (
     <main className="min-h-screen w-full overflow-x-hidden">
-      <header className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-between w-full">
+      {/* Header */}
+      <header className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-between w-full relative z-50">
         <div className="flex items-center gap-3">
           <Image src="/logo-cca.png" width={160} height={40} alt="Course Creator Academy" />
         </div>
         <button className="cta-button" onClick={handleJoin}>Join Now</button>
       </header>
 
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-16 grid md:grid-cols-2 gap-8 items-center w-full">
-        <div className="w-full min-w-0">
-          <div className="inline-block px-3 py-1 rounded-full bg-ccaBlue/15 text-ccaBlue text-sm mb-4">NEW: Creator Marketplace Included</div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight break-words">The Ultimate Online Creator School</h1>
-          <p className="mt-5 text-lg text-neutral-300">Plan, shoot, edit, and sell high‑quality courses. Join our community and marketplace.</p>
-          <div className="mt-8 flex gap-4">
-            <button className="cta-button" onClick={handleJoin}>Get Access</button>
-            <a className="px-6 py-3 rounded-lg border border-neutral-700" href="#pricing">See Pricing</a>
+      {/* Hero Section */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-24 w-full">
+        <div className="relative z-10 text-center max-w-5xl mx-auto">
+          <div className="inline-block px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium mb-6">
+            Learn from Creators. Land Gigs. Save on Gear & Software.
           </div>
-          <div className="mt-6 text-sm text-neutral-400">14‑day refund policy • Instant access</div>
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold leading-[1.1] mb-6 tracking-tight text-white drop-shadow-2xl">
+            YOUR CREATIVE<br />
+            <span className="text-white">HOME BASE</span>
+          </h1>
+          <p className="text-xl sm:text-2xl text-neutral-300 mb-8 max-w-3xl mx-auto">
+            Course Creator Academy is a creator-powered community hub where creators of all skill levels can learn, collaborate, grow their network, and stay creatively active.
+          </p>
+          
+          {/* Video Player */}
+          <div className="mt-12 mb-8 w-full max-w-5xl mx-auto">
+            <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-neutral-800 bg-black shadow-2xl">
+              <iframe
+                className="w-full h-full"
+                src="https://www.youtube.com/embed/3-msojt4yuk?start=9&rel=0&modestbranding=1"
+                title="CCA Promo Video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          </div>
+
+          {/* Testimonial Quote */}
+          <div className="mt-8 mb-6">
+            <p className="text-lg text-neutral-300 italic">"This platform LITERALLY pays for itself."</p>
+            <p className="text-sm text-neutral-500 mt-2">— Emily S, CCA Member</p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-10">
+            <button className="cta-button text-lg px-8 py-4" onClick={handleJoin}>Sign Up Now</button>
+            <a className="px-8 py-4 rounded-lg border-2 border-neutral-700 hover:border-neutral-600 text-lg font-medium transition" href="#pricing">See Pricing</a>
+          </div>
+          <div className="mt-6 text-sm text-neutral-400">14‑day refund policy • Instant access • Rated Excellent</div>
         </div>
-        <div className="flex justify-center w-full">
-          <div className="w-full max-w-full aspect-video rounded-xl overflow-hidden border border-neutral-800 bg-black">
-            <iframe
-              className="w-full h-full"
-              src="https://www.youtube.com/embed/3-msojt4yuk?start=9&rel=0&modestbranding=1"
-              title="CCA Promo Video"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-            />
+      </section>
+
+      {/* Trust Bar */}
+      <div className="relative py-12 border-y border-white/10 bg-black/20 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <p className="text-center text-neutral-400 text-sm mb-6">Our members have worked with</p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-8 items-center justify-items-center opacity-70 hover:opacity-100 transition">
+            {['Canon','DJI','Sony','Adobe','RED','Blackmagic','Apple','Bose'].map((brand) => (
+              <div key={brand} className="text-neutral-400 font-semibold text-sm">{brand}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Platform Overview - Tabbed Section */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">
+            EVERYTHING CREATORS NEED.<br />
+            <span className="text-white">ALL IN ONE SLEEK PLATFORM.</span>
+          </h2>
+          <p className="text-xl text-neutral-400 max-w-3xl mx-auto">
+            Course Creator Academy 2.0 is a creator-powered community hub where creators of all skill levels can learn, collaborate, grow their network, and stay creative.
+          </p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex flex-wrap justify-center gap-4 mb-12 border-b border-neutral-800 pb-4">
+          {[
+            { id: 'learn', label: 'Learning' },
+            { id: 'community', label: 'Community' },
+            { id: 'opportunities', label: 'Job Board' },
+            { id: 'marketplace', label: 'Marketplace' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                activeTab === tab.id
+                  ? 'bg-gradient-to-r from-ccaBlue to-purple-500 text-white'
+                  : 'bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        <div className="min-h-[400px]">
+          {activeTab === 'learn' && (
+            <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 md:p-12">
+              <div className="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                  <div className="text-xs text-ccaBlue font-semibold mb-4">FILM SCHOOL FOR ALL</div>
+                  <h3 className="text-3xl sm:text-4xl font-bold mb-4">Unlock 800+ Videos and Hundreds of Hours</h3>
+                  <p className="text-lg text-neutral-300 mb-6">
+                    Expert-led training covering everything from filmmaking fundamentals to advanced techniques and business strategies. Discover professional-level skills across all categories.
+                  </p>
+                  <button className="inline-flex items-center gap-2 text-ccaBlue font-semibold hover:gap-3 transition-all">
+                    Discover More
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {categories.slice(0, 6).map((cat) => (
+                    <div key={cat} className="aspect-video bg-neutral-900 rounded-xl border border-neutral-800 flex items-center justify-center p-4 hover:border-ccaBlue/50 transition">
+                      <span className="text-sm font-medium text-center">{cat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'community' && (
+            <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 md:p-12">
+              <div className="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                  <div className="text-xs text-purple-400 font-semibold mb-4">THE CCA COMMUNITY</div>
+                  <h3 className="text-3xl sm:text-4xl font-bold mb-4">Join a Thriving Community</h3>
+                  <p className="text-lg text-neutral-300 mb-6">
+                    Connect with thousands of creators to network, collaborate, troubleshoot, and get feedback on your work. Build real connections with like-minded peers.
+                  </p>
+                  <button className="inline-flex items-center gap-2 text-purple-400 font-semibold hover:gap-3 transition-all">
+                    Discover More
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <div className="bg-neutral-900 rounded-xl border border-neutral-800 p-6">
+                    <div className="text-4xl font-bold text-white mb-2">25,000+</div>
+                    <div className="text-neutral-400">Active Members</div>
+                  </div>
+                  <div className="bg-neutral-900 rounded-xl border border-neutral-800 p-6">
+                    <div className="text-4xl font-bold text-white mb-2">Live</div>
+                    <div className="text-neutral-400">Weekly Q&A Sessions</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'opportunities' && (
+            <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 md:p-12">
+              <div className="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                  <div className="text-xs text-orange-400 font-semibold mb-4">INTEGRATED JOB BOARD</div>
+                  <h3 className="text-3xl sm:text-4xl font-bold mb-4">Find Paid Gigs or Hire Talent</h3>
+                  <p className="text-lg text-neutral-300 mb-6">
+                    Whether you're building your team or booking your next client, the job board makes it easy to connect and collaborate, with curated listings and AI-generated summaries.
+                  </p>
+                  <button className="inline-flex items-center gap-2 text-orange-400 font-semibold hover:gap-3 transition-all">
+                    Discover More
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <div className="bg-neutral-900 rounded-xl border border-neutral-800 p-6">
+                    <div className="text-4xl font-bold text-white mb-2">$2.3M+</div>
+                    <div className="text-neutral-400">Total Deals Closed in 2024</div>
+                  </div>
+                  <div className="bg-neutral-900 rounded-xl border border-neutral-800 p-6">
+                    <div className="text-4xl font-bold text-white mb-2">$150K</div>
+                    <div className="text-neutral-400">Biggest Deal Closed</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'marketplace' && (
+            <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 md:p-12">
+              <div className="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                  <div className="text-xs text-pink-400 font-semibold mb-4">TRADE GEAR WITH CREATORS</div>
+                  <h3 className="text-3xl sm:text-4xl font-bold mb-4">Buy and Sell Gear Directly</h3>
+                  <p className="text-lg text-neutral-300 mb-6">
+                    An easy, trusted way for creators to trade equipment, upgrade their setup, and support each other's growth. All within the community.
+                  </p>
+                  <button className="inline-flex items-center gap-2 text-pink-400 font-semibold hover:gap-3 transition-all">
+                    Discover More
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {['Cameras', 'Lenses', 'Lighting', 'Audio'].map((item) => (
+                    <div key={item} className="aspect-square bg-neutral-900 rounded-xl border border-neutral-800 flex items-center justify-center p-4 hover:border-pink-400/50 transition">
+                      <span className="text-sm font-medium text-center">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Creator Kits Section */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">
+            BRINGING THE<br />
+            <span className="text-white">A-CREW TO SET</span>
+          </h2>
+          <p className="text-xl text-neutral-400 max-w-3xl mx-auto">
+            Say hello to Creator Kits — exclusive content drops by the industry's top creators which you won't find anywhere else.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          {[
+            { title: 'EXCLUSIVE CONTENT', desc: 'Learn directly from top industry creators through exclusive content created specifically for this platform.', icon: '🎬' },
+            { title: 'ASSETS', desc: 'Get access to the exact assets top creators use - including LUTs, presets, overlays, transitions, SFX, and plugins.', icon: '🎨' },
+            { title: 'GEAR', desc: 'Explore the exact gear top creators rely on for their professional work - from photography to lighting setups.', icon: '📷' }
+          ].map((kit) => (
+            <div key={kit.title} className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 hover:border-ccaBlue/50 transition">
+              <div className="text-4xl mb-4">{kit.icon}</div>
+              <h3 className="text-xl font-bold mb-3">{kit.title}</h3>
+              <p className="text-neutral-400">{kit.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">HEAR FROM OUR MEMBERS</h2>
+          <p className="text-xl text-neutral-400">We've helped hundreds of our members grow and turn filmmaking into their fulltime career.</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          {testimonials.map((testimonial, idx) => (
+            <div key={idx} className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 hover:border-ccaBlue/50 transition">
+              {testimonial.revenue && (
+                <div className="text-3xl font-bold text-ccaBlue mb-4">{testimonial.revenue}</div>
+              )}
+              <p className="text-lg text-neutral-200 mb-4 italic">"{testimonial.quote}"</p>
+              <div>
+                <div className="font-semibold text-white">{testimonial.author}</div>
+                <div className="text-sm text-neutral-400">{testimonial.role}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 text-center">
+          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8">
+            <div className="text-4xl font-bold text-ccaBlue mb-2">$150K</div>
+            <div className="text-neutral-400">Biggest Deal Closed By Members in 2024</div>
+          </div>
+          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8">
+            <div className="text-4xl font-bold text-ccaBlue mb-2">$2.3M</div>
+            <div className="text-neutral-400">Total Deal Closed By Members in 2024</div>
+          </div>
+          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8">
+            <div className="text-4xl font-bold text-ccaBlue mb-2">&lt;1 YEAR</div>
+            <div className="text-neutral-400">Time it took 46% of the community to 10X ROI</div>
           </div>
         </div>
       </section>
 
-      <Trustbar />
-
-      <section id="curriculum" className="max-w-6xl mx-auto px-4 sm:px-6 py-16 w-full">
-        <h2 className="text-2xl sm:text-3xl font-bold">What's Inside</h2>
-        <p className="text-neutral-300 mt-2">A complete curriculum for creators.</p>
-        <div className="mt-8 grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {/* What's Inside Section */}
+      <section id="curriculum" className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">WHAT'S INSIDE</h2>
+          <p className="text-xl text-neutral-400">A complete curriculum for creators.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {categories.map((c) => (
-            <div key={c} className="px-4 py-3 rounded-xl border border-neutral-800 bg-neutral-950 text-sm">{c}</div>
+            <div key={c} className="px-6 py-4 rounded-xl border border-neutral-800 bg-gradient-to-br from-neutral-950 to-neutral-900 text-sm font-medium hover:border-ccaBlue/50 hover:bg-neutral-900 transition">
+              {c}
+            </div>
           ))}
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16 w-full">
-        <h2 className="text-2xl sm:text-3xl font-bold">Included Bonus Perks</h2>
-        <div className="mt-8 grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+      {/* Pricing Section */}
+      <section id="pricing" className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">
+            A SIMPLE PLAN THAT<br />
+            <span className="text-white">UNLOCKS EVERYTHING</span>
+          </h2>
+          <p className="text-xl text-neutral-400 max-w-3xl mx-auto">
+            Join over 50,000 members who have been growing with us since 2017.
+          </p>
+        </div>
+
+        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
+          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8">
+            <div className="text-neutral-400 text-sm font-semibold mb-2">MONTHLY MEMBERSHIP</div>
+            <div className="text-6xl font-extrabold mt-2">$37<span className="text-2xl font-semibold">/month</span></div>
+            <ul className="mt-6 text-neutral-300 space-y-3">
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Stream all videos
+              </li>
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Access future content
+              </li>
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Community + downloads
+              </li>
+            </ul>
+            <button className="cta-button mt-8 w-full text-lg py-4" onClick={handleJoin}>Join Now</button>
+          </div>
+
+          <div className="bg-gradient-to-br from-ccaBlue/20 via-purple-500/20 to-pink-500/20 rounded-2xl border-2 border-ccaBlue p-8 relative overflow-hidden">
+            <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-ccaBlue text-white text-xs font-bold">POPULAR</div>
+            <div className="text-neutral-300 text-sm font-semibold mb-2">ANNUAL MEMBERSHIP</div>
+            <div className="text-6xl font-extrabold mt-2">$25<span className="text-2xl font-semibold">/month</span></div>
+            <div className="text-neutral-400 text-sm mt-2 mb-6">Save 25% (billed annually at $300)</div>
+            <ul className="text-neutral-200 space-y-3">
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                All monthly benefits
+              </li>
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Best value for long-term growth
+              </li>
+            </ul>
+            <button className="cta-button mt-8 w-full text-lg py-4" onClick={handleJoin}>Join Annually</button>
+          </div>
+        </div>
+        <div className="mt-8 text-center text-sm text-neutral-400">14‑day refund policy • 96% satisfaction rating • Instant access</div>
+      </section>
+
+      {/* Included Perks */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">INCLUDED BONUS PERKS</h2>
+        </div>
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
           {perks.map((p) => (
-            <div key={p} className="rounded-2xl border border-neutral-800 bg-neutral-950 p-5 text-neutral-200">{p}</div>
+            <div key={p} className="rounded-2xl border border-neutral-800 bg-gradient-to-br from-neutral-950 to-neutral-900 p-6 text-neutral-200 hover:border-ccaBlue/50 transition">
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-medium">{p}</span>
+              </div>
+            </div>
           ))}
         </div>
       </section>
 
-      <section id="pricing" className="max-w-6xl mx-auto px-4 sm:px-6 py-16 w-full">
-        <h2 className="text-2xl sm:text-3xl font-bold">That's $5,000 of value for only</h2>
-        <div className="mt-8 grid md:grid-cols-2 gap-6">
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-950 p-6">
-            <div className="text-neutral-400 text-sm">MONTHLY MEMBERSHIP</div>
-            <div className="text-5xl font-extrabold mt-2">$37<span className="text-xl font-semibold">/month</span></div>
-            <ul className="mt-4 text-sm text-neutral-300 space-y-2 list-disc list-inside">
-              <li>Stream all videos</li>
-              <li>Access future content</li>
-              <li>Community + downloads</li>
-            </ul>
-            <button className="cta-button mt-6 w-full" onClick={handleJoin}>Join Now</button>
-          </div>
-          <div className="rounded-2xl border border-ccaBlue bg-ccaBlue/10 p-6">
-            <div className="text-neutral-300 text-sm">ANNUAL MEMBERSHIP</div>
-            <div className="text-5xl font-extrabold mt-2">$25<span className="text-xl font-semibold">/month</span></div>
-            <ul className="mt-4 text-sm text-neutral-200 space-y-2 list-disc list-inside">
-              <li>Save 25% (billed annually)</li>
-              <li>All monthly benefits</li>
-            </ul>
-            <button className="cta-button mt-6 w-full" onClick={handleJoin}>Join Annually</button>
-          </div>
+      {/* FAQ Section */}
+      <section className="relative max-w-4xl mx-auto px-4 sm:px-6 py-24 w-full">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">FREQUENTLY ASKED QUESTIONS</h2>
         </div>
-        <div className="mt-4 text-sm text-neutral-400">14‑day refund policy • 96% satisfaction rating</div>
-      </section>
-
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16 w-full">
-        <h2 className="text-2xl sm:text-3xl font-bold">What our members say</h2>
-        <div className="mt-8 grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {[1,2,3,4,5,6].map((i) => (
-            <div key={i} className="rounded-2xl border border-neutral-800 bg-neutral-950 p-5 text-sm text-neutral-300">“This program changed how I create and sell.”</div>
-          ))}
-        </div>
-      </section>
-
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16 w-full">
-        <h2 className="text-2xl sm:text-3xl font-bold">FAQ</h2>
-        <div className="mt-6">
+        <div>
           <FAQ items={[
-            { q: 'How fast do I get access?', a: 'Instant access after successful checkout.' },
-            { q: 'Can I cancel?', a: 'Yes, cancel any time from your account portal.' },
-            { q: 'Do you offer refunds?', a: 'Full refunds within 14 days of purchase.' }
+            { q: 'How fast do I get access?', a: 'Instant access after successful checkout. You\'ll be able to start learning immediately.' },
+            { q: 'Can I cancel?', a: 'Yes, cancel any time from your account portal. No questions asked, no hidden fees.' },
+            { q: 'Do you offer refunds?', a: 'Full refunds within 14 days of purchase. We want you to be completely satisfied.' },
+            { q: 'What if I\'m a beginner?', a: 'Perfect! Our curriculum is designed for all skill levels, from complete beginners to advanced creators.' },
+            { q: 'How often is new content added?', a: 'We add new content monthly, including tutorials, creator kits, and exclusive resources.' }
           ]} />
         </div>
       </section>
 
-      <footer className="border-t border-neutral-800 py-10 text-center text-neutral-400">© {new Date().getFullYear()} Course Creator Academy</footer>
+      {/* Final CTA */}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
+        <div className="bg-white/10 backdrop-blur-sm rounded-3xl border-2 border-white/20 p-12 md:p-16 text-center">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-6 text-white">
+            ACCESS YOUR<br />
+            <span className="text-white">CREATIVE HOMEBASE</span>
+          </h2>
+          <p className="text-xl text-neutral-300 mb-8 max-w-2xl mx-auto">
+            Learn from your favorite creators, save on the tools you already use, and supercharge your network so you can keep creating.
+          </p>
+          <button className="cta-button text-lg px-10 py-5" onClick={handleJoin}>Sign Up Now</button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/10 py-10 text-center text-neutral-400 bg-black/40 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <p>© {new Date().getFullYear()} Course Creator Academy. All rights reserved.</p>
+        </div>
+      </footer>
 
       <StickyCTA />
     </main>
   );
 }
-
-

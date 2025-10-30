@@ -6,14 +6,8 @@ html, body {
   height: 100%;
   width: 100%;
   overflow-x: hidden;
-  background: 
-    /* Top-left subtle blue glow */
-    radial-gradient(ellipse 1200px 600px at 80% -100px, rgba(27,0,255,0.25), transparent 60%),
-    /* Top-left blue accent */
-    radial-gradient(ellipse 800px 400px at 0% -40px, rgba(27,0,255,0.15), transparent 60%),
-    /* Base dark gradient */
-    linear-gradient(180deg, #0a0a0a 0%, #000 100%);
-  background-attachment: scroll;
+  background: linear-gradient(180deg, #1B00FF 0%, #000000 100%);
+  background-attachment: fixed;
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center center;
@@ -34,14 +28,13 @@ body {
 
 .cta-button { @apply bg-ccaBlue text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition; }
 
-/* Brand gradient background - fixed and non-repeating */
+/* Brand gradient background - two-tone blue to black */
 .cca-gradient {
-  background: 
-    radial-gradient(ellipse 1200px 600px at 80% -100px, rgba(27,0,255,0.25), transparent 60%),
-    radial-gradient(ellipse 800px 400px at 0% -40px, rgba(27,0,255,0.15), transparent 60%),
-    linear-gradient(180deg, #0a0a0a 0%, #000 100%) !important;
+  background: linear-gradient(180deg, #1B00FF 0%, #000000 100%) !important;
   min-height: 100vh;
   position: relative;
+  background-attachment: fixed;
+  background-size: 100% 100%;
 }
 
 /* Fallback for mobile devices where fixed backgrounds can be problematic */
