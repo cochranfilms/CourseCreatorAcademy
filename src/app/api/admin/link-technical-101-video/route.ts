@@ -22,6 +22,22 @@ async function linkVideo() {
       );
     }
 
+    // Test Firestore connection first
+    try {
+      await adminDb.collection('_test').limit(1).get();
+    } catch (testError: any) {
+      console.error('Firestore connection test failed:', testError);
+      return NextResponse.json(
+        {
+          error: 'Firestore connection failed',
+          details: testError.message,
+          code: testError.code,
+          hint: 'The service account may not have the right permissions. Check Firestore security rules allow admin access.'
+        },
+        { status: 500 }
+      );
+    }
+
     const db = adminDb;
     const courseId = 'technical-101';
     const moduleId = 'module-1';

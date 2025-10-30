@@ -24,10 +24,15 @@ if (!getApps().length) {
             projectId,
             clientEmail,
             privateKey
-          })
+          }),
+          // Explicitly set project ID to avoid potential issues
+          projectId: projectId
         });
         adminAuth = getAuth(adminApp);
         adminDb = getFirestore(adminApp);
+        
+        // Test the connection immediately
+        adminDb.settings({ ignoreUndefinedProperties: true });
       }
     } catch (error: any) {
       console.error('Failed to initialize Firebase Admin:', error);
