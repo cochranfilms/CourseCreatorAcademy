@@ -9,6 +9,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { SupportChat } from './SupportChat';
 import { Messages } from './Messages';
+import { useUnreadMessagesCount } from '@/hooks/useUnreadMessagesCount';
 
 const links = [
   { href: '/home', label: "What's New" },
@@ -30,6 +31,7 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const unreadCount = useUnreadMessagesCount();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -152,9 +154,9 @@ export function SiteHeader() {
       <div className="sticky top-0 z-[60] bg-neutral-950/90 backdrop-blur-sm border-b border-neutral-800 w-full overflow-x-hidden overflow-y-visible">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 w-full relative">
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex-shrink-0">
-            <Image src="/logo-hat.png" alt="Course Creator Academy" width={48} height={48} />
-          </Link>
+        <Link href="/" className="flex-shrink-0">
+          <Image src="/logo-hat.png" alt="Course Creator Academy" width={48} height={48} />
+        </Link>
           
           {/* Mobile Hamburger Menu Button */}
           {user && (
@@ -241,12 +243,17 @@ export function SiteHeader() {
                     </button>
                     <button 
                       onClick={() => setShowMessages(true)}
-                      className="text-neutral-400 hover:text-white transition"
+                      className="relative text-neutral-400 hover:text-white transition"
                       aria-label="Open messages"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
                     </button>
                   </div>
 
@@ -293,14 +300,14 @@ export function SiteHeader() {
                           <div className="font-semibold text-white truncate">{displayName}</div>
                           {handle && <div className="text-sm text-neutral-400 truncate">@{handle}</div>}
                         </div>
-                        <Link
-                          href="/dashboard"
+                  <Link
+                    href="/dashboard"
                           className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
                           onClick={() => setShowDropdown(false)}
-                        >
+                  >
                           Your Profile
-                        </Link>
-                        <button
+                  </Link>
+                  <button
                           onClick={() => {
                             setShowDropdown(false);
                             setShowSupportChat(true);
@@ -315,9 +322,9 @@ export function SiteHeader() {
                             handleLogout();
                           }}
                           className="w-full text-left px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
-                        >
-                          Sign Out
-                        </button>
+                  >
+                    Sign Out
+                  </button>
                       </div>,
                       document.body
                     )}
@@ -500,8 +507,8 @@ export function SiteHeader() {
                 </Link>
               );
             })}
-          </div>
-        </div>
+      </div>
+    </div>
       )}
     </>
   );

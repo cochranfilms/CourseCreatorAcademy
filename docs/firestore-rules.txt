@@ -58,6 +58,60 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && resource.data.posterId == request.auth.uid;
     }
     
+    // Projects collection
+    match /projects/{projectId} {
+      // Anyone authenticated can read projects
+      allow read: if isAuthenticated();
+      
+      // Only authenticated users can create projects
+      // Creator ID must match the authenticated user
+      allow create: if isAuthenticated()
+        && request.resource.data.creatorId == request.auth.uid;
+      
+      // Only the creator can update/delete their project
+      allow update: if isAuthenticated()
+        && resource.data.creatorId == request.auth.uid;
+      
+      allow delete: if isAuthenticated() && resource.data.creatorId == request.auth.uid;
+    }
+    
+    // Threads collection (for messaging)
+    match /threads/{threadId} {
+      // Users can read threads they are members of
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.members;
+      
+      // Users can create threads they are members of
+      allow create: if isAuthenticated() 
+        && request.auth.uid in request.resource.data.members;
+      
+      // Users can update threads they are members of
+      allow update: if isAuthenticated() 
+        && request.auth.uid in resource.data.members;
+      
+      // Users can delete threads they are members of (optional - you may want to restrict this)
+      allow delete: if isAuthenticated() && request.auth.uid in resource.data.members;
+      
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Users can read messages in threads they are members of
+        allow read: if isAuthenticated() 
+          && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.members;
+        
+        // Users can create messages in threads they are members of
+        allow create: if isAuthenticated() 
+          && request.auth.uid == request.resource.data.senderId
+          && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.members;
+        
+        // Users can update messages they sent (for read receipts, etc.)
+        allow update: if isAuthenticated() 
+          && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.members;
+        
+        // Users can delete their own messages
+        allow delete: if isAuthenticated() 
+          && resource.data.senderId == request.auth.uid;
+      }
+    }
+    
     // Courses collection (for future use)
     match /courses/{courseId} {
       allow read: if isAuthenticated();

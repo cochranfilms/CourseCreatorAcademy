@@ -11,7 +11,8 @@ import {
   GoogleAuthProvider,
   FacebookAuthProvider
 } from 'firebase/auth';
-import { auth, firebaseReady } from '@/lib/firebaseClient';
+import { auth, firebaseReady, db } from '@/lib/firebaseClient';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -35,6 +36,48 @@ const AuthContext = createContext<AuthContextType>({
   resetPassword: async () => {}
 });
 
+// Helper function to create/update user profile in Firestore
+async function ensureUserProfile(user: User) {
+  if (!firebaseReady || !db) return;
+  
+  try {
+    const userDocRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (!userDoc.exists()) {
+      // Create new profile with data from Firebase Auth
+      await setDoc(userDocRef, {
+        displayName: user.displayName || user.email?.split('@')[0] || 'User',
+        email: user.email || '',
+        photoURL: user.photoURL || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    } else {
+      // Update existing profile with latest auth data if missing
+      const existingData = userDoc.data();
+      const updates: any = {};
+      
+      if (!existingData.displayName && user.displayName) {
+        updates.displayName = user.displayName;
+      }
+      if (!existingData.photoURL && user.photoURL) {
+        updates.photoURL = user.photoURL;
+      }
+      if (!existingData.email && user.email) {
+        updates.email = user.email;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        updates.updatedAt = new Date();
+        await setDoc(userDocRef, updates, { merge: true });
+      }
+    }
+  } catch (error) {
+    console.error('Error ensuring user profile:', error);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,9 +88,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       setLoading(false);
+      
+      // Ensure user profile exists in Firestore when user signs in
+      if (user) {
+        await ensureUserProfile(user);
+      }
     });
 
     return () => unsubscribe();
@@ -66,13 +114,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     if (!auth) throw new Error('Firebase Auth not initialized');
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    // Ensure profile is created/updated
+    await ensureUserProfile(result.user);
   };
 
   const signInWithFacebook = async () => {
     if (!auth) throw new Error('Firebase Auth not initialized');
     const provider = new FacebookAuthProvider();
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    // Ensure profile is created/updated
+    await ensureUserProfile(result.user);
   };
 
   const logout = async () => {
@@ -102,4 +154,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export const useAuth = () => useContext(AuthContext);
-

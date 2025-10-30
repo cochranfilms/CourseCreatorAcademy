@@ -82,21 +82,22 @@ export function Messages({ isOpen, onClose }: MessagesProps) {
                 const otherUserDoc = await getDoc(doc(db, 'users', otherUserId));
                 if (otherUserDoc.exists()) {
                   const otherUserData = otherUserDoc.data();
+                  // Prioritize displayName from Firestore, fallback to email prefix
+                  const displayName = otherUserData.displayName || 
+                                    otherUserData.email?.split('@')[0] || 
+                                    'Unknown User';
                   thread.otherUser = {
-                    displayName: otherUserData.displayName || 'Unknown User',
+                    displayName: displayName,
                     photoURL: otherUserData.photoURL,
                     handle: otherUserData.handle,
                   };
                 } else {
-                  // Fallback to auth user data
-                  const authUser = await getDoc(doc(db, 'users', otherUserId));
-                  if (authUser.exists()) {
-                    const authData = authUser.data();
-                    thread.otherUser = {
-                      displayName: authData.displayName || 'Unknown User',
-                      photoURL: authData.photoURL,
-                    };
-                  }
+                  // No Firestore profile exists - create one with placeholder
+                  thread.otherUser = {
+                    displayName: 'Unknown User',
+                    photoURL: undefined,
+                    handle: undefined,
+                  };
                 }
               } catch (error) {
                 console.error('Error fetching user:', error);
@@ -366,41 +367,41 @@ export function Messages({ isOpen, onClose }: MessagesProps) {
                             selectedThreadId === thread.id ? 'bg-neutral-800' : ''
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
-                              {thread.otherUser?.photoURL ? (
-                                <img
-                                  src={thread.otherUser.photoURL}
-                                  alt={thread.otherUser.displayName}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-lg font-semibold bg-ccaBlue text-white">
-                                  {thread.otherUser?.displayName.charAt(0).toUpperCase() || 'U'}
-                                </div>
-                              )}
-                              <div className="absolute bottom-0 right-0 w-3 h-3 bg-neutral-600 rounded-full border-2 border-neutral-900"></div>
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
+                          {thread.otherUser?.photoURL ? (
+                            <img
+                              src={thread.otherUser.photoURL}
+                              alt={thread.otherUser.displayName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-lg font-semibold bg-ccaBlue text-white">
+                              {thread.otherUser?.displayName?.charAt(0).toUpperCase() || 'U'}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="font-semibold text-white truncate">
-                                  {thread.otherUser?.displayName || 'Unknown User'}
-                                </div>
-                                {thread.lastMessageAt && (
-                                  <span className="text-xs text-neutral-500 ml-2 flex-shrink-0">
-                                    {formatTimestamp(thread.lastMessageAt)}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-sm text-neutral-400 truncate">
-                                {thread.lastMessage 
-                                  ? (thread.lastMessageSenderId === user?.uid 
-                                      ? `You: ${thread.lastMessage}` 
-                                      : thread.lastMessage)
-                                  : 'No messages yet'}
-                              </div>
+                          )}
+                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-neutral-600 rounded-full border-2 border-neutral-900"></div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-semibold text-white truncate">
+                              {thread.otherUser?.displayName || 'Unknown User'}
                             </div>
+                            {thread.lastMessageAt && (
+                              <span className="text-xs text-neutral-500 ml-2 flex-shrink-0">
+                                {formatTimestamp(thread.lastMessageAt)}
+                              </span>
+                            )}
                           </div>
+                          <div className="text-sm text-neutral-400 truncate">
+                            {thread.lastMessage 
+                              ? (thread.lastMessageSenderId === user?.uid 
+                                  ? `You: ${thread.lastMessage}` 
+                                  : thread.lastMessage)
+                              : 'No messages yet'}
+                          </div>
+                        </div>
+                      </div>
                         </button>
                       ))}
                   </div>
