@@ -52,7 +52,18 @@ export function SiteHeader() {
             <div className="flex items-center gap-3">
               {user ? (
                 <>
-                  <span className="hidden md:inline text-sm text-neutral-400">{user.email}</span>
+                  <Link
+                    href="/dashboard"
+                    className="hidden md:inline text-sm text-neutral-400 hover:text-white transition"
+                  >
+                    {user.email}
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    className="px-4 py-1.5 rounded-full text-sm bg-neutral-900 text-neutral-300 hover:bg-neutral-800 transition"
+                  >
+                    Dashboard
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="px-4 py-1.5 rounded-full text-sm bg-neutral-900 text-neutral-300 hover:bg-neutral-800 transition"
