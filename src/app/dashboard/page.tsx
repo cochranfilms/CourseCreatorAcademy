@@ -502,14 +502,14 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full overflow-x-hidden">
         {/* Profile Section */}
-        <div className="bg-neutral-950 border border-neutral-800  p-6 mb-6">
-          <div className="flex items-start justify-between gap-6">
+        <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 mb-6 w-full overflow-x-hidden">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 w-full">
             {/* Left Side - Profile Info */}
-            <div className="flex-1">
+            <div className="flex-1 w-full min-w-0">
               <div className="flex items-start gap-4 mb-4">
-                <div className="relative w-24 h-24  overflow-hidden bg-neutral-800 border-2 border-neutral-700 flex-shrink-0">
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 overflow-hidden bg-neutral-800 border-2 border-neutral-700 flex-shrink-0">
                   {photoURL ? (
                     <img
                       src={photoURL}
@@ -520,34 +520,34 @@ export default function DashboardPage() {
                       }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-3xl font-semibold bg-ccaBlue text-white">
+                    <div className="w-full h-full flex items-center justify-center text-2xl sm:text-3xl font-semibold bg-ccaBlue text-white">
                       {displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
-                <div className="flex-1">
-                  <h1 className="text-3xl font-bold mb-1">{displayName}</h1>
-                  {handle && <p className="text-neutral-400 mb-2">@{handle}</p>}
-                  {profile.title && <p className="text-white mb-1">{profile.title}</p>}
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-1 truncate">{displayName}</h1>
+                  {handle && <p className="text-neutral-400 mb-2 truncate">@{handle}</p>}
+                  {profile.title && <p className="text-white mb-1 text-sm sm:text-base truncate">{profile.title}</p>}
                   {profile.specialties && (
-                    <p className="text-red-500 mb-2">{profile.specialties}</p>
+                    <p className="text-red-500 mb-2 text-sm truncate">{profile.specialties}</p>
                   )}
                   {profile.location && (
-                    <div className="flex items-center gap-1 text-neutral-300 mb-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center gap-1 text-neutral-300 mb-2 text-sm">
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      <span>{profile.location}</span>
+                      <span className="truncate">{profile.location}</span>
                     </div>
                   )}
-                  {profile.bio && <p className="text-neutral-300 mb-3">{profile.bio}</p>}
+                  {profile.bio && <p className="text-neutral-300 mb-3 text-sm line-clamp-2">{profile.bio}</p>}
                   {profile.skills && profile.skills.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {profile.skills.map((skill, idx) => (
                         <span
                           key={idx}
-                          className="px-3 py-1  bg-neutral-800 text-neutral-300 text-sm border border-neutral-700"
+                          className="px-2 sm:px-3 py-1 bg-neutral-800 text-neutral-300 text-xs border border-neutral-700"
                         >
                           {skill}
                         </span>
@@ -559,45 +559,49 @@ export default function DashboardPage() {
             </div>
 
             {/* Right Side - Action Buttons */}
-            <div className="flex flex-col gap-2 flex-shrink-0">
+            <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 w-full md:w-auto">
               <button
                 onClick={() => setShowEditModal(true)}
-                className="flex items-center gap-2 px-4 py-2  bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition text-sm whitespace-nowrap"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-                Edit Profile
+                <span className="hidden sm:inline">Edit Profile</span>
+                <span className="sm:hidden">Edit</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2  bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition">
+              <button className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition text-sm whitespace-nowrap">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
-                Share Profile
+                <span className="hidden sm:inline">Share Profile</span>
+                <span className="sm:hidden">Share</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2  bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition">
+              <button className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition text-sm whitespace-nowrap">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                 </svg>
-                View Certificate
+                <span className="hidden sm:inline">View Certificate</span>
+                <span className="sm:hidden">Certificate</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2  bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition font-medium">
+              <button className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition font-medium text-sm whitespace-nowrap">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
-                Upgrade to Legacy+
+                <span className="hidden sm:inline">Upgrade to Legacy+</span>
+                <span className="sm:hidden">Upgrade</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Sub-Navigation Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide w-full">
           {(['projects', 'social', 'email', 'privacy'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2  text-sm font-medium transition ${
+              className={`px-4 sm:px-6 py-2 text-sm font-medium transition whitespace-nowrap flex-shrink-0 ${
                 activeTab === tab
                   ? 'bg-neutral-800 text-white border border-neutral-700'
                   : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
@@ -610,12 +614,12 @@ export default function DashboardPage() {
 
         {/* Tab Content */}
         {activeTab === 'projects' && (
-          <div className="bg-neutral-950 border border-neutral-800  p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">Projects</h2>
+          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 w-full overflow-x-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <h2 className="text-xl sm:text-2xl font-semibold">Projects</h2>
               <button 
                 onClick={() => setShowProjectModal(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-white text-white hover:bg-white hover:text-black transition"
+                className="flex items-center gap-2 px-4 py-2 border border-white text-white hover:bg-white hover:text-black transition whitespace-nowrap w-full sm:w-auto"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -679,7 +683,7 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'social' && (
-          <div className="bg-neutral-950 border border-neutral-800  p-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 w-full overflow-x-hidden">
             <h2 className="text-2xl font-semibold mb-6">Social Profiles</h2>
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               <div>
@@ -766,7 +770,7 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'email' && (
-          <div className="bg-neutral-950 border border-neutral-800  p-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 w-full overflow-x-hidden">
             <div className="flex items-center gap-2 mb-2">
               <svg className="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -821,7 +825,7 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'privacy' && (
-          <div className="bg-neutral-950 border border-neutral-800  p-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 w-full overflow-x-hidden">
             <h2 className="text-2xl font-semibold mb-2">Privacy Settings</h2>
             <p className="text-neutral-400 mb-6">Control who can see your profile and information</p>
             
@@ -870,17 +874,17 @@ export default function DashboardPage() {
 
         {/* Marketplace Listings */}
         {activeTab === 'projects' && listings.length > 0 && (
-          <div className="bg-neutral-950 border border-neutral-800  p-6 mt-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 mt-6 w-full overflow-x-hidden">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">My Marketplace Listings</h2>
+              <h2 className="text-lg sm:text-xl font-semibold">My Marketplace Listings</h2>
               <Link
                 href="/marketplace"
-                className="text-sm text-ccaBlue hover:text-ccaBlue/80"
+                className="text-sm text-ccaBlue hover:text-ccaBlue/80 whitespace-nowrap"
               >
                 View All →
               </Link>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {listings.slice(0, 3).map((listing) => (
                 <div
                   key={listing.id}
@@ -937,12 +941,12 @@ export default function DashboardPage() {
 
         {/* Opportunities */}
         {activeTab === 'projects' && opportunities.length > 0 && (
-          <div className="bg-neutral-950 border border-neutral-800  p-6 mt-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-4 sm:p-6 mt-6 w-full overflow-x-hidden">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">My Posted Opportunities</h2>
+              <h2 className="text-lg sm:text-xl font-semibold">My Posted Opportunities</h2>
               <Link
                 href="/opportunities"
-                className="text-sm text-ccaBlue hover:text-ccaBlue/80"
+                className="text-sm text-ccaBlue hover:text-ccaBlue/80 whitespace-nowrap"
               >
                 View All →
               </Link>

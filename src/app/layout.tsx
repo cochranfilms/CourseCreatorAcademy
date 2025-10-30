@@ -37,11 +37,11 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="overflow-x-hidden">
       <head>
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="anonymous" />
       </head>
-      <body className="cca-gradient min-h-screen">
+      <body className="cca-gradient min-h-screen w-full overflow-x-hidden">
         <AuthProvider>
           <SiteHeader />
           {children}
