@@ -14,13 +14,19 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
     
-    // Marketplace listing files (for future use)
-    match /listings/{listingId}/{allPaths=**} {
+    // Listing images - users can upload/read listing images
+    match /listing-images/{userId}/{allPaths=**} {
+      // Allow users to read any listing image
       allow read: if request.auth != null;
-      // Only creator can upload
+      
+      // Allow users to write only to their own folder
       allow write: if request.auth != null 
-        && request.resource.size < 10 * 1024 * 1024  // 10MB max
-        && request.resource.contentType.matches('image/.*|video/.*|application/.*');
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024  // 5MB max
+        && request.resource.contentType.matches('image/.*');
+      
+      // Allow users to delete their own images
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
     
     // Course resources (for future use)
