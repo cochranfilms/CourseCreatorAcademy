@@ -37,7 +37,7 @@ export default function Page() {
           <div className="mt-6 text-sm text-neutral-400">14‑day refund policy • Instant access</div>
         </div>
         <div className="flex justify-center">
-          <div className="w-full max-w-[420px] aspect-[9/16] rounded-xl overflow-hidden border border-neutral-800 bg-black">
+          <div className="w-full aspect-video rounded-xl overflow-hidden border border-neutral-800 bg-black">
             <iframe
               className="w-full h-full"
               src="https://www.youtube.com/embed/3-msojt4yuk?start=9&rel=0&modestbranding=1"
