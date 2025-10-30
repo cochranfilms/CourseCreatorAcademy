@@ -9,6 +9,25 @@ export const metadata: Metadata = {
   icons: {
     icon: '/logo-hat.png',
   },
+  openGraph: {
+    title: 'Course Creator Academy',
+    description: 'Learn to create, launch, and sell courses — plus a creator marketplace.',
+    images: [
+      {
+        url: '/Social-Share.JPEG',
+        width: 1200,
+        height: 630,
+        alt: 'Course Creator Academy',
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Course Creator Academy',
+    description: 'Learn to create, launch, and sell courses — plus a creator marketplace.',
+    images: ['/Social-Share.JPEG'],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
