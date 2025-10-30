@@ -3,12 +3,8 @@
 @tailwind utilities;
 
 html, body, #__next { height: 100%; }
-body { @apply text-white; }
-
-.cta-button { @apply bg-ccaBlue text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition; }
-
-/* Brand gradient background - fixed and non-repeating */
-.cca-gradient {
+body { 
+  @apply text-white;
   background: 
     /* Top-left subtle blue glow */
     radial-gradient(ellipse 1200px 800px at 15% 0%, rgba(27,0,255,0.2) 0%, transparent 50%),
@@ -20,18 +16,24 @@ body { @apply text-white; }
     radial-gradient(ellipse 600px 600px at 10% 95%, rgba(27,0,255,0.08) 0%, transparent 50%),
     /* Base dark gradient */
     linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
-  
   background-attachment: fixed;
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center center;
+}
+
+.cta-button { @apply bg-ccaBlue text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition; }
+
+/* Brand gradient background - fixed and non-repeating */
+.cca-gradient {
+  background: transparent;
   min-height: 100vh;
   position: relative;
 }
 
 /* Fallback for mobile devices where fixed backgrounds can be problematic */
 @media (max-width: 768px) {
-  .cca-gradient {
+  body {
     background-attachment: scroll;
   }
 }

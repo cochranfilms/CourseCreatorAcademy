@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, orderBy, query, addDoc, serverTimestamp, where, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, addDoc, updateDoc, serverTimestamp, where, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { db, auth, firebaseReady } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { ListingImageUpload } from '@/components/ListingImageUpload';
 import Link from 'next/link';
 
 type Listing = { 
@@ -34,6 +35,7 @@ export default function MarketplacePage() {
   const [showManageModal, setShowManageModal] = useState(false);
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState<Record<string, number>>({});
+  const [editingListing, setEditingListing] = useState<Listing | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -42,6 +44,7 @@ export default function MarketplacePage() {
   const [condition, setCondition] = useState('Excellent');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('United States');
+  const [images, setImages] = useState<string[]>([]);
 
   // Fetch all listings
   useEffect(() => {
@@ -143,6 +146,34 @@ export default function MarketplacePage() {
     setFilteredListings(filtered);
   }, [listings, searchQuery, selectedCondition, selectedLocation]);
 
+  const resetForm = () => {
+    setTitle('');
+    setPrice('');
+    setShipping('');
+    setDescription('');
+    setCondition('Excellent');
+    setLocation('United States');
+    setImages([]);
+    setEditingListing(null);
+  };
+
+  const handleEditListing = (listing: Listing) => {
+    if (!user || listing.creatorId !== user.uid) {
+      alert('You can only edit your own listings.');
+      return;
+    }
+    setEditingListing(listing);
+    setTitle(listing.title);
+    setPrice(listing.price.toString());
+    setShipping(listing.shipping?.toString() || '');
+    setCondition(listing.condition);
+    setDescription(listing.description || '');
+    setLocation(listing.location || 'United States');
+    setImages(listing.images || []);
+    setShowManageModal(false);
+    setShowPostForm(true);
+  };
+
   const handlePostListing = async () => {
     if (!user) {
       alert('Please sign in to post a listing.');
@@ -163,23 +194,34 @@ export default function MarketplacePage() {
     }
 
     try {
-      await addDoc(collection(db, 'listings'), {
-        title,
-        price: priceNum,
-        shipping: shippingNum,
-        condition,
-        description,
-        location,
-        creatorId: user.uid,
-        creatorName: user.displayName || user.email?.split('@')[0] || 'Creator',
-        createdAt: serverTimestamp()
-      });
-      setTitle('');
-      setPrice('');
-      setShipping('');
-      setDescription('');
-      setCondition('Excellent');
-      setLocation('United States');
+      if (editingListing) {
+        // Update existing listing
+        await updateDoc(doc(db, 'listings', editingListing.id), {
+          title,
+          price: priceNum,
+          shipping: shippingNum,
+          condition,
+          description,
+          location,
+          images,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        // Create new listing
+        await addDoc(collection(db, 'listings'), {
+          title,
+          price: priceNum,
+          shipping: shippingNum,
+          condition,
+          description,
+          location,
+          images,
+          creatorId: user.uid,
+          creatorName: user.displayName || user.email?.split('@')[0] || 'Creator',
+          createdAt: serverTimestamp()
+        });
+      }
+      resetForm();
       setShowPostForm(false);
     } catch (error) {
       console.error('Error posting listing:', error);
@@ -295,9 +337,12 @@ export default function MarketplacePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-semibold">Post a New Listing</h2>
+              <h2 className="text-2xl font-semibold">{editingListing ? 'Edit Listing' : 'Post a New Listing'}</h2>
               <button
-                onClick={() => setShowPostForm(false)}
+                onClick={() => {
+                  resetForm();
+                  setShowPostForm(false);
+                }}
                 className="text-neutral-400 hover:text-white transition"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,6 +352,12 @@ export default function MarketplacePage() {
             </div>
 
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-neutral-300">Images</label>
+                <ListingImageUpload images={images} onImagesChange={setImages} />
+                <p className="text-xs text-neutral-500 mt-1">First image will be used as the main image</p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2 text-neutral-300">Title *</label>
                 <input
@@ -379,10 +430,13 @@ export default function MarketplacePage() {
                   onClick={handlePostListing}
                   className="px-6 py-2 rounded-lg bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
                 >
-                  Post Listing
+                  {editingListing ? 'Update Listing' : 'Post Listing'}
                 </button>
                 <button
-                  onClick={() => setShowPostForm(false)}
+                  onClick={() => {
+                    resetForm();
+                    setShowPostForm(false);
+                  }}
                   className="px-6 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition-all"
                 >
                   Cancel
@@ -432,12 +486,20 @@ export default function MarketplacePage() {
                         <p className="text-sm text-neutral-400">${listing.price}{listing.shipping ? ` + $${listing.shipping} shipping` : ' (Free shipping)'}</p>
                         <p className="text-xs text-neutral-500 mt-1">{listing.condition}</p>
                       </div>
-                      <button
-                        onClick={() => handleDeleteListing(listing.id)}
-                        className="px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition text-sm"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditListing(listing)}
+                          className="px-3 py-1 rounded-lg bg-ccaBlue/10 border border-ccaBlue/30 text-ccaBlue hover:bg-ccaBlue/20 transition text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteListing(listing.id)}
+                          className="px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -467,14 +529,25 @@ export default function MarketplacePage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayListings.map((listing) => {
             const imageIndex = currentImageIndex[listing.id] || 0;
-            const images = listing.images && listing.images.length > 0 ? listing.images : ['/placeholder-product.jpg'];
-            const hasMultipleImages = images.length > 1;
+            const listingImages = listing.images && listing.images.length > 0 ? listing.images : [];
+            const hasMultipleImages = listingImages.length > 1;
 
             return (
               <div key={listing.id} className="rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-all">
                 {/* Image Section */}
                 <div className="relative h-64 bg-neutral-900 group">
-                  <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
+                  {listing.images && listing.images.length > 0 ? (
+                    <img
+                      src={listing.images[imageIndex] || listing.images[0]}
+                      alt={listing.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-full h-full bg-neutral-800 flex items-center justify-center ${listing.images && listing.images.length > 0 ? 'hidden' : ''}`}>
                     <span className="text-neutral-600 text-sm">No Image</span>
                   </div>
                   
@@ -486,7 +559,7 @@ export default function MarketplacePage() {
                           e.stopPropagation();
                           setCurrentImageIndex({
                             ...currentImageIndex,
-                            [listing.id]: imageIndex > 0 ? imageIndex - 1 : images.length - 1
+                            [listing.id]: imageIndex > 0 ? imageIndex - 1 : listingImages.length - 1
                           });
                         }}
                         className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -500,7 +573,7 @@ export default function MarketplacePage() {
                           e.stopPropagation();
                           setCurrentImageIndex({
                             ...currentImageIndex,
-                            [listing.id]: imageIndex < images.length - 1 ? imageIndex + 1 : 0
+                            [listing.id]: imageIndex < listingImages.length - 1 ? imageIndex + 1 : 0
                           });
                         }}
                         className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -515,7 +588,7 @@ export default function MarketplacePage() {
                   {/* Image Indicators */}
                   {hasMultipleImages && (
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
-                      {images.map((_, idx) => (
+                      {listingImages.map((_, idx) => (
                         <div
                           key={idx}
                           className={`w-1.5 h-1.5 rounded-full transition-all ${
