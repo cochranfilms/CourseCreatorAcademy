@@ -44,10 +44,14 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
   useEffect(() => {
     if (!isOpen || !user || !db) return;
 
+    // Capture user and db values to ensure they're not null
+    const currentUser = user;
+    const currentDb = db;
+    
     async function fetchSavedItems() {
       setLoading(true);
       try {
-        const savedRef = collection(db, `users/${user.uid}/saved`);
+        const savedRef = collection(currentDb, `users/${currentUser.uid}/saved`);
         const snapshot = await getDocs(query(savedRef, orderBy('createdAt', 'desc')));
         
         const items: SavedItem[] = [];
