@@ -148,7 +148,15 @@ export default function HomePage() {
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative w-16 h-16 rounded-full overflow-hidden bg-neutral-800 border-2 border-neutral-700">
                   {photoURL ? (
-                    <Image src={photoURL} alt={displayName} fill className="object-cover" />
+                    <img 
+                      src={photoURL} 
+                      alt={displayName} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-2xl font-semibold bg-ccaBlue text-white">
                       {displayName.charAt(0).toUpperCase()}
