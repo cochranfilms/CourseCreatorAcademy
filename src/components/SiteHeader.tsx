@@ -11,6 +11,7 @@ import { SupportChat } from './SupportChat';
 import { Messages } from './Messages';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessagesCount';
 import { Search } from './Search';
+import { SavedItems } from './SavedItems';
 
 const links = [
   { href: '/home', label: "What's New" },
@@ -39,6 +40,7 @@ export function SiteHeader() {
   const [showSupportChat, setShowSupportChat] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showSavedItems, setShowSavedItems] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -229,12 +231,9 @@ export function SiteHeader() {
                       </svg>
                     </a>
                     <button 
-                      onClick={() => {
-                        // TODO: Implement favorites/likes functionality
-                        alert('Favorites functionality coming soon!');
-                      }}
+                      onClick={() => setShowSavedItems(true)}
                       className="text-neutral-400 hover:text-white transition"
-                      aria-label="Favorites"
+                      aria-label="Saved Items"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -359,6 +358,9 @@ export function SiteHeader() {
       {/* Search Component */}
       <Search isOpen={showSearch} onClose={() => setShowSearch(false)} />
 
+      {/* Saved Items Component */}
+      {user && <SavedItems isOpen={showSavedItems} onClose={() => setShowSavedItems(false)} />}
+
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && user && typeof window !== 'undefined' && createPortal(
         <>
@@ -446,6 +448,18 @@ export function SiteHeader() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                   Messages
+                </button>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setShowSavedItems(true);
+                  }}
+                  className="w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  Saved Items
                 </button>
                 <button
                   onClick={() => {

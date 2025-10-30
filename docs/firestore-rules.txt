@@ -18,6 +18,21 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isOwner(userId);
       allow update: if isAuthenticated() && isOwner(userId);
       allow delete: if isAuthenticated() && isOwner(userId);
+      
+      // Saved items subcollection - users can only access their own saved items
+      match /saved/{savedId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // Progress tracking subcollection - users can only access their own progress
+      match /progress/{progressId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+        
+        // Courses progress subcollection
+        match /courses/{courseId} {
+          allow read, write: if isAuthenticated() && isOwner(userId);
+        }
+      }
     }
     
     // Marketplace listings collection
@@ -112,12 +127,37 @@ service cloud.firestore {
       }
     }
     
-    // Courses collection (for future use)
+    // Courses (public catalog metadata; writes restricted)
     match /courses/{courseId} {
-      allow read: if isAuthenticated();
+      // anyone can read course info
+      allow read: if true;
+
+      // only authenticated users can create courses
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && resource.data.creatorId == request.auth.uid;
-      allow delete: if isAuthenticated() && resource.data.creatorId == request.auth.uid;
+
+      // only the course creator can update/delete the course
+      allow update, delete: if isAuthenticated()
+        && resource.data.creatorId == request.auth.uid;
+
+      // Modules under a course
+      match /modules/{moduleId} {
+        // public can read module titles/order
+        allow read: if true;
+
+        // writes allowed only if caller is the course creator
+        allow create, update, delete: if isAuthenticated()
+          && get(/databases/$(database)/documents/courses/$(courseId)).data.creatorId == request.auth.uid;
+
+        // Lessons under a module
+        match /lessons/{lessonId} {
+          // public can read lesson titles/order/duration
+          allow read: if true;
+
+          // writes allowed only if caller is the course creator
+          allow create, update, delete: if isAuthenticated()
+            && get(/databases/$(database)/documents/courses/$(courseId)).data.creatorId == request.auth.uid;
+        }
+      }
     }
     
     // Deny all other access
@@ -126,4 +166,3 @@ service cloud.firestore {
     }
   }
 }
-
