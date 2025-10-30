@@ -118,7 +118,7 @@ export function ListingImageUpload({ images, onImagesChange, maxImages = 10 }: L
       <div className="flex flex-wrap gap-3">
         {images.map((imageUrl, index) => (
           <div key={index} className="relative group">
-            <div className="w-24 h-24 rounded-lg overflow-hidden border border-neutral-800 bg-neutral-900">
+            <div className="w-24 h-24 overflow-hidden border border-neutral-800 bg-neutral-900">
               <img
                 src={imageUrl}
                 alt={`Listing image ${index + 1}`}
@@ -130,7 +130,7 @@ export function ListingImageUpload({ images, onImagesChange, maxImages = 10 }: L
             </div>
             <button
               onClick={() => handleRemoveImage(imageUrl, index)}
-              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -145,7 +145,7 @@ export function ListingImageUpload({ images, onImagesChange, maxImages = 10 }: L
         ))}
         
         {images.length < maxImages && (
-          <label className="w-24 h-24 rounded-lg border-2 border-dashed border-neutral-700 bg-neutral-900/50 hover:bg-neutral-900 hover:border-neutral-600 cursor-pointer flex flex-col items-center justify-center transition-all">
+          <label className="w-24 h-24 border-2 border-dashed border-neutral-700 bg-neutral-900/50 hover:bg-neutral-900 hover:border-neutral-600 cursor-pointer flex flex-col items-center justify-center transition-all">
             <input
               ref={fileInputRef}
               type="file"
@@ -157,7 +157,7 @@ export function ListingImageUpload({ images, onImagesChange, maxImages = 10 }: L
             />
             {uploading ? (
               <div className="text-center">
-                <div className="w-8 h-8 border-2 border-ccaBlue border-t-transparent rounded-full animate-spin mx-auto mb-1"></div>
+                <div className="w-8 h-8 border-2 border-ccaBlue border-t-transparent animate-spin mx-auto mb-1"></div>
                 <span className="text-xs text-neutral-400">Uploading...</span>
               </div>
             ) : (
@@ -175,9 +175,9 @@ export function ListingImageUpload({ images, onImagesChange, maxImages = 10 }: L
       {Object.keys(uploadProgress).length > 0 && (
         <div className="space-y-1">
           {Object.entries(uploadProgress).map(([fileId, progress]) => (
-            <div key={fileId} className="w-full bg-neutral-900 rounded-full h-2">
+            <div key={fileId} className="w-full bg-neutral-900 h-2">
               <div
-                className="bg-ccaBlue h-2 rounded-full transition-all duration-300"
+                className="bg-ccaBlue h-2 transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>

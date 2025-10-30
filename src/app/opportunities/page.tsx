@@ -168,7 +168,7 @@ export default function OpportunitiesPage() {
       </div>
 
       {!firebaseReady && (
-        <div className="mb-6 p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-300 text-sm">
+        <div className="mb-6 p-4 border border-yellow-500/30 bg-yellow-500/10 text-yellow-300 text-sm">
           Firebase is not configured. Add your client keys in `.env.local` (see docs/ENV-EXAMPLE.txt), then restart the dev server.
         </div>
       )}
@@ -183,7 +183,7 @@ export default function OpportunitiesPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
             placeholder="Search jobs..."
           />
         </div>
@@ -196,7 +196,7 @@ export default function OpportunitiesPage() {
               alert('Please sign in to view your listings.');
             }
           }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-800 bg-neutral-900 text-white hover:bg-neutral-800 transition-all"
+          className="flex items-center gap-2 px-4 py-2 border border-neutral-800 bg-neutral-900 text-white hover:bg-neutral-800 transition-all"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -206,7 +206,7 @@ export default function OpportunitiesPage() {
 
         <button
           onClick={() => setShowPostForm(!showPostForm)}
-          className="px-4 py-2 rounded-lg bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue transition-all font-medium whitespace-nowrap"
+          className="px-4 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue transition-all font-medium whitespace-nowrap"
         >
           Post an Opportunity
         </button>
@@ -218,7 +218,7 @@ export default function OpportunitiesPage() {
           <button
             key={jobType}
             onClick={() => setSelectedType(jobType)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+            className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-all ${
               selectedType === jobType
                 ? 'bg-white text-black border-2 border-ccaBlue'
                 : 'bg-neutral-900 border-2 border-transparent text-neutral-300 hover:text-white'
@@ -231,7 +231,7 @@ export default function OpportunitiesPage() {
 
       {/* Post Job Form */}
       {showPostForm && (
-        <div className="mb-6 p-6 rounded-xl border border-neutral-800 bg-neutral-950">
+        <div className="mb-6 p-6 border border-neutral-800 bg-neutral-950">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Post an Opportunity</h2>
             <button
@@ -253,7 +253,7 @@ export default function OpportunitiesPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Travel Videographer Needed"
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                 />
               </div>
               <div>
@@ -264,7 +264,7 @@ export default function OpportunitiesPage() {
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                   placeholder="e.g. Horizon Films or John M."
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                 />
               </div>
             </div>
@@ -277,7 +277,7 @@ export default function OpportunitiesPage() {
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. New York, NY or Remote"
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                 />
               </div>
               <div>
@@ -287,7 +287,7 @@ export default function OpportunitiesPage() {
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                 >
                   {jobTypes.slice(1).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
@@ -302,7 +302,7 @@ export default function OpportunitiesPage() {
                 value={applyUrl}
                 onChange={(e) => setApplyUrl(e.target.value)}
                 placeholder="https://yourcompany.com/apply or https://apply.workable.com/j/..."
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
               />
               <p className="mt-1 text-xs text-neutral-500">Link to your application form or job posting</p>
             </div>
@@ -315,19 +315,19 @@ export default function OpportunitiesPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the job, responsibilities, and expectations..."
                 rows={4}
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
+                className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
               />
             </div>
             <div className="flex gap-3">
               <button
                 onClick={handlePostJob}
-                className="px-6 py-2 rounded-lg bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
+                className="px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
               >
                 Post Opportunity
               </button>
               <button
                 onClick={() => setShowPostForm(false)}
-                className="px-6 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition-all"
+                className="px-6 py-2 bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition-all"
               >
                 Cancel
               </button>
@@ -339,7 +339,7 @@ export default function OpportunitiesPage() {
       {/* My Listings Modal */}
       {showManageModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+          <div className="bg-neutral-950 border border-neutral-800 p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-semibold">Manage Your Job Listings</h2>
               <button
@@ -360,7 +360,7 @@ export default function OpportunitiesPage() {
                     setShowManageModal(false);
                     setShowPostForm(true);
                   }}
-                  className="px-6 py-2 rounded-lg bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
+                  className="px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
                 >
                   Post Your First Job
                 </button>
@@ -368,7 +368,7 @@ export default function OpportunitiesPage() {
             ) : (
               <div className="space-y-4">
                 {myJobs.map((job) => (
-                  <div key={job.id} className="p-4 rounded-lg border border-neutral-800 bg-neutral-900">
+                  <div key={job.id} className="p-4 border border-neutral-800 bg-neutral-900">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg">{job.title}</h3>
@@ -377,7 +377,7 @@ export default function OpportunitiesPage() {
                       </div>
                       <button
                         onClick={() => handleDeleteJob(job.id)}
-                        className="px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition text-sm"
+                        className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition text-sm"
                       >
                         Delete
                       </button>
@@ -389,7 +389,7 @@ export default function OpportunitiesPage() {
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setShowManageModal(false)}
-                className="px-6 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition-all"
+                className="px-6 py-2 bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition-all"
               >
                 Close
               </button>
@@ -401,7 +401,7 @@ export default function OpportunitiesPage() {
       {/* Jobs List */}
       <div className="space-y-4">
         {displayJobs.length === 0 ? (
-          <div className="text-center py-12 rounded-xl border border-neutral-800 bg-neutral-950">
+          <div className="text-center py-12 border border-neutral-800 bg-neutral-950">
             <p className="text-neutral-400 text-lg">No opportunities found.</p>
             {searchQuery && (
               <p className="text-neutral-500 text-sm mt-2">Try adjusting your search or filter criteria.</p>
@@ -409,7 +409,7 @@ export default function OpportunitiesPage() {
           </div>
         ) : (
           displayJobs.map((job) => (
-            <div key={job.id} className="rounded-xl border border-neutral-800 bg-neutral-950 p-6 hover:border-neutral-700 transition-all">
+            <div key={job.id} className=" border border-neutral-800 bg-neutral-950 p-6 hover:border-neutral-700 transition-all">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <h3 className="font-semibold text-xl mb-1">{job.title}</h3>
@@ -418,7 +418,7 @@ export default function OpportunitiesPage() {
                     <p className="text-sm text-neutral-300 mt-2 line-clamp-2">{job.description}</p>
                   )}
                   <div className="flex items-center gap-2 mt-3">
-                    <span className="px-3 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-xs text-neutral-300">
+                    <span className="px-3 py-1 bg-neutral-900 border border-neutral-800 text-xs text-neutral-300">
                       {job.type}
                     </span>
                     {job.posted && (
@@ -434,14 +434,14 @@ export default function OpportunitiesPage() {
                       href={job.applyUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-6 py-2 rounded-lg bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all whitespace-nowrap"
+                      className="px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all whitespace-nowrap"
                     >
                       Apply Now
                     </a>
                   ) : (
                     <button
                       disabled
-                      className="px-6 py-2 rounded-lg bg-neutral-800 text-neutral-500 border border-neutral-700 font-medium cursor-not-allowed whitespace-nowrap"
+                      className="px-6 py-2 bg-neutral-800 text-neutral-500 border border-neutral-700 font-medium cursor-not-allowed whitespace-nowrap"
                     >
                       Apply Now
                     </button>

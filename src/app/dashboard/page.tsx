@@ -160,6 +160,36 @@ export default function DashboardPage() {
 
     fetchProfile();
 
+    // Fetch user's projects
+    const projectsQuery = query(
+      collection(db, 'projects'),
+      where('creatorId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribeProjects = onSnapshot(
+      projectsQuery,
+      (snap) => {
+        setProjects(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+      },
+      (error) => {
+        console.error('Error fetching projects:', error);
+        const fallbackQuery = query(
+          collection(db, 'projects'),
+          where('creatorId', '==', user.uid)
+        );
+        onSnapshot(fallbackQuery, (snap) => {
+          const projectsData = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+          const sorted = projectsData.sort((a, b) => {
+            const aTime = a.createdAt?.toDate?.() || a.createdAt || 0;
+            const bTime = b.createdAt?.toDate?.() || b.createdAt || 0;
+            return bTime - aTime;
+          });
+          setProjects(sorted);
+        });
+      }
+    );
+
     // Fetch user's marketplace listings
     const listingsQuery = query(
       collection(db, 'listings'),
@@ -222,6 +252,7 @@ export default function DashboardPage() {
     );
 
     return () => {
+      unsubscribeProjects();
       unsubscribeListings();
       unsubscribeOpportunities();
     };
@@ -312,6 +343,131 @@ export default function DashboardPage() {
     }
   };
 
+  const addSkillToProject = (skill: string) => {
+    if (!projectSkills.includes(skill)) {
+      setProjectSkills([...projectSkills, skill]);
+    }
+  };
+
+  const removeSkillFromProject = (skill: string) => {
+    setProjectSkills(projectSkills.filter(s => s !== skill));
+  };
+
+  const addCustomSkill = () => {
+    if (customSkill.trim() && !projectSkills.includes(customSkill.trim())) {
+      setProjectSkills([...projectSkills, customSkill.trim()]);
+      setCustomSkill('');
+    }
+  };
+
+  const handleFormatText = (format: string) => {
+    const textarea = document.getElementById('projectContent') as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = projectContent.substring(start, end);
+    let formattedText = '';
+
+    switch (format) {
+      case 'H2':
+        formattedText = selectedText ? `\n## ${selectedText}\n` : '\n## \n';
+        break;
+      case 'P':
+        formattedText = selectedText ? `\n${selectedText}\n` : '\n\n';
+        break;
+      case 'B':
+        formattedText = selectedText ? `**${selectedText}**` : '****';
+        break;
+      case 'I':
+        formattedText = selectedText ? `*${selectedText}*` : '**';
+        break;
+      case 'UL':
+        formattedText = selectedText ? `- ${selectedText}` : '- ';
+        break;
+      default:
+        formattedText = selectedText;
+    }
+
+    const newContent = projectContent.substring(0, start) + formattedText + projectContent.substring(end);
+    setProjectContent(newContent);
+    
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = start + formattedText.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
+  };
+
+  const handleProjectImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProjectImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProjectImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const resetProjectForm = () => {
+    setProjectTitle('');
+    setProjectDescription('');
+    setProjectContent('');
+    setProjectPreview('');
+    setProjectUrl('');
+    setProjectImage(null);
+    setProjectImagePreview('');
+    setProjectSkills([]);
+    setCustomSkill('');
+  };
+
+  const handleAddProject = async () => {
+    if (!projectTitle.trim()) {
+      alert('Please enter a project title.');
+      return;
+    }
+
+    if (!firebaseReady || !db || !user) {
+      alert('Firebase is not configured.');
+      return;
+    }
+
+    setProjectUploading(true);
+
+    try {
+      let imageUrl = '';
+
+      if (projectImage && storage) {
+        const storageRef = ref(storage, `project-images/${user.uid}/${Date.now()}_${projectImage.name}`);
+        await uploadBytesResumable(storageRef, projectImage);
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
+      await addDoc(collection(db, 'projects'), {
+        title: projectTitle,
+        description: projectDescription,
+        content: projectContent,
+        preview: projectPreview,
+        url: projectUrl,
+        imageUrl,
+        skills: projectSkills,
+        creatorId: user.uid,
+        createdAt: serverTimestamp(),
+      });
+
+      resetProjectForm();
+      setShowProjectModal(false);
+      alert('Project added successfully!');
+    } catch (error) {
+      console.error('Error adding project:', error);
+      alert('Failed to add project. Please try again.');
+    } finally {
+      setProjectUploading(false);
+    }
+  };
+
   const removeSkill = (skill: string) => {
     setEditSkills(editSkills.filter(s => s !== skill));
   };
@@ -335,7 +491,7 @@ export default function DashboardPage() {
         <main className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
+              <div className="inline-block animate-spin  h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
               <p className="text-neutral-400">Loading your dashboard...</p>
             </div>
           </div>
@@ -348,12 +504,12 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Profile Section */}
-        <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 mb-6">
+        <div className="bg-neutral-950 border border-neutral-800  p-6 mb-6">
           <div className="flex items-start justify-between gap-6">
             {/* Left Side - Profile Info */}
             <div className="flex-1">
               <div className="flex items-start gap-4 mb-4">
-                <div className="relative w-24 h-24 rounded-full overflow-hidden bg-neutral-800 border-2 border-neutral-700 flex-shrink-0">
+                <div className="relative w-24 h-24  overflow-hidden bg-neutral-800 border-2 border-neutral-700 flex-shrink-0">
                   {photoURL ? (
                     <img
                       src={photoURL}
@@ -391,7 +547,7 @@ export default function DashboardPage() {
                       {profile.skills.map((skill, idx) => (
                         <span
                           key={idx}
-                          className="px-3 py-1 rounded-full bg-neutral-800 text-neutral-300 text-sm border border-neutral-700"
+                          className="px-3 py-1  bg-neutral-800 text-neutral-300 text-sm border border-neutral-700"
                         >
                           {skill}
                         </span>
@@ -406,26 +562,26 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2 flex-shrink-0">
               <button
                 onClick={() => setShowEditModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition"
+                className="flex items-center gap-2 px-4 py-2  bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Edit Profile
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition">
+              <button className="flex items-center gap-2 px-4 py-2  bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
                 Share Profile
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition">
+              <button className="flex items-center gap-2 px-4 py-2  bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                 </svg>
                 View Certificate
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition font-medium">
+              <button className="flex items-center gap-2 px-4 py-2  bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition font-medium">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
@@ -441,7 +597,7 @@ export default function DashboardPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition ${
+              className={`px-6 py-2  text-sm font-medium transition ${
                 activeTab === tab
                   ? 'bg-neutral-800 text-white border border-neutral-700'
                   : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
@@ -454,30 +610,76 @@ export default function DashboardPage() {
 
         {/* Tab Content */}
         {activeTab === 'projects' && (
-          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-semibold">Projects</h2>
-              <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white text-white hover:bg-white hover:text-black transition">
+              <button 
+                onClick={() => setShowProjectModal(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-white text-white hover:bg-white hover:text-black transition"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Add New Project
               </button>
             </div>
-            <div className="text-center py-12">
-              <p className="text-neutral-400 mb-4">You haven't added any projects yet.</p>
-              <button className="flex items-center gap-2 px-6 py-3 rounded-lg border border-white text-white hover:bg-white hover:text-black transition mx-auto">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Your First Project
-              </button>
-            </div>
+            {projects.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-neutral-400 mb-4">You haven't added any projects yet.</p>
+                <button 
+                  onClick={() => setShowProjectModal(true)}
+                  className="flex items-center gap-2 px-6 py-3 border border-white text-white hover:bg-white hover:text-black transition mx-auto"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Your First Project
+                </button>
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {projects.map((project) => (
+                  <div key={project.id} className="border border-neutral-800 bg-neutral-900 p-4 hover:border-neutral-700 transition">
+                    {project.imageUrl && (
+                      <img src={project.imageUrl} alt={project.title} className="w-full h-48 object-cover mb-4" />
+                    )}
+                    <h3 className="font-semibold text-lg mb-2">{project.title}</h3>
+                    {project.description && (
+                      <p className="text-sm text-neutral-400 mb-4 line-clamp-2">{project.description}</p>
+                    )}
+                    {project.skills && project.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {project.skills.slice(0, 3).map((skill: string, idx: number) => (
+                          <span key={idx} className="px-2 py-1 bg-neutral-800 text-neutral-300 text-xs border border-neutral-700">
+                            {skill}
+                          </span>
+                        ))}
+                        {project.skills.length > 3 && (
+                          <span className="px-2 py-1 bg-neutral-800 text-neutral-300 text-xs border border-neutral-700">
+                            +{project.skills.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {project.url && (
+                      <a 
+                        href={project.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-ccaBlue hover:text-ccaBlue/80 text-sm"
+                      >
+                        View Project →
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === 'social' && (
-          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-6">
             <h2 className="text-2xl font-semibold mb-6">Social Profiles</h2>
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               <div>
@@ -492,10 +694,10 @@ export default function DashboardPage() {
                       value={linkedin}
                       onChange={(e) => setLinkedin(e.target.value)}
                       placeholder="johndoe"
-                      className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                      className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-800  text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                     />
                   </div>
-                  <button className="px-4 py-2 rounded-lg border border-white text-white hover:bg-white hover:text-black transition">
+                  <button className="px-4 py-2  border border-white text-white hover:bg-white hover:text-black transition">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
@@ -516,10 +718,10 @@ export default function DashboardPage() {
                       value={instagram}
                       onChange={(e) => setInstagram(e.target.value)}
                       placeholder="johndoe"
-                      className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                      className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-800  text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                     />
                   </div>
-                  <button className="px-4 py-2 rounded-lg border border-white text-white hover:bg-white hover:text-black transition">
+                  <button className="px-4 py-2  border border-white text-white hover:bg-white hover:text-black transition">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
@@ -540,10 +742,10 @@ export default function DashboardPage() {
                       value={youtube}
                       onChange={(e) => setYoutube(e.target.value)}
                       placeholder="johndoe"
-                      className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                      className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-800  text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                     />
                   </div>
-                  <button className="px-4 py-2 rounded-lg border border-white text-white hover:bg-white hover:text-black transition">
+                  <button className="px-4 py-2  border border-white text-white hover:bg-white hover:text-black transition">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
@@ -555,7 +757,7 @@ export default function DashboardPage() {
             <div className="flex justify-end">
               <button
                 onClick={handleSaveSocial}
-                className="px-6 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                className="px-6 py-2  bg-red-500 text-white hover:bg-red-600 transition"
               >
                 Save Social Profiles
               </button>
@@ -564,7 +766,7 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'email' && (
-          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-6">
             <div className="flex items-center gap-2 mb-2">
               <svg className="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -574,7 +776,7 @@ export default function DashboardPage() {
             <p className="text-neutral-400 mb-6">Stay updated with the latest opportunities and content from our platform</p>
             
             <div className="space-y-4 mb-6">
-              <div className="flex items-center justify-between p-4 rounded-lg bg-neutral-900 border border-neutral-800">
+              <div className="flex items-center justify-between p-4  bg-neutral-900 border border-neutral-800">
                 <div className="flex-1">
                   <h3 className="font-semibold mb-1">Job Opportunities</h3>
                   <p className="text-sm text-neutral-400">Receive weekly emails with the newest job listings matching your specialty</p>
@@ -586,11 +788,11 @@ export default function DashboardPage() {
                     onChange={(e) => setEmailJobOpportunities(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-neutral-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ccaBlue/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                  <div className="w-11 h-6 bg-neutral-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ccaBlue/20  peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after: after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
                 </label>
               </div>
 
-              <div className="flex items-center justify-between p-4 rounded-lg bg-neutral-900 border border-neutral-800">
+              <div className="flex items-center justify-between p-4  bg-neutral-900 border border-neutral-800">
                 <div className="flex-1">
                   <h3 className="font-semibold mb-1">Marketplace Updates</h3>
                   <p className="text-sm text-neutral-400">Get notified about new marketplace listings and exclusive deals from creators</p>
@@ -602,7 +804,7 @@ export default function DashboardPage() {
                     onChange={(e) => setEmailMarketplaceUpdates(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-neutral-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ccaBlue/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                  <div className="w-11 h-6 bg-neutral-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ccaBlue/20  peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after: after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
                 </label>
               </div>
             </div>
@@ -610,7 +812,7 @@ export default function DashboardPage() {
             <div className="flex justify-end">
               <button
                 onClick={handleSaveEmail}
-                className="px-6 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                className="px-6 py-2  bg-red-500 text-white hover:bg-red-600 transition"
               >
                 Save Email Preferences
               </button>
@@ -619,14 +821,14 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'privacy' && (
-          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-6">
             <h2 className="text-2xl font-semibold mb-2">Privacy Settings</h2>
             <p className="text-neutral-400 mb-6">Control who can see your profile and information</p>
             
             <div className="space-y-6 mb-6">
               <div>
                 <h3 className="font-semibold mb-2">Profile Visibility</h3>
-                <div className="flex items-center justify-between p-4 rounded-lg bg-neutral-900 border border-neutral-800">
+                <div className="flex items-center justify-between p-4  bg-neutral-900 border border-neutral-800">
                   <div className="flex-1">
                     <p className="font-medium mb-1">Make profile public</p>
                     <p className="text-sm text-neutral-400">When enabled, your profile will appear in public directories and search results.</p>
@@ -638,7 +840,7 @@ export default function DashboardPage() {
                       onChange={(e) => setProfilePublic(e.target.checked)}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-neutral-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ccaBlue/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                    <div className="w-11 h-6 bg-neutral-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ccaBlue/20  peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after: after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
                     <span className="ml-3 text-sm font-medium">{profilePublic ? 'Public' : 'Private'}</span>
                   </label>
                 </div>
@@ -647,7 +849,7 @@ export default function DashboardPage() {
               <div>
                 <h3 className="font-semibold mb-2">Current Status</h3>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <div className="w-3 h-3  bg-green-500"></div>
                   <span className="text-sm">
                     Profile: <span className="font-medium">{profilePublic ? 'Public' : 'Private'}</span>
                   </span>
@@ -658,7 +860,7 @@ export default function DashboardPage() {
             <div className="flex justify-end">
               <button
                 onClick={handleSavePrivacy}
-                className="px-6 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                className="px-6 py-2  bg-red-500 text-white hover:bg-red-600 transition"
               >
                 Save Privacy Settings
               </button>
@@ -668,7 +870,7 @@ export default function DashboardPage() {
 
         {/* Marketplace Listings */}
         {activeTab === 'projects' && listings.length > 0 && (
-          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 mt-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-6 mt-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">My Marketplace Listings</h2>
               <Link
@@ -682,7 +884,7 @@ export default function DashboardPage() {
               {listings.slice(0, 3).map((listing) => (
                 <div
                   key={listing.id}
-                  className="rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-all"
+                  className=" overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-all"
                 >
                   <div className="relative h-64 bg-neutral-900 overflow-hidden">
                     {listing.images && listing.images.length > 0 ? (
@@ -715,7 +917,7 @@ export default function DashboardPage() {
                     )}
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-800">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-semibold text-neutral-400">
+                        <div className="w-6 h-6  bg-neutral-800 flex items-center justify-center text-xs font-semibold text-neutral-400">
                           {user?.email?.charAt(0).toUpperCase() || 'U'}
                         </div>
                         <div className="text-xs text-neutral-500">
@@ -735,7 +937,7 @@ export default function DashboardPage() {
 
         {/* Opportunities */}
         {activeTab === 'projects' && opportunities.length > 0 && (
-          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 mt-6">
+          <div className="bg-neutral-950 border border-neutral-800  p-6 mt-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">My Posted Opportunities</h2>
               <Link
@@ -749,7 +951,7 @@ export default function DashboardPage() {
               {opportunities.slice(0, 3).map((opp) => (
                 <div
                   key={opp.id}
-                  className="rounded-xl border border-neutral-800 bg-neutral-900 p-4"
+                  className=" border border-neutral-800 bg-neutral-900 p-4"
                 >
                   <div className="font-semibold text-lg">{opp.title}</div>
                   <div className="text-sm text-neutral-400">{opp.company} • {opp.location}</div>
@@ -763,7 +965,7 @@ export default function DashboardPage() {
         {/* Edit Profile Modal */}
         {showEditModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-neutral-950 border border-neutral-800  p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold">Edit Profile</h2>
                 <button
@@ -782,7 +984,7 @@ export default function DashboardPage() {
                   <input
                     value={editDisplayName}
                     onChange={(e) => setEditDisplayName(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                   />
                 </div>
 
@@ -792,7 +994,7 @@ export default function DashboardPage() {
                     value={editHandle}
                     onChange={(e) => setEditHandle(e.target.value.replace('@', ''))}
                     placeholder="johndoe"
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                   />
                 </div>
 
@@ -802,7 +1004,7 @@ export default function DashboardPage() {
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     placeholder="e.g., Videographer, Editor"
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                   />
                 </div>
 
@@ -812,7 +1014,7 @@ export default function DashboardPage() {
                     value={editSpecialties}
                     onChange={(e) => setEditSpecialties(e.target.value)}
                     placeholder="e.g., Real Estate, Ads, And Commercials"
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                   />
                 </div>
 
@@ -822,7 +1024,7 @@ export default function DashboardPage() {
                     value={editLocation}
                     onChange={(e) => setEditLocation(e.target.value)}
                     placeholder="e.g., Atlanta, Ga"
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                   />
                 </div>
 
@@ -833,7 +1035,7 @@ export default function DashboardPage() {
                     onChange={(e) => setEditBio(e.target.value)}
                     placeholder="Tell us about yourself..."
                     rows={3}
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
+                    className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
                   />
                 </div>
 
@@ -843,7 +1045,7 @@ export default function DashboardPage() {
                     {editSkills.map((skill, idx) => (
                       <span
                         key={idx}
-                        className="flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-800 text-neutral-300 text-sm border border-neutral-700"
+                        className="flex items-center gap-2 px-3 py-1  bg-neutral-800 text-neutral-300 text-sm border border-neutral-700"
                       >
                         {skill}
                         <button
@@ -863,11 +1065,11 @@ export default function DashboardPage() {
                       onChange={(e) => setNewSkill(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addSkill()}
                       placeholder="Add a skill"
-                      className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                      className="flex-1 bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
                     />
                     <button
                       onClick={addSkill}
-                      className="px-4 py-2 rounded-lg bg-neutral-800 border border-neutral-700 text-white hover:bg-neutral-700 transition"
+                      className="px-4 py-2  bg-neutral-800 border border-neutral-700 text-white hover:bg-neutral-700 transition"
                     >
                       Add
                     </button>
@@ -880,15 +1082,214 @@ export default function DashboardPage() {
                 <div className="flex gap-3">
                   <button
                     onClick={handleSaveProfile}
-                    className="px-6 py-2 rounded-lg bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
+                    className="px-6 py-2  bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
                   >
                     Save Profile
                   </button>
                   <button
                     onClick={() => setShowEditModal(false)}
-                    className="px-6 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition-all"
+                    className="px-6 py-2  bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition-all"
                   >
                     Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add New Project Modal */}
+        {showProjectModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-neutral-950 border border-neutral-800 p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold">Add New Project</h2>
+                <button
+                  onClick={() => {
+                    resetProjectForm();
+                    setShowProjectModal(false);
+                  }}
+                  className="text-neutral-400 hover:text-white transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-300">Project Title</label>
+                  <input
+                    value={projectTitle}
+                    onChange={(e) => setProjectTitle(e.target.value)}
+                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    placeholder="Enter project title"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-300">Short Description</label>
+                  <textarea
+                    value={projectDescription}
+                    onChange={(e) => setProjectDescription(e.target.value)}
+                    rows={3}
+                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
+                    placeholder="Brief description of your project"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-300">Project Content</label>
+                  <div className="flex gap-2 mb-2">
+                    {['H2', 'P', 'B', 'I', 'UL'].map((format) => (
+                      <button
+                        key={format}
+                        type="button"
+                        onClick={() => handleFormatText(format)}
+                        className="px-3 py-1 bg-neutral-800 border border-neutral-700 text-white hover:bg-neutral-700 transition text-sm"
+                      >
+                        {format}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    id="projectContent"
+                    value={projectContent}
+                    onChange={(e) => setProjectContent(e.target.value)}
+                    rows={10}
+                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
+                    placeholder="Enter project content..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-300">Preview</label>
+                  <textarea
+                    value={projectPreview}
+                    onChange={(e) => setProjectPreview(e.target.value)}
+                    rows={4}
+                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
+                    placeholder="Preview text"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-300">Project URL</label>
+                  <input
+                    type="url"
+                    value={projectUrl}
+                    onChange={(e) => setProjectUrl(e.target.value)}
+                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    placeholder="https://example.com/project"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-300">Project Image</label>
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer">
+                      <span className="px-4 py-2 bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition inline-block">
+                        Choose File
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProjectImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-neutral-400 text-sm">
+                      {projectImage ? projectImage.name : 'No file chosen'}
+                    </span>
+                  </div>
+                  {projectImagePreview && (
+                    <div className="mt-4">
+                      <img src={projectImagePreview} alt="Preview" className="max-w-full h-64 object-contain border border-neutral-800" />
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-300">Skills Used</label>
+                  <div className="mb-4">
+                    <p className="text-sm text-neutral-400 mb-2">Recommended skills:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {recommendedSkills.map((skill) => (
+                        <button
+                          key={skill}
+                          type="button"
+                          onClick={() => addSkillToProject(skill)}
+                          disabled={projectSkills.includes(skill)}
+                          className={`px-3 py-1 text-sm border transition ${
+                            projectSkills.includes(skill)
+                              ? 'bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed'
+                              : 'bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800'
+                          }`}
+                        >
+                          + {skill}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={customSkill}
+                      onChange={(e) => setCustomSkill(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addCustomSkill()}
+                      placeholder="Add a custom skill and press Enter"
+                      className="flex-1 bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    />
+                    <button
+                      type="button"
+                      onClick={addCustomSkill}
+                      className="px-4 py-2 bg-neutral-900 border border-neutral-700 text-white hover:bg-neutral-800 transition"
+                    >
+                      +
+                    </button>
+                  </div>
+                  {projectSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {projectSkills.map((skill, idx) => (
+                        <span
+                          key={idx}
+                          className="flex items-center gap-2 px-3 py-1 bg-neutral-800 text-neutral-300 text-sm border border-neutral-700"
+                        >
+                          {skill}
+                          <button
+                            type="button"
+                            onClick={() => removeSkillFromProject(skill)}
+                            className="hover:text-white"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetProjectForm();
+                      setShowProjectModal(false);
+                    }}
+                    className="px-6 py-2 bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddProject}
+                    disabled={projectUploading || !projectTitle.trim()}
+                    className="px-6 py-2 bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {projectUploading ? 'Adding...' : 'Add Project'}
                   </button>
                 </div>
               </div>
