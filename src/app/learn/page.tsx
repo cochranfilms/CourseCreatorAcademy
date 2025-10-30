@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import Link from 'next/link';
+import Image from 'next/image';
 
 type Course = {
   id: string;
@@ -14,7 +15,15 @@ type Course = {
   lessonsCount: number;
   modulesCount: number;
   featured?: boolean;
+  thumbnailPlaybackId?: string;
+  thumbnailDurationSec?: number;
 };
+
+function getMuxThumbnailUrl(playbackId?: string, durationSec?: number) {
+  if (!playbackId) return '';
+  const time = durationSec && durationSec > 0 ? Math.floor(durationSec / 2) : 1;
+  return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=${time}&width=640&fit_mode=preserve`;
+}
 
 export default function LearnPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -26,20 +35,52 @@ export default function LearnPage() {
         const coursesRef = collection(db, 'courses');
         const snapshot = await getDocs(coursesRef);
         
-        const coursesData: Course[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          coursesData.push({
-            id: doc.id,
-            title: data.title || 'Untitled Course',
-            slug: data.slug || doc.id,
-            summary: data.summary,
-            coverImage: data.coverImage,
-            lessonsCount: data.lessonsCount || 0,
-            modulesCount: data.modulesCount || 0,
-            featured: data.featured || false,
-          });
-        });
+        const coursesData: Course[] = await Promise.all(
+          snapshot.docs.map(async (docSnap) => {
+            const data = docSnap.data();
+            let thumbnailPlaybackId: string | undefined;
+            let thumbnailDurationSec: number | undefined;
+
+            try {
+              // First module → first lesson → thumbnail from muxPlaybackId
+              const modulesRef = collection(db, `courses/${docSnap.id}/modules`);
+              const firstModuleSnap = await getDocs(
+                query(modulesRef, orderBy('index', 'asc'), limit(1))
+              );
+              if (!firstModuleSnap.empty) {
+                const firstModuleId = firstModuleSnap.docs[0].id;
+                const lessonsRef = collection(
+                  db,
+                  `courses/${docSnap.id}/modules/${firstModuleId}/lessons`
+                );
+                const firstLessonSnap = await getDocs(
+                  query(lessonsRef, orderBy('index', 'asc'), limit(1))
+                );
+                if (!firstLessonSnap.empty) {
+                  const ldata: any = firstLessonSnap.docs[0].data();
+                  thumbnailPlaybackId = ldata?.muxPlaybackId;
+                  thumbnailDurationSec = ldata?.durationSec;
+                }
+              }
+            } catch (e) {
+              // Non-fatal; just omit thumbnail
+              console.warn('Thumbnail fetch failed for course', docSnap.id, e);
+            }
+
+            return {
+              id: docSnap.id,
+              title: data.title || 'Untitled Course',
+              slug: data.slug || docSnap.id,
+              summary: data.summary,
+              coverImage: data.coverImage,
+              lessonsCount: data.lessonsCount || 0,
+              modulesCount: data.modulesCount || 0,
+              featured: data.featured || false,
+              thumbnailPlaybackId,
+              thumbnailDurationSec,
+            } as Course;
+          })
+        );
 
         // Sort: featured first, then by title
         coursesData.sort((a, b) => {
@@ -90,19 +131,29 @@ export default function LearnPage() {
           <p>No courses available yet.</p>
         </div>
       ) : (
-        <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
             <Link
               key={course.id}
               href={`/learn/${course.slug}` as any}
               className="rounded-2xl overflow-hidden border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 hover:border-ccaBlue transition cursor-pointer group"
             >
-              <div className="h-40 bg-neutral-800 group-hover:bg-neutral-700 transition">
-                {course.coverImage ? (
-                  <img
+              <div className="relative h-40 bg-neutral-800 group-hover:bg-neutral-700 transition">
+                {course.thumbnailPlaybackId ? (
+                  <Image
+                    src={getMuxThumbnailUrl(course.thumbnailPlaybackId, course.thumbnailDurationSec) || ''}
+                    alt={`${course.title} thumbnail`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover"
+                  />
+                ) : course.coverImage ? (
+                  <Image
                     src={course.coverImage}
                     alt={course.title}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-neutral-600">
@@ -113,21 +164,21 @@ export default function LearnPage() {
                   </div>
                 )}
               </div>
-              <div className="p-4">
+            <div className="p-4">
                 <div className="text-lg font-semibold mb-1">{course.title}</div>
                 <div className="text-sm text-neutral-400">
                   {course.lessonsCount} lesson{course.lessonsCount !== 1 ? 's' : ''}
                   {course.modulesCount > 0 && (
                     <span className="ml-2">• {course.modulesCount} module{course.modulesCount !== 1 ? 's' : ''}</span>
                   )}
-                </div>
+            </div>
                 {course.summary && (
                   <p className="text-sm text-neutral-500 mt-2 line-clamp-2">{course.summary}</p>
                 )}
-              </div>
+          </div>
             </Link>
-          ))}
-        </div>
+        ))}
+      </div>
       )}
     </main>
   );
