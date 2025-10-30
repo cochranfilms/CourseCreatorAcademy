@@ -37,8 +37,15 @@ export default function Page() {
           <div className="mt-6 text-sm text-neutral-400">14‑day refund policy • Instant access</div>
         </div>
         <div className="flex justify-center">
-          <div className="w-full aspect-video rounded-xl border border-neutral-800 bg-neutral-900 flex items-center justify-center">
-            <span className="text-neutral-500">Promo Video</span>
+          <div className="w-full max-w-[420px] aspect-[9/16] rounded-xl overflow-hidden border border-neutral-800 bg-black">
+            <iframe
+              className="w-full h-full"
+              src="https://www.youtube.com/embed/3-msojt4yuk?start=9&rel=0&modestbranding=1"
+              title="CCA Promo Video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
           </div>
         </div>
       </section>
