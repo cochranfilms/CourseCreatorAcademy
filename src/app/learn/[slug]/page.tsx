@@ -173,6 +173,7 @@ export default function CourseDetailPage() {
           const moduleLessonPaths = mod.lessons.map(les => `${mod.id}/${les.id}`);
           modProgress[mod.id] = getModuleProgress(completed, mod.id, moduleLessonPaths);
         }
+        // Initialize all modules with progress (even if 0)
         setModuleProgress(modProgress);
       } catch (error) {
         console.error('Error fetching progress:', error);
@@ -263,7 +264,7 @@ export default function CourseDetailPage() {
           <span>{course.lessonsCount} lesson{course.lessonsCount !== 1 ? 's' : ''}</span>
           <span>•</span>
           <span>{course.modulesCount} module{course.modulesCount !== 1 ? 's' : ''}</span>
-          {user && courseProgress > 0 && (
+          {user && (
             <>
               <span>•</span>
               <span className="text-ccaBlue font-medium">{courseProgress}% Complete</span>
@@ -272,7 +273,7 @@ export default function CourseDetailPage() {
         </div>
 
         {/* Course Progress Bar */}
-        {user && courseProgress > 0 && (
+        {user && (
           <div className="mb-6">
             <div className="flex items-center justify-between text-sm mb-2">
               <span className="text-neutral-400">Overall Progress</span>
@@ -281,7 +282,7 @@ export default function CourseDetailPage() {
             <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-ccaBlue to-ccaBlue/80 transition-all duration-300"
-                style={{ width: `${courseProgress}%` }}
+                style={{ width: `${Math.max(courseProgress, 0)}%` }}
               />
             </div>
           </div>
@@ -306,18 +307,18 @@ export default function CourseDetailPage() {
                       </h2>
                       <p className="text-sm text-neutral-400 mt-1">
                         {module.lessons.length} lesson{module.lessons.length !== 1 ? 's' : ''}
-                        {user && moduleProgress[module.id] !== undefined && moduleProgress[module.id] > 0 && (
+                        {user && moduleProgress[module.id] !== undefined && (
                           <span className="ml-2 text-ccaBlue">• {moduleProgress[module.id]}% Complete</span>
                         )}
                       </p>
                     </div>
-                    {user && moduleProgress[module.id] !== undefined && moduleProgress[module.id] > 0 && (
+                    {user && moduleProgress[module.id] !== undefined && (
                       <div className="flex items-center gap-3">
                         <span className="text-sm text-neutral-400">{moduleProgress[module.id]}%</span>
                         <div className="w-24 h-2 bg-neutral-800 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-ccaBlue to-ccaBlue/80 transition-all duration-300"
-                            style={{ width: `${moduleProgress[module.id]}%` }}
+                            style={{ width: `${Math.max(moduleProgress[module.id] || 0, 0)}%` }}
                           />
                         </div>
                       </div>

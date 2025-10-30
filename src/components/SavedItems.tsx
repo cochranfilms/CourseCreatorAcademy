@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { createPortal } from 'react-dom';
@@ -57,17 +57,48 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
         const snapshot = await getDocs(query(savedRef, orderBy('createdAt', 'desc')));
         
         const items: SavedItem[] = [];
-        for (const doc of snapshot.docs) {
-          const data = doc.data();
+        for (const docSnap of snapshot.docs) {
+          const data = docSnap.data();
           // Skip removed items
           if (data.removedAt) continue;
           
-          items.push({
-            id: doc.id,
+          const item: SavedItem = {
+            id: docSnap.id,
             type: data.type as SavedType,
             targetId: data.targetId,
             ...data,
-          });
+          };
+          
+          // If it's a lesson/video and missing muxPlaybackId, try to fetch from lesson document
+          if ((item.type === 'lesson' || item.type === 'video') && !item.muxPlaybackId && item.courseSlug && item.moduleId && item.lessonId) {
+            try {
+              // Find course by slug
+              const coursesRef = collection(currentDb, 'courses');
+              const coursesSnapshot = await getDocs(coursesRef);
+              let courseId: string | null = null;
+              
+              coursesSnapshot.forEach((courseDoc) => {
+                const courseData = courseDoc.data();
+                if (courseData.slug === item.courseSlug || courseDoc.id === item.courseSlug) {
+                  courseId = courseDoc.id;
+                }
+              });
+              
+              if (courseId) {
+                const lessonRef = doc(currentDb, `courses/${courseId}/modules/${item.moduleId}/lessons/${item.lessonId}`);
+                const lessonSnap = await getDoc(lessonRef);
+                if (lessonSnap.exists()) {
+                  const lessonData = lessonSnap.data();
+                  item.muxPlaybackId = lessonData.muxPlaybackId;
+                  item.durationSec = lessonData.durationSec;
+                }
+              }
+            } catch (err) {
+              console.warn('Failed to fetch lesson thumbnail data:', err);
+            }
+          }
+          
+          items.push(item);
         }
         
         setSavedItems(items);

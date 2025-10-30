@@ -197,7 +197,7 @@ export default function LearnPage() {
                     {course.modulesCount > 0 && (
                       <span className="ml-2">• {course.modulesCount} module{course.modulesCount !== 1 ? 's' : ''}</span>
                     )}
-                    {user && courseProgress[course.id] !== undefined && courseProgress[course.id] > 0 && (
+                    {user && courseProgress[course.id] !== undefined && (
                       <span className="ml-2 text-ccaBlue">• {courseProgress[course.id]}% Complete</span>
                     )}
                   </div>
@@ -205,12 +205,12 @@ export default function LearnPage() {
                     <p className="text-sm text-neutral-500 mt-2 line-clamp-2">{course.summary}</p>
                   )}
                   {/* Course Progress Bar */}
-                  {user && courseProgress[course.id] !== undefined && courseProgress[course.id] > 0 && (
+                  {user && courseProgress[course.id] !== undefined && (
                     <div className="mt-3">
                       <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-gradient-to-r from-ccaBlue to-ccaBlue/80 transition-all duration-300"
-                          style={{ width: `${courseProgress[course.id]}%` }}
+                          style={{ width: `${Math.max(courseProgress[course.id] || 0, 0)}%` }}
                         />
                       </div>
                     </div>
