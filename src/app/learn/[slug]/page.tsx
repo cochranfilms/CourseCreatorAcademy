@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { useParams } from 'next/navigation';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import Link from 'next/link';
 
@@ -34,23 +35,11 @@ type Course = {
   modules: Module[];
 };
 
-export default function CourseDetailPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
+export default function CourseDetailPage() {
+  const params = useParams();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
-  const [slug, setSlug] = useState<string>('');
-
-  useEffect(() => {
-    // Handle both Promise and sync params (Next.js 15 compatibility)
-    async function extractSlug() {
-      if (params instanceof Promise) {
-        const resolved = await params;
-        setSlug(resolved.slug);
-      } else if (params && typeof params === 'object' && 'slug' in params) {
-        setSlug(params.slug);
-      }
-    }
-    extractSlug();
-  }, [params]);
+  const slug = params?.slug as string || '';
 
   useEffect(() => {
     async function fetchCourse() {
