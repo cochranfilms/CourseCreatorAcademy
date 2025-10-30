@@ -38,6 +38,7 @@ export function SiteHeader() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const portalDropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
 
   // Fetch user profile from Firestore
@@ -78,12 +79,23 @@ export function SiteHeader() {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
+      const target = event.target as Node;
+      
+      // Check if click is outside dropdown portal
+      if (showDropdown && portalDropdownRef.current) {
+        const isClickInsideDropdown = portalDropdownRef.current.contains(target);
+        const isClickOnButton = buttonRef.current?.contains(target);
+        
+        // Only close if click is outside both dropdown and button
+        if (!isClickInsideDropdown && !isClickOnButton) {
+          setShowDropdown(false);
+        }
       }
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
-        const target = event.target as HTMLElement;
-        if (!target.closest('[data-mobile-menu-button]')) {
+      
+      // Handle mobile menu
+      if (mobileMenuOpen && mobileMenuRef.current && !mobileMenuRef.current.contains(target)) {
+        const targetElement = target as HTMLElement;
+        if (targetElement && !targetElement.closest('[data-mobile-menu-button]')) {
           setMobileMenuOpen(false);
         }
       }
@@ -269,43 +281,40 @@ export function SiteHeader() {
                     {/* Dropdown Menu */}
                     {showDropdown && typeof window !== 'undefined' && createPortal(
                       <div 
-                        className="fixed w-48 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl overflow-hidden z-[200] pointer-events-auto"
+                        ref={portalDropdownRef}
+                        className="fixed w-48 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl overflow-hidden z-[200]"
                         style={{
                           top: `${dropdownPosition.top}px`,
                           right: `${dropdownPosition.right}px`
                         }}
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="p-3 border-b border-neutral-800 pointer-events-none">
+                        <div className="p-3 border-b border-neutral-800">
                           <div className="font-semibold text-white truncate">{displayName}</div>
                           {handle && <div className="text-sm text-neutral-400 truncate">@{handle}</div>}
                         </div>
                         <Link
                           href="/dashboard"
-                          className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm pointer-events-auto"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowDropdown(false);
-                          }}
+                          className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
+                          onClick={() => setShowDropdown(false)}
                         >
                           Your Profile
                         </Link>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() => {
                             setShowDropdown(false);
                             setShowSupportChat(true);
                           }}
-                          className="w-full text-left px-4 py-2 text-white hover:bg-neutral-800 transition text-sm pointer-events-auto"
+                          className="w-full text-left px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
                         >
                           Support
                         </button>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() => {
                             setShowDropdown(false);
                             handleLogout();
                           }}
-                          className="w-full text-left px-4 py-2 text-white hover:bg-neutral-800 transition text-sm pointer-events-auto"
+                          className="w-full text-left px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
                         >
                           Sign Out
                         </button>
