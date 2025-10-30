@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #__next { height: 100%; }
+body { @apply bg-black text-white; }
+
+.cta-button { @apply bg-ccaBlue text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition; }
+
+/* Brand gradient background */
+.cca-gradient {
+  background: radial-gradient(1200px 600px at 80% -100px, rgba(27,0,255,0.25), transparent 60%),
+              radial-gradient(800px 400px at 0% -40px, rgba(27,0,255,0.15), transparent 60%),
+              linear-gradient(180deg, #0a0a0a 0%, #000 100%);
+}
+
+
