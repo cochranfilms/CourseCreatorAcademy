@@ -42,6 +42,7 @@ export default function MarketplacePage() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [showListingModal, setShowListingModal] = useState(false);
   const [showMessageToSeller, setShowMessageToSeller] = useState(false);
+  const [myConnectAccountId, setMyConnectAccountId] = useState<string | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -170,6 +171,24 @@ export default function MarketplacePage() {
     return () => unsub();
   }, []);
 
+  // Load current user's Stripe Connect account id
+  useEffect(() => {
+    const loadMyConnect = async () => {
+      if (!firebaseReady || !db || !user) {
+        setMyConnectAccountId(null);
+        return;
+      }
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const data = snap.data() as any;
+        setMyConnectAccountId(data?.connectAccountId || null);
+      } catch {
+        setMyConnectAccountId(null);
+      }
+    };
+    loadMyConnect();
+  }, [user]);
+
   // Fetch user's listings
   useEffect(() => {
     if (!firebaseReady || !db || !user) {
@@ -265,6 +284,12 @@ export default function MarketplacePage() {
   const handlePostListing = async () => {
     if (!user) {
       alert('Please sign in to post a listing.');
+      return;
+    }
+    if (!myConnectAccountId) {
+      if (confirm('You must connect your Stripe account before posting a listing. Go to Connect now?')) {
+        window.location.href = '/creator/onboarding';
+      }
       return;
     }
     if (!title || !price) {
@@ -852,6 +877,12 @@ export default function MarketplacePage() {
                       onClick={async () => {
                         if (!user) { alert('Please sign in to purchase.'); return; }
                         if (!selectedListing?.connectAccountId) { alert('Seller has not connected Stripe yet.'); return; }
+                        if (!myConnectAccountId) {
+                          if (confirm('You must connect your Stripe account before purchasing. Go to Connect now?')) {
+                            window.location.href = '/creator/onboarding';
+                          }
+                          return;
+                        }
                         const totalCents = Math.round((Number(selectedListing.price || 0) + Number(selectedListing.shipping || 0)) * 100);
                         try {
                           const res = await fetch('/api/checkout/listing', {

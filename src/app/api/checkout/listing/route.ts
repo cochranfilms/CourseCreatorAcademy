@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { computeApplicationFeeAmount } from '@/lib/fees';
+import { adminDb } from '@/lib/firebaseAdmin';
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,6 +20,9 @@ export async function POST(req: NextRequest) {
     if (!sellerAccountId || !amount || amount <= 0) {
       return NextResponse.json({ error: 'sellerAccountId and positive amount are required' }, { status: 400 });
     }
+    if (!buyerId) {
+      return NextResponse.json({ error: 'buyerId is required' }, { status: 400 });
+    }
 
     const applicationFeeAmount = computeApplicationFeeAmount(Number(amount));
 
@@ -33,6 +37,26 @@ export async function POST(req: NextRequest) {
       }
     } catch (e: any) {
       return NextResponse.json({ error: e?.message || 'Failed to verify seller account' }, { status: 400 });
+    }
+
+    // Verify the buyer has connected their Stripe account (Connect onboarding completed enough to have an account)
+    try {
+      if (!adminDb) {
+        return NextResponse.json({ error: 'Server not configured for user verification' }, { status: 500 });
+      }
+      const buyerRef = adminDb.collection('users').doc(String(buyerId));
+      const buyerSnap = await buyerRef.get();
+      const buyerData = buyerSnap.exists ? buyerSnap.data() as any : null;
+      const buyerConnectAccountId = buyerData?.connectAccountId;
+      if (!buyerConnectAccountId) {
+        return NextResponse.json({
+          error: 'Buyer must connect a Stripe account before purchasing.'
+        }, { status: 400 });
+      }
+      // Ensure the account exists (we do not require charges_enabled for buyers; existence implies onboarding started)
+      await stripe.accounts.retrieve(String(buyerConnectAccountId));
+    } catch (e: any) {
+      return NextResponse.json({ error: e?.message || 'Failed to verify buyer account' }, { status: 400 });
     }
 
     const session = await stripe.checkout.sessions.create(
