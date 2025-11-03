@@ -35,8 +35,19 @@ export async function GET(req: NextRequest) {
     });
 
     // Enrich with creator info
+    type LegacySub = {
+      id: string;
+      creatorId: string;
+      subscriptionId: string | null;
+      status: string;
+      amount: number;
+      currency: string;
+      createdAt: any;
+      updatedAt: any;
+    };
+
     const enriched = await Promise.all(
-      subscriptions.map(async (sub) => {
+      subscriptions.map(async (sub: LegacySub) => {
         const creatorDoc = await adminDb.collection('legacy_creators').doc(String(sub.creatorId)).get();
         if (creatorDoc.exists()) {
           const creator = creatorDoc.data() as any;
