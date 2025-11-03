@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId') || undefined;
 
-    // Find creator by kitSlug, fallback to doc id
+    // Find creator by kitSlug, fallback to doc id, then by ownerUserId
     let creatorDoc: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot | null = null;
     const bySlug = await adminDb.collection('legacy_creators').where('kitSlug', '==', slug).limit(1).get();
     if (!bySlug.empty) {
@@ -23,6 +23,10 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
     } else {
       const byId = await adminDb.collection('legacy_creators').doc(slug).get();
       if (byId.exists) creatorDoc = byId;
+      if (!creatorDoc) {
+        const byOwner = await adminDb.collection('legacy_creators').where('ownerUserId', '==', slug).limit(1).get();
+        if (!byOwner.empty) creatorDoc = byOwner.docs[0];
+      }
     }
 
     if (!creatorDoc || ("exists" in creatorDoc && !creatorDoc.exists)) {

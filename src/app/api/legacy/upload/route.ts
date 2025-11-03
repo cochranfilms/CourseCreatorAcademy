@@ -16,8 +16,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     }
 
-    // Verify creator exists and is a legacy creator
-    const creatorDoc = await adminDb.collection('legacy_creators').doc(String(creatorId)).get();
+    // Verify creator exists and is a legacy creator. Accept either legacy doc ID or owner user ID.
+    let creatorDoc = await adminDb.collection('legacy_creators').doc(String(creatorId)).get();
+    if (!creatorDoc.exists) {
+      const byOwner = await adminDb.collection('legacy_creators').where('ownerUserId', '==', String(creatorId)).limit(1).get();
+      if (!byOwner.empty) creatorDoc = byOwner.docs[0] as any;
+    }
     if (!creatorDoc.exists) {
       return NextResponse.json({ error: 'Creator not found or not a Legacy creator' }, { status: 404 });
     }
@@ -38,7 +42,8 @@ export async function POST(req: NextRequest) {
     });
 
     // Store upload info in Firestore for tracking
-    await adminDb.collection(`legacy_creators/${creatorId}/uploads`).add({
+    const targetId = (creatorDoc as any).id || String(creatorId);
+    await adminDb.collection(`legacy_creators/${targetId}/uploads`).add({
       uploadId: upload.id,
       uploadUrl: upload.url,
       title: String(title),

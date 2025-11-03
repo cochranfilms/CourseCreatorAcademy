@@ -32,7 +32,7 @@ export default function LegacyUploadPage() {
       setUploading(true);
       setStatus('Requesting upload URL...');
 
-      // creatorId is user.uid for now; if a different mapping is desired, adjust here
+      // creatorId can be the legacy doc id or owner uid; server resolves owner mapping
       const res = await fetch('/api/legacy/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

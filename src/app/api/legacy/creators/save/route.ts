@@ -35,10 +35,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
 
-    // Default kitSlug to uid if not provided
-    if (!updates.kitSlug) updates.kitSlug = uid;
+    // Find the creator document this user owns: prefer ownerUserId mapping; fallback to doc(uid)
+    let targetDocRef = adminDb.collection('legacy_creators').doc(uid);
+    try {
+      const byOwner = await adminDb
+        .collection('legacy_creators')
+        .where('ownerUserId', '==', uid)
+        .limit(1)
+        .get();
+      if (!byOwner.empty) {
+        targetDocRef = byOwner.docs[0].ref;
+      } else {
+        const byId = await adminDb.collection('legacy_creators').doc(uid).get();
+        if (byId.exists) targetDocRef = byId.ref;
+      }
+    } catch {}
 
-    await adminDb.collection('legacy_creators').doc(uid).set({ ...updates }, { merge: true });
+    // Ensure kitSlug exists
+    if (!updates.kitSlug) {
+      const snap = await targetDocRef.get();
+      const existing = snap.exists ? (snap.data() as any) : {};
+      updates.kitSlug = existing.kitSlug || uid;
+    }
+
+    // Always stamp ownerUserId for linkage
+    updates.ownerUserId = uid;
+    await targetDocRef.set({ ...updates, updatedAt: new Date() }, { merge: true });
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
