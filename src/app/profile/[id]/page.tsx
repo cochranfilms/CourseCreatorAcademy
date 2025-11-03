@@ -264,6 +264,10 @@ export default function ProfilePage() {
   const displayName = profile?.displayName || 'Creator';
   const handle = profile?.handle;
   const photoURL = profile?.photoURL;
+  const specialtyList = (profile?.specialties || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
 
   return (
     <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
@@ -348,48 +352,105 @@ export default function ProfilePage() {
       {/* About Section */}
       {(profile?.title || profile?.specialties || profile?.location || profile?.bio || (profile?.skills && profile.skills.length > 0)) && (
         <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 rounded-lg">
-          <h2 className="text-xl font-bold text-white mb-4">About</h2>
-          <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-5">
+            <div className="w-6 h-6 rounded-md bg-ccaBlue/20 border border-ccaBlue/30 text-ccaBlue flex items-center justify-center">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12zm0 0c-4.97 0-9 2.239-9 5v1.5A1.5 1.5 0 004.5 20h15a1.5 1.5 0 001.5-1.5V17c0-2.761-4.03-5-9-5z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-white">About</h2>
+          </div>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
             {profile?.title && (
-              <div>
-                <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-1">Title</h3>
-                <p className="text-neutral-300">{profile.title}</p>
-              </div>
-            )}
-            {profile?.specialties && (
-              <div>
-                <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-1">Specialties</h3>
-                <p className="text-neutral-300">{profile.specialties}</p>
-              </div>
-            )}
-            {profile?.location && (
-              <div>
-                <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-1">Location</h3>
-                <p className="text-neutral-300">{profile.location}</p>
-              </div>
-            )}
-            {profile?.bio && (
-              <div>
-                <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-1">Bio</h3>
-                <p className="text-neutral-300 whitespace-pre-wrap">{profile.bio}</p>
-              </div>
-            )}
-            {profile?.skills && profile.skills.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-2">Skills</h3>
-                <div className="flex flex-wrap gap-2">
-                  {profile.skills.map((skill, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-neutral-800 border border-neutral-700 rounded-full text-sm text-neutral-300"
-                    >
-                      {skill}
-                    </span>
-                  ))}
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 text-neutral-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7V5a2 2 0 012-2h8a2 2 0 012 2v2M6 7h12M6 7l-2 7h16l-2-7M6 21h12" />
+                  </svg>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Title</dt>
+                  <dd className="text-neutral-200 mt-1">{profile.title}</dd>
                 </div>
               </div>
             )}
-          </div>
+
+            {(profile?.specialties && specialtyList.length > 0) && (
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 text-neutral-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L3 20l3-6.75M21 7l-6 6-4-4-8 8" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Specialties</dt>
+                  <dd className="mt-1">
+                    <div className="flex flex-wrap gap-2">
+                      {specialtyList.map((s, i) => (
+                        <span key={`${s}-${i}`} className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-300 border border-red-500/30">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </dd>
+                </div>
+              </div>
+            )}
+
+            {profile?.location && (
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 text-neutral-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Location</dt>
+                  <dd className="text-neutral-200 mt-1">{profile.location}</dd>
+                </div>
+              </div>
+            )}
+
+            {profile?.bio && (
+              <div className="flex items-start gap-3 sm:col-span-2">
+                <div className="mt-0.5 text-neutral-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8M8 12h8M8 8h8M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Bio</dt>
+                  <dd className="text-neutral-300 mt-1 whitespace-pre-wrap leading-relaxed">{profile.bio}</dd>
+                </div>
+              </div>
+            )}
+
+            {profile?.skills && profile.skills.length > 0 && (
+              <div className="flex items-start gap-3 sm:col-span-2">
+                <div className="mt-0.5 text-neutral-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6l3 6H9l3-6zm-7 9h14l-7 3-7-3z" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">Skills</dt>
+                  <dd>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.skills.map((skill, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 rounded-full text-xs font-medium bg-neutral-800/70 text-neutral-200 border border-neutral-700 hover:border-neutral-600 transition"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </dd>
+                </div>
+              </div>
+            )}
+          </dl>
         </div>
       )}
 

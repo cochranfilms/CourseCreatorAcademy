@@ -110,7 +110,7 @@ async function main() {
       } else {
         skipped++;
       }
-    } catch (error: any) {
+    } catch (error) {
       if (error.code === 'auth/user-not-found') {
         skipped++;
         console.log(`Skipping ${userId}: user not found in Firebase Auth`);

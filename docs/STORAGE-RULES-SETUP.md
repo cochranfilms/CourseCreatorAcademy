@@ -13,10 +13,11 @@ You need to update your Firebase Storage security rules to allow listing image u
 
 ### What Changed:
 
-The rules now include a new path for listing images:
+The rules now include explicit paths for both listing and project images:
 - Path: `listing-images/{userId}/{allPaths=**}`
-- Users can upload images to their own folder
-- Users can read any listing image
+- Path: `project-images/{userId}/{allPaths=**}`
+- Users can upload images to their own folder only
+- Users can read any image
 - Users can delete their own images
 - Max file size: 5MB
 - Allowed types: images only

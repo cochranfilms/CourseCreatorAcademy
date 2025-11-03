@@ -10,7 +10,7 @@ import { ProfileImageUpload } from '@/components/ProfileImageUpload';
 import Link from 'next/link';
 import OrdersTab from './OrdersTab';
 import OnboardingTab from './OnboardingTab';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 type UserProfile = {
   displayName?: string;
@@ -442,9 +442,21 @@ export default function DashboardPage() {
       let imageUrl = '';
 
       if (projectImage && storage) {
-        const storageRef = ref(storage, `project-images/${user.uid}/${Date.now()}_${projectImage.name}`);
-        await uploadBytesResumable(storageRef, projectImage);
-        imageUrl = await getDownloadURL(storageRef);
+        try {
+          const storageRef = ref(storage, `project-images/${user.uid}/${Date.now()}_${projectImage.name}`);
+          await uploadBytes(storageRef, projectImage);
+          imageUrl = await getDownloadURL(storageRef);
+        } catch (err: any) {
+          const code = err?.code || '';
+          if (code === 'storage/unauthorized') {
+            console.error('Project image upload blocked by Storage rules or App Check.');
+            alert('Upload blocked. Ask the admin to enable project image uploads in Firebase Storage rules and ensure App Check is configured for this app.');
+          } else {
+            console.error('Upload failed:', err);
+            alert('Failed to upload project image.');
+          }
+          throw err;
+        }
       }
 
       await addDoc(collection(db, 'projects'), {
