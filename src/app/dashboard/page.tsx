@@ -504,7 +504,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full overflow-x-hidden">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 w-full overflow-x-hidden">
         {/* Profile Section */}
         <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 w-full overflow-x-hidden">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 w-full">
@@ -598,12 +598,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Sub-Navigation Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide w-full">
+        <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-hide w-full -mx-3 sm:mx-0 px-3 sm:px-0">
           {(['projects', 'social', 'email', 'privacy', 'orders', 'onboarding'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 sm:px-6 py-2 text-sm font-medium transition whitespace-nowrap flex-shrink-0 ${
+              className={`px-3 sm:px-4 md:px-6 py-2 text-xs sm:text-sm font-medium transition whitespace-nowrap flex-shrink-0 rounded-lg ${
                 activeTab === tab
                   ? 'bg-neutral-800/60 backdrop-blur-sm text-white border border-neutral-700/50'
                   : 'bg-neutral-900/60 backdrop-blur-sm text-neutral-400 hover:text-white border border-neutral-800/50'
@@ -643,7 +643,7 @@ export default function DashboardPage() {
                 </button>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {projects.map((project) => (
                   <div key={project.id} className="border border-neutral-800 bg-neutral-900 p-4 hover:border-neutral-700 transition">
                     {project.imageUrl && (
@@ -898,7 +898,7 @@ export default function DashboardPage() {
                 View All →
               </Link>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {listings.slice(0, 3).map((listing) => (
                 <div
                   key={listing.id}
@@ -982,15 +982,15 @@ export default function DashboardPage() {
 
         {/* Edit Profile Modal */}
         {showEditModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="bg-neutral-950 border border-neutral-800  p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 sm:p-4">
+            <div className="bg-neutral-950 border border-neutral-800 p-4 sm:p-6 max-w-2xl w-full mx-2 sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-lg">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-semibold">Edit Profile</h2>
+                <h2 className="text-xl sm:text-2xl font-semibold pr-2">Edit Profile</h2>
                 <button
                   onClick={() => setShowEditModal(false)}
-                  className="text-neutral-400 hover:text-white transition"
+                  className="text-neutral-400 hover:text-white transition p-1 rounded-lg hover:bg-neutral-800 flex-shrink-0"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1118,18 +1118,18 @@ export default function DashboardPage() {
 
         {/* Add New Project Modal */}
         {showProjectModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="bg-neutral-950 border border-neutral-800 p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold">Add New Project</h2>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 sm:p-4">
+            <div className="bg-neutral-950 border border-neutral-800 p-4 sm:p-6 max-w-3xl w-full mx-2 sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-lg">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-semibold pr-2">Add New Project</h2>
                 <button
                   onClick={() => {
                     resetProjectForm();
                     setShowProjectModal(false);
                   }}
-                  className="text-neutral-400 hover:text-white transition"
+                  className="text-neutral-400 hover:text-white transition p-1 rounded-lg hover:bg-neutral-800 flex-shrink-0"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1159,13 +1159,13 @@ export default function DashboardPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-2 text-neutral-300">Project Content</label>
-                  <div className="flex gap-2 mb-2">
+                  <div className="flex flex-wrap gap-2 mb-2">
                     {['H2', 'P', 'B', 'I', 'UL'].map((format) => (
                       <button
                         key={format}
                         type="button"
                         onClick={() => handleFormatText(format)}
-                        className="px-3 py-1 bg-neutral-800 border border-neutral-700 text-white hover:bg-neutral-700 transition text-sm"
+                        className="px-2 sm:px-3 py-1 bg-neutral-800 border border-neutral-700 text-white hover:bg-neutral-700 transition text-xs sm:text-sm"
                       >
                         {format}
                       </button>

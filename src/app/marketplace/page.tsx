@@ -344,99 +344,104 @@ export default function MarketplacePage() {
   const displayListings = filteredListings.length > 0 ? filteredListings : listings;
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold">Marketplace</h1>
-      </div>
-
-      {/* Search and Filter Bar */}
-      <div className="flex flex-wrap gap-3 items-center mb-6">
-        <div className="flex-1 min-w-[260px] relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search for gear, equipment..."
-            className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
-          />
-        </div>
-        
-        <div className="relative">
-          <select
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-            className="px-4 py-2 bg-neutral-900 border border-neutral-800 text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue appearance-none pr-8"
-          >
-            {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-          </select>
-          <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+    <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+        <div className="mb-4 sm:mb-6 md:mb-8">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2">Marketplace</h1>
         </div>
 
-        <div className="relative">
-          <select
-            value={selectedCondition}
-            onChange={(e) => setSelectedCondition(e.target.value)}
-            className="px-4 py-2 bg-neutral-900 border border-neutral-800 text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue appearance-none pr-8"
-          >
-            {conditions.map(cond => <option key={cond} value={cond}>{cond}</option>)}
-          </select>
-          <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+        {/* Search and Filter Bar */}
+        <div className="space-y-3 mb-6 sm:mb-8">
+          {/* Search Bar - Full Width on Mobile */}
+          <div className="relative w-full">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for gear, equipment..."
+              className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-ccaBlue transition-all text-sm sm:text-base"
+            />
+          </div>
+          
+          {/* Filters Row - Scrollable on Mobile */}
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-3 sm:mx-0 px-3 sm:px-0">
+            <div className="relative flex-shrink-0">
+              <select
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="px-3 sm:px-4 py-2 sm:py-2.5 bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-ccaBlue appearance-none pr-7 sm:pr-8 transition-all text-sm sm:text-base whitespace-nowrap"
+              >
+                {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+              </select>
+              <svg className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+
+            <div className="relative flex-shrink-0">
+              <select
+                value={selectedCondition}
+                onChange={(e) => setSelectedCondition(e.target.value)}
+                className="px-3 sm:px-4 py-2 sm:py-2.5 bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-ccaBlue appearance-none pr-7 sm:pr-8 transition-all text-sm sm:text-base whitespace-nowrap"
+              >
+                {conditions.map(cond => <option key={cond} value={cond}>{cond}</option>)}
+              </select>
+              <svg className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+
+            <button
+              onClick={() => {
+                if (user) {
+                  setShowManageModal(true);
+                } else {
+                  alert('Please sign in to view your listings.');
+                }
+              }}
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg text-white hover:bg-neutral-800/80 transition-all font-medium text-sm sm:text-base whitespace-nowrap flex-shrink-0"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span className="hidden sm:inline">My Listings</span>
+              <span className="sm:hidden">Listings</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (user) {
+                  const needs = termsRequiredVersion && (!hasAcceptedTerms || userTermsVersion !== termsRequiredVersion);
+                  if (needs) {
+                    setShowTermsModal(true);
+                  } else {
+                    setShowPostForm(true);
+                  }
+                } else {
+                  alert('Please sign in to sell an item.');
+                }
+              }}
+              className="px-4 sm:px-6 py-2 sm:py-2.5 bg-red-500 text-white hover:bg-red-600 transition-all font-semibold rounded-lg shadow-lg shadow-red-500/20 text-sm sm:text-base whitespace-nowrap flex-shrink-0"
+            >
+              Sell Item
+            </button>
+          </div>
         </div>
-
-        <button
-          onClick={() => {
-            if (user) {
-              setShowManageModal(true);
-            } else {
-              alert('Please sign in to view your listings.');
-            }
-          }}
-          className="flex items-center gap-2 px-4 py-2 border border-neutral-800 bg-neutral-900 text-white hover:bg-neutral-800 transition-all"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          My Listings
-        </button>
-
-        <button
-          onClick={() => {
-            if (user) {
-              const needs = termsRequiredVersion && (!hasAcceptedTerms || userTermsVersion !== termsRequiredVersion);
-              if (needs) {
-                setShowTermsModal(true);
-              } else {
-                setShowPostForm(true);
-              }
-            } else {
-              alert('Please sign in to sell an item.');
-            }
-          }}
-          className="px-6 py-2 bg-red-500 text-white hover:bg-red-600 transition-all font-medium"
-        >
-          Sell Item
-        </button>
-      </div>
 
       {/* Post Listing Modal */}
       {showPostForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-neutral-950 border border-neutral-800 p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-semibold">{editingListing ? 'Edit Listing' : 'Post a New Listing'}</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 sm:p-4">
+          <div className="bg-neutral-950 border border-neutral-800 p-4 sm:p-6 max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-lg shadow-2xl">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-white pr-2">{editingListing ? 'Edit Listing' : 'Post a New Listing'}</h2>
               <button
                 onClick={() => {
                   resetForm();
                   setShowPostForm(false);
                 }}
-                className="text-neutral-400 hover:text-white transition"
+                className="text-neutral-400 hover:text-white transition p-1 rounded-lg hover:bg-neutral-800 flex-shrink-0"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -444,63 +449,63 @@ export default function MarketplacePage() {
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium mb-2 text-neutral-300">Images</label>
+                <label className="block text-sm font-semibold mb-2 text-neutral-200">Images</label>
                 <ListingImageUpload images={images} onImagesChange={setImages} />
-                <p className="text-xs text-neutral-500 mt-1">First image will be used as the main image</p>
+                <p className="text-xs text-neutral-500 mt-2">First image will be used as the main image</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-neutral-300">Title *</label>
+                <label className="block text-sm font-semibold mb-2 text-neutral-200">Title *</label>
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Canon 6D Mark II (Body)"
-                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                  className="w-full bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg px-4 py-3 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-ccaBlue transition-all"
                 />
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-neutral-300">Price ($) *</label>
+                  <label className="block text-sm font-semibold mb-2 text-neutral-200">Price ($) *</label>
                   <input
                     type="number"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     placeholder="1100"
-                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    className="w-full bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg px-4 py-3 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-ccaBlue transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-neutral-300">Shipping ($)</label>
+                  <label className="block text-sm font-semibold mb-2 text-neutral-200">Shipping ($)</label>
                   <input
                     type="number"
                     value={shipping}
                     onChange={(e) => setShipping(e.target.value)}
                     placeholder="35 (or 0 for free)"
-                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    className="w-full bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg px-4 py-3 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-ccaBlue transition-all"
                   />
                 </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-neutral-300">Condition *</label>
+                  <label className="block text-sm font-semibold mb-2 text-neutral-200">Condition *</label>
                   <select
                     value={condition}
                     onChange={(e) => setCondition(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    className="w-full bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-ccaBlue transition-all"
                   >
                     {conditions.slice(1).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-neutral-300">Location</label>
+                  <label className="block text-sm font-semibold mb-2 text-neutral-200">Location</label>
                   <select
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    className="w-full bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-ccaBlue transition-all"
                   >
                     {locations.slice(1).map(loc => <option key={loc} value={loc}>{loc}</option>)}
                   </select>
@@ -508,20 +513,20 @@ export default function MarketplacePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-neutral-300">Description</label>
+                <label className="block text-sm font-semibold mb-2 text-neutral-200">Description</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe your item, its condition, what's included..."
                   rows={4}
-                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
+                  className="w-full bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg px-4 py-3 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-ccaBlue resize-none transition-all"
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={handlePostListing}
-                  className="px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
+                  className="px-6 py-3 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-semibold transition-all rounded-lg shadow-lg shadow-white/10"
                 >
                   {editingListing ? 'Update Listing' : 'Post Listing'}
                 </button>
@@ -530,7 +535,7 @@ export default function MarketplacePage() {
                     resetForm();
                     setShowPostForm(false);
                   }}
-                  className="px-6 py-2 bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition-all"
+                  className="px-6 py-3 bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 text-neutral-300 hover:bg-neutral-800/80 transition-all rounded-lg"
                 >
                   Cancel
                 </button>
@@ -542,13 +547,13 @@ export default function MarketplacePage() {
 
       {/* My Listings Modal */}
       {showManageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-neutral-950 border border-neutral-800 p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-semibold">Manage Your Listings</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-neutral-950 border border-neutral-800 p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto rounded-lg">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Manage Your Listings</h2>
               <button
                 onClick={() => setShowManageModal(false)}
-                className="text-neutral-400 hover:text-white transition"
+                className="text-neutral-400 hover:text-white transition p-1 rounded-lg hover:bg-neutral-800"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -558,37 +563,37 @@ export default function MarketplacePage() {
             <p className="text-neutral-400 mb-6">View, edit, or remove your listings.</p>
             {myListings.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-neutral-400 mb-4">You don't have any listings yet.</p>
+                <p className="text-neutral-300 mb-4 font-medium">You don't have any listings yet.</p>
                 <button
                   onClick={() => {
                     setShowManageModal(false);
                     setShowPostForm(true);
                   }}
-                  className="px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
+                  className="px-6 py-3 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-semibold transition-all rounded-lg shadow-lg shadow-white/10"
                 >
                   Post Your First Item
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {myListings.map((listing) => (
-                  <div key={listing.id} className="p-4 border border-neutral-800 bg-neutral-900">
+                  <div key={listing.id} className="p-4 border border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm rounded-lg hover:bg-neutral-900/70 transition-all">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-lg">{listing.title}</h3>
-                        <p className="text-sm text-neutral-400">${listing.price}{listing.shipping ? ` + $${listing.shipping} shipping` : ' (Free shipping)'}</p>
+                        <h3 className="font-bold text-lg text-white mb-1">{listing.title}</h3>
+                        <p className="text-sm text-neutral-300">${listing.price.toLocaleString()}{listing.shipping ? ` + $${listing.shipping} shipping` : ' (Free shipping)'}</p>
                         <p className="text-xs text-neutral-500 mt-1">{listing.condition}</p>
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEditListing(listing)}
-                          className="px-3 py-1 bg-ccaBlue/10 border border-ccaBlue/30 text-ccaBlue hover:bg-ccaBlue/20 transition text-sm"
+                          className="px-4 py-2 bg-ccaBlue/10 border border-ccaBlue/30 text-ccaBlue hover:bg-ccaBlue/20 transition text-sm font-medium rounded-lg"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteListing(listing.id)}
-                          className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition text-sm"
+                          className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition text-sm font-medium rounded-lg"
                         >
                           Delete
                         </button>
@@ -601,7 +606,7 @@ export default function MarketplacePage() {
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setShowManageModal(false)}
-                className="px-6 py-2 bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition-all"
+                className="px-6 py-3 bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 text-neutral-300 hover:bg-neutral-800/80 transition-all rounded-lg"
               >
                 Close
               </button>
@@ -612,14 +617,14 @@ export default function MarketplacePage() {
 
       {/* Listings Grid */}
       {displayListings.length === 0 ? (
-        <div className="text-center py-12 border border-neutral-800 bg-neutral-950">
-          <p className="text-neutral-400 text-lg">No listings found.</p>
+        <div className="text-center py-12 sm:py-16 border border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm rounded-lg">
+          <p className="text-neutral-300 text-base sm:text-lg font-medium">No listings found.</p>
           {searchQuery && (
-            <p className="text-neutral-500 text-sm mt-2">Try adjusting your search or filter criteria.</p>
+            <p className="text-neutral-500 text-xs sm:text-sm mt-2">Try adjusting your search or filter criteria.</p>
           )}
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {displayListings.map((listing) => {
             const imageIndex = currentImageIndex[listing.id] || 0;
             const listingImages = listing.images && listing.images.length > 0 ? listing.images : [];
@@ -628,16 +633,16 @@ export default function MarketplacePage() {
             return (
               <div 
                 key={listing.id} 
-                className=" overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-all cursor-pointer"
+                className="group overflow-hidden rounded-lg border border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm hover:border-neutral-700 hover:shadow-xl hover:shadow-black/20 transition-all cursor-pointer transform hover:-translate-y-1"
                 onClick={() => { setSelectedListing(listing); setShowListingModal(true); }}
               >
                 {/* Image Section */}
-                <div className="relative h-64 bg-neutral-900 group">
+                <div className="relative h-64 bg-neutral-800 overflow-hidden">
                   {listing.images && listing.images.length > 0 ? (
                     <img
                       src={listing.images[imageIndex] || listing.images[0]}
                       alt={listing.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"
                       decoding="async"
                       sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -662,10 +667,10 @@ export default function MarketplacePage() {
                             [listing.id]: imageIndex > 0 ? imageIndex - 1 : listingImages.length - 1
                           });
                         }}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/60 hover:bg-black/80 backdrop-blur-sm flex items-center justify-center text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
                       <button
@@ -676,10 +681,10 @@ export default function MarketplacePage() {
                             [listing.id]: imageIndex < listingImages.length - 1 ? imageIndex + 1 : 0
                           });
                         }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/60 hover:bg-black/80 backdrop-blur-sm flex items-center justify-center text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                         </svg>
                       </button>
                     </>
@@ -687,12 +692,12 @@ export default function MarketplacePage() {
 
                   {/* Image Indicators */}
                   {hasMultipleImages && (
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
                       {listingImages.map((_, idx) => (
                         <div
                           key={idx}
-                          className={`w-1.5 h-1.5 transition-all ${
-                            idx === imageIndex ? 'bg-white' : 'bg-white/50'
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            idx === imageIndex ? 'bg-white' : 'bg-white/40'
                           }`}
                         />
                       ))}
@@ -701,33 +706,33 @@ export default function MarketplacePage() {
                 </div>
 
                 {/* Content Section */}
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-1 line-clamp-1">{listing.title}</h3>
+                <div className="p-4 sm:p-5">
+                  <h3 className="font-bold text-base sm:text-lg mb-2 line-clamp-1 text-white group-hover:text-ccaBlue transition-colors">{listing.title}</h3>
                   
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xl font-bold text-white">${listing.price}</span>
+                  <div className="flex items-baseline gap-2 mb-2 sm:mb-3">
+                    <span className="text-xl sm:text-2xl font-extrabold text-white">${listing.price.toLocaleString()}</span>
                     {listing.shipping !== undefined && listing.shipping > 0 ? (
-                      <span className="text-sm text-neutral-400">+ ${listing.shipping} shipping</span>
+                      <span className="text-xs sm:text-sm text-neutral-400">+ ${listing.shipping} shipping</span>
                     ) : (
-                      <span className="text-sm text-green-400">Free shipping</span>
+                      <span className="text-xs sm:text-sm text-green-400 font-medium">Free shipping</span>
                     )}
                   </div>
 
                   {listing.description && (
-                    <p className="text-sm text-neutral-300 mb-3 line-clamp-2">{listing.description}</p>
+                    <p className="text-xs sm:text-sm text-neutral-300 mb-3 sm:mb-4 line-clamp-2 leading-relaxed">{listing.description}</p>
                   )}
 
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-800">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-neutral-800 flex items-center justify-center text-xs font-semibold text-neutral-400">
+                  <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-neutral-800/50">
+                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-neutral-800 rounded-full flex items-center justify-center text-xs font-semibold text-neutral-300 border border-neutral-700 flex-shrink-0">
                         {getInitials(listing.creatorName || '', listing.creatorEmail)}
                       </div>
-                      <div className="text-xs text-neutral-500">
-                        <div>{listing.creatorName || listing.creatorEmail?.split('@')[0] || 'Creator'}</div>
-                        <div>{formatDate(listing.createdAt)}</div>
+                      <div className="text-xs text-neutral-400 min-w-0">
+                        <div className="font-medium text-neutral-300 truncate">{listing.creatorName || listing.creatorEmail?.split('@')[0] || 'Creator'}</div>
+                        <div className="text-xs">{formatDate(listing.createdAt)}</div>
                       </div>
                     </div>
-                    <span className="px-2 py-1 rounded text-xs font-medium bg-neutral-800 text-neutral-300 border border-neutral-700">
+                    <span className="px-2 sm:px-3 py-1 rounded-md text-xs font-semibold bg-neutral-800/80 text-neutral-200 border border-neutral-700/50 flex-shrink-0 ml-2">
                       {listing.condition}
                     </span>
                   </div>
@@ -740,20 +745,20 @@ export default function MarketplacePage() {
 
       {/* Listing Detail Modal */}
       {showListingModal && selectedListing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setShowListingModal(false)}>
-          <div className="relative bg-neutral-950 border border-neutral-800 max-w-5xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4" onClick={() => setShowListingModal(false)}>
+          <div className="relative bg-neutral-950 border border-neutral-800 max-w-5xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-lg shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setShowListingModal(false)}
-              className="absolute right-3 top-3 z-10 text-neutral-400 hover:text-white"
+              className="absolute right-2 sm:right-4 top-2 sm:top-4 z-10 text-neutral-400 hover:text-white transition p-2 rounded-lg hover:bg-neutral-800"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
-            <div className="grid md:grid-cols-2 gap-0">
+            <div className="grid md:grid-cols-2 gap-0 flex-1 overflow-hidden">
               {/* Left: Image gallery */}
-              <div className="relative bg-neutral-900">
+              <div className="relative bg-neutral-900 min-h-[250px] sm:min-h-[300px] md:min-h-0">
                 {selectedListing.images && selectedListing.images.length > 0 ? (
                   <Image
                     src={selectedListing.images[ currentImageIndex[selectedListing.id] || 0 ] || selectedListing.images[0]}
@@ -797,47 +802,49 @@ export default function MarketplacePage() {
               </div>
 
               {/* Right: Details */}
-              <div className="p-6 space-y-4 overflow-y-auto">
-                <h2 className="text-2xl font-bold">{selectedListing.title}</h2>
-                <div className="text-3xl font-extrabold">${selectedListing.price}</div>
-                <div className="text-sm text-neutral-400">{selectedListing.shipping ? `+$${selectedListing.shipping} shipping` : 'Free shipping'}</div>
-                <div className="pt-4 border-t border-neutral-800" />
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white break-words">{selectedListing.title}</h2>
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <div className="text-3xl sm:text-4xl font-extrabold text-white">${selectedListing.price.toLocaleString()}</div>
+                  <div className="text-xs sm:text-sm text-neutral-400">{selectedListing.shipping ? `+$${selectedListing.shipping} shipping` : <span className="text-green-400 font-medium">Free shipping</span>}</div>
+                </div>
+                <div className="pt-2 border-t border-neutral-800/50" />
                 <div>
-                  <div className="text-sm text-neutral-400">Condition</div>
-                  <div className="font-medium">{selectedListing.condition}</div>
+                  <div className="text-xs text-neutral-400 uppercase tracking-wide mb-1">Condition</div>
+                  <div className="font-semibold text-white text-sm sm:text-base">{selectedListing.condition}</div>
                 </div>
                 {selectedListing.location && (
                   <div>
-                    <div className="text-sm text-neutral-400">Location</div>
-                    <div className="font-medium">{selectedListing.location}</div>
+                    <div className="text-xs text-neutral-400 uppercase tracking-wide mb-1">Location</div>
+                    <div className="font-semibold text-white text-sm sm:text-base">{selectedListing.location}</div>
                   </div>
                 )}
                 {selectedListing.description && (
                   <div>
-                    <div className="text-sm text-neutral-400 mb-1">Description</div>
-                    <p className="text-neutral-300 whitespace-pre-line">{selectedListing.description}</p>
+                    <div className="text-xs text-neutral-400 uppercase tracking-wide mb-2">Description</div>
+                    <p className="text-sm sm:text-base text-neutral-300 whitespace-pre-line leading-relaxed">{selectedListing.description}</p>
                   </div>
                 )}
 
-                <div className="pt-2 flex items-center gap-3">
-                  <div className="w-8 h-8 bg-neutral-800 flex items-center justify-center text-xs font-semibold text-neutral-400">
+                <div className="pt-2 flex items-center gap-2 sm:gap-3 pb-2">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-neutral-800 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold text-neutral-300 border border-neutral-700 flex-shrink-0">
                     {getInitials(selectedListing.creatorName || '', selectedListing.creatorEmail)}
                   </div>
-                  <div className="text-sm text-neutral-400">
-                    <div>Listed by {selectedListing.creatorName || selectedListing.creatorEmail?.split('@')[0] || 'Creator'}</div>
+                  <div className="text-xs sm:text-sm text-neutral-400 min-w-0 flex-1">
+                    <div className="font-medium text-neutral-300 truncate">Listed by {selectedListing.creatorName || selectedListing.creatorEmail?.split('@')[0] || 'Creator'}</div>
                     <div className="text-xs">{formatDate(selectedListing.createdAt)}</div>
                   </div>
                 </div>
 
                 <div className="pt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       onClick={() => {
                         if (!user) { alert('Please sign in to message the seller.'); return; }
                         setShowListingModal(false);
                         setShowMessageToSeller(true);
                       }}
-                      className="w-full bg-neutral-900 border border-neutral-700 hover:bg-neutral-800 text-white font-semibold py-3 rounded-lg transition"
+                      className="w-full bg-neutral-900/80 backdrop-blur-sm border border-neutral-700 hover:bg-neutral-800 text-white font-semibold py-2.5 sm:py-3 rounded-lg transition shadow-lg text-sm sm:text-base"
                     >
                       Message Seller
                     </button>
@@ -867,7 +874,7 @@ export default function MarketplacePage() {
                           alert(e.message || 'Failed to start checkout');
                         }
                       }}
-                      className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 sm:py-3 rounded-lg transition shadow-lg shadow-red-600/20 text-sm sm:text-base"
                     >
                       Buy Now
                     </button>
