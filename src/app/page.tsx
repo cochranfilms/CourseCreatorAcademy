@@ -287,6 +287,13 @@ export default function Page() {
             </div>
           ))}
         </div>
+
+        {/* Personalized Creator Kits rail (only for subscribed kits) */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* Component will show nothing if the user has no Legacy+ subs */}
+        {typeof window !== 'undefined' && (() => {
+          const C = require('@/components/CreatorKitsRail').CreatorKitsRail; return <C />;
+        })()}
       </section>
 
       {/* Testimonials Section */}

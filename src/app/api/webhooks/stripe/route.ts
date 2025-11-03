@@ -42,37 +42,92 @@ export async function POST(req: NextRequest) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object;
+      const isSubscription = (session.mode === 'subscription') || Boolean(session.subscription);
       console.log('checkout.session.completed', {
         isConnectEvent,
         account: event.account,
         sessionId: session.id,
         amount_total: session.amount_total,
         currency: session.currency,
+        mode: session.mode,
+        subscription: session.subscription,
         metadata: session.metadata
       });
       try {
-        // Only create orders for connect events (direct charges)
-        const now = Date.now();
-        const deadlineMs = 72 * 60 * 60 * 1000; // 72h
-        const order = {
-          checkoutSessionId: session.id,
-          paymentIntentId: session.payment_intent || null,
-          amount: session.amount_total || 0,
-          currency: session.currency || 'usd',
-          application_fee_amount: Number(session.metadata?.applicationFeeAmount || 0),
-          listingId: session.metadata?.listingId || null,
-          listingTitle: session.metadata?.listingTitle || null,
-          buyerId: session.metadata?.buyerId || null,
-          sellerId: session.metadata?.sellerId || null,
-          sellerAccountId: event.account || null,
-          shippingDetails: session.shipping_details || null,
-          status: 'awaiting_tracking',
-          createdAt: FieldValue.serverTimestamp(),
-          trackingDeadlineAtMs: now + deadlineMs,
-        };
-        await adminDb.collection('orders').add(order);
+        if (isSubscription && isConnectEvent && adminDb) {
+          // Legacy+ subscription flow
+          const creatorId = session.metadata?.legacyCreatorId || null;
+          const buyerId = session.metadata?.buyerId || null;
+          if (creatorId && buyerId) {
+            const subId = session.subscription || null;
+            const subDoc = {
+              userId: String(buyerId),
+              creatorId: String(creatorId),
+              subscriptionId: subId,
+              checkoutSessionId: session.id,
+              currency: session.currency || 'usd',
+              amount: session.amount_total || 1000,
+              status: 'active',
+              sellerAccountId: event.account || null,
+              createdAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
+            };
+            await adminDb.collection('legacySubscriptions').add(subDoc);
+          }
+        } else {
+          // Marketplace order (existing)
+          const now = Date.now();
+          const deadlineMs = 72 * 60 * 60 * 1000; // 72h
+          const order = {
+            checkoutSessionId: session.id,
+            paymentIntentId: session.payment_intent || null,
+            amount: session.amount_total || 0,
+            currency: session.currency || 'usd',
+            application_fee_amount: Number(session.metadata?.applicationFeeAmount || 0),
+            listingId: session.metadata?.listingId || null,
+            listingTitle: session.metadata?.listingTitle || null,
+            buyerId: session.metadata?.buyerId || null,
+            sellerId: session.metadata?.sellerId || null,
+            sellerAccountId: event.account || null,
+            shippingDetails: session.shipping_details || null,
+            status: 'awaiting_tracking',
+            createdAt: FieldValue.serverTimestamp(),
+            trackingDeadlineAtMs: now + deadlineMs,
+          };
+          await adminDb.collection('orders').add(order);
+        }
       } catch (err) {
-        console.error('Failed to create order:', err);
+        console.error('Webhook handling error (checkout.session.completed):', err);
+      }
+      break;
+    }
+    case 'customer.subscription.updated': {
+      const sub = event.data.object;
+      console.log('customer.subscription.updated', { account: event.account, id: sub.id, status: sub.status });
+      try {
+        if (adminDb) {
+          const q = await adminDb.collection('legacySubscriptions').where('subscriptionId', '==', sub.id).limit(1).get();
+          if (!q.empty) {
+            await q.docs[0].ref.set({ status: sub.status || 'active', updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to update legacySubscription on sub.update', err);
+      }
+      break;
+    }
+    case 'customer.subscription.deleted': {
+      const sub = event.data.object;
+      console.log('customer.subscription.deleted', { account: event.account, id: sub.id, status: sub.status });
+      try {
+        if (adminDb) {
+          const q = await adminDb.collection('legacySubscriptions').where('subscriptionId', '==', sub.id).limit(1).get();
+          if (!q.empty) {
+            await q.docs[0].ref.set({ status: 'canceled', updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to update legacySubscription on sub.delete', err);
       }
       break;
     }

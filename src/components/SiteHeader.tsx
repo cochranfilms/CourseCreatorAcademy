@@ -12,6 +12,7 @@ import { Messages } from './Messages';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessagesCount';
 import { Search } from './Search';
 import { SavedItems } from './SavedItems';
+import { LegacyUpgradeModal } from './LegacyUpgradeModal';
 
 const links = [
   { href: '/home', label: "What's New" },
@@ -41,6 +42,7 @@ export function SiteHeader() {
   const [showMessages, setShowMessages] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showSavedItems, setShowSavedItems] = useState(false);
+  const [showLegacy, setShowLegacy] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -204,7 +206,7 @@ export function SiteHeader() {
                   <span className="hidden md:inline text-sm text-neutral-400">Your Creator:</span>
                   
                   {/* Upgrade Button */}
-                  <button className="hidden md:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition font-medium text-sm rounded-lg whitespace-nowrap">
+                  <button onClick={() => setShowLegacy(true)} className="hidden md:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition font-medium text-sm rounded-lg whitespace-nowrap">
                     Upgrade to Legacy+
                   </button>
 
@@ -361,6 +363,9 @@ export function SiteHeader() {
       {/* Saved Items Component */}
       {user && <SavedItems isOpen={showSavedItems} onClose={() => setShowSavedItems(false)} />}
 
+      {/* Legacy Upgrade Modal */}
+      {user && <LegacyUpgradeModal isOpen={showLegacy} onClose={() => setShowLegacy(false)} />}
+
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && user && typeof window !== 'undefined' && createPortal(
         <>
@@ -473,6 +478,7 @@ export function SiteHeader() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
+                    setShowLegacy(true);
                   }}
                   className="w-full px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 rounded-lg transition font-medium"
                 >
