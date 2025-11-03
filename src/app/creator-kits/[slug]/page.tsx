@@ -79,6 +79,7 @@ export default function CreatorKitPage() {
         });
 
         // Check subscription status
+        let subscribed = false;
         if (user) {
           const subsQ = query(
             collection(db, 'legacySubscriptions'),
@@ -87,7 +88,8 @@ export default function CreatorKitPage() {
             where('status', 'in', ['active', 'trialing'])
           );
           const subsSnap = await getDocs(subsQ);
-          setIsSubscribed(!subsSnap.empty);
+          subscribed = !subsSnap.empty;
+          setIsSubscribed(subscribed);
         }
 
         // Load videos from creator's legacy content collection
@@ -115,7 +117,7 @@ export default function CreatorKitPage() {
         const fullContent = videosList.filter(v => !v.isSample);
 
         // Show samples to all, full content only to subscribers
-        if (isSubscribed) {
+        if (subscribed) {
           setVideos([...samples, ...fullContent]);
         } else {
           setVideos(samples);
@@ -128,7 +130,7 @@ export default function CreatorKitPage() {
     };
 
     load();
-  }, [slug, user, isSubscribed]);
+  }, [slug, user]);
 
   if (loading) {
     return (
