@@ -59,42 +59,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: e?.message || 'Failed to verify buyer account' }, { status: 400 });
     }
 
-    const session = await stripe.checkout.sessions.create(
-      {
-        mode: 'payment',
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency,
-              unit_amount: Number(amount),
-              product_data: { name: String(listingTitle) }
-            }
+    // Create checkout session on PLATFORM account (not connected account)
+    // This is the recommended marketplace pattern for proper payment splitting
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: Number(amount),
+            product_data: { name: String(listingTitle) }
           }
-        ],
-        payment_intent_data: {
-          application_fee_amount: applicationFeeAmount,
-          metadata: {
-            listingId: String(listingId || ''),
-            listingTitle: String(listingTitle || ''),
-            buyerId: String(buyerId || ''),
-            sellerId: String(sellerId || ''),
-            applicationFeeAmount: String(applicationFeeAmount)
-          }
+        }
+      ],
+      payment_intent_data: {
+        // Transfer funds to seller's connected account
+        transfer_data: {
+          destination: sellerAccountId
         },
-        shipping_address_collection: { allowed_countries: ['US'] },
-        success_url: `${origin}/checkout/success?listingId=${encodeURIComponent(String(listingId || ''))}`,
-        cancel_url: `${origin}/checkout/canceled?listingId=${encodeURIComponent(String(listingId || ''))}`,
+        // Platform fee (3%) - goes to platform account
+        application_fee_amount: applicationFeeAmount,
         metadata: {
           listingId: String(listingId || ''),
           listingTitle: String(listingTitle || ''),
           buyerId: String(buyerId || ''),
           sellerId: String(sellerId || ''),
+          sellerAccountId: String(sellerAccountId || ''),
           applicationFeeAmount: String(applicationFeeAmount)
         }
       },
-      { stripeAccount: sellerAccountId }
-    );
+      shipping_address_collection: { allowed_countries: ['US'] },
+      success_url: `${origin}/checkout/success?listingId=${encodeURIComponent(String(listingId || ''))}`,
+      cancel_url: `${origin}/checkout/canceled?listingId=${encodeURIComponent(String(listingId || ''))}`,
+      metadata: {
+        listingId: String(listingId || ''),
+        listingTitle: String(listingTitle || ''),
+        buyerId: String(buyerId || ''),
+        sellerId: String(sellerId || ''),
+        sellerAccountId: String(sellerAccountId || ''),
+        applicationFeeAmount: String(applicationFeeAmount)
+      }
+      // NOTE: Removed { stripeAccount: sellerAccountId } - session created on platform account
+    });
 
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (err: any) {

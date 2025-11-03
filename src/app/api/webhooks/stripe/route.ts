@@ -76,6 +76,17 @@ export async function POST(req: NextRequest) {
           }
         } else {
           // Marketplace order (existing)
+          // Since checkout is created on platform account, get seller account ID from metadata or payment intent transfer
+          let sellerAccountId = event.account || session.metadata?.sellerAccountId || null;
+          if (!sellerAccountId && session.payment_intent) {
+            try {
+              const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent as string);
+              sellerAccountId = paymentIntent.transfer_data?.destination || null;
+            } catch (e) {
+              console.error('Failed to fetch payment intent for seller account ID:', e);
+            }
+          }
+          
           const now = Date.now();
           const deadlineMs = 72 * 60 * 60 * 1000; // 72h
           const order = {
@@ -88,7 +99,7 @@ export async function POST(req: NextRequest) {
             listingTitle: session.metadata?.listingTitle || null,
             buyerId: session.metadata?.buyerId || null,
             sellerId: session.metadata?.sellerId || null,
-            sellerAccountId: event.account || null,
+            sellerAccountId: sellerAccountId,
             shippingDetails: session.shipping_details || null,
             status: 'awaiting_tracking',
             createdAt: FieldValue.serverTimestamp(),
