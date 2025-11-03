@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       .where('status', 'in', ['active', 'trialing'])
       .get();
 
-    const subscriptions = subsSnap.docs.map((d) => {
+    const subscriptions = subsSnap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => {
       const data = d.data() as any;
       return {
         id: d.id,
