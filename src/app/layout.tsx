@@ -40,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="overflow-x-hidden">
       <head>
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="/mma/theme.css" />
       </head>
       <body className="cca-gradient min-h-screen w-full overflow-x-hidden">
         <AuthProvider>

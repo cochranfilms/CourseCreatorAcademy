@@ -8,6 +8,8 @@ import { updateProfile } from 'firebase/auth';
 import { db, auth, firebaseReady, storage } from '@/lib/firebaseClient';
 import { ProfileImageUpload } from '@/components/ProfileImageUpload';
 import Link from 'next/link';
+import OrdersTab from './OrdersTab';
+import OnboardingTab from './OnboardingTab';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 type UserProfile = {
@@ -50,7 +52,7 @@ type Opportunity = {
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'projects' | 'social' | 'email' | 'privacy'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'social' | 'email' | 'privacy' | 'orders' | 'onboarding'>('projects');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   
@@ -597,7 +599,7 @@ export default function DashboardPage() {
 
         {/* Sub-Navigation Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide w-full">
-          {(['projects', 'social', 'email', 'privacy'] as const).map((tab) => (
+          {(['projects', 'social', 'email', 'privacy', 'orders', 'onboarding'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -869,6 +871,18 @@ export default function DashboardPage() {
                 Save Privacy Settings
               </button>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'orders' && (
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+            <OrdersTab />
+          </div>
+        )}
+
+        {activeTab === 'onboarding' && (
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+            <OnboardingTab />
           </div>
         )}
 

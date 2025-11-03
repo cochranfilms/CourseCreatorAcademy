@@ -12,6 +12,13 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
+    // Latest-terms helper (reads config doc)
+    function hasAcceptedLatestTerms(userId) {
+      let user = get(/databases/$(database)/documents/users/$(userId)).data;
+      let config = get(/databases/$(database)/documents/config/terms).data;
+      return user.terms.accepted == true && user.terms.version == config.requiredVersion;
+    }
+    
     // Users collection - users can read/write their own data
     match /users/{userId} {
       allow read: if isAuthenticated();
@@ -35,6 +42,37 @@ service cloud.firestore {
       }
     }
     
+    // Orders (Marketplace)
+    match /orders/{orderId} {
+      function isAuthed() { return request.auth != null; }
+      function isBuyer() { return isAuthed() && request.auth.uid == resource.data.buyerId; }
+      function isSeller() { return isAuthed() && request.auth.uid == resource.data.sellerId; }
+
+      // Read allowed for buyer or seller
+      allow read: if isBuyer() || isSeller();
+
+      // Create via server/webhook only
+      allow create: if false;
+
+      // Updates:
+      // - Seller can set tracking and mark shipped
+      // - Buyer can mark delivered
+      allow update: if (
+        (isSeller() &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(
+            ['trackingNumber','trackingCarrier','trackingUrl','status','shippedAt']
+          ) && request.resource.data.status in ['awaiting_tracking','shipped']
+        ) ||
+        (isBuyer() &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['status','deliveredAt']) &&
+          request.resource.data.status == 'delivered'
+        )
+      );
+
+      // Delete blocked
+      allow delete: if false;
+    }
+
     // Marketplace listings collection
     match /listings/{listingId} {
       // Anyone authenticated can read listings
@@ -44,7 +82,8 @@ service cloud.firestore {
       // Creator ID must match the authenticated user
       allow create: if isAuthenticated() 
         && request.resource.data.creatorId == request.auth.uid
-        && request.resource.data.keys().hasAll(['title', 'price', 'condition', 'creatorId', 'createdAt']);
+        && request.resource.data.keys().hasAll(['title', 'price', 'condition', 'creatorId', 'createdAt'])
+        && hasAcceptedLatestTerms(request.auth.uid);
       
       // Only the creator can update/delete their listing
       allow update: if isAuthenticated() 

@@ -45,6 +45,31 @@ This script will:
 - Prompt you for Mux Asset ID and Playback ID
 - Create/update the lesson document in Firestore
 
+### Option B: Bulk Link Many Videos at Once
+
+Prepare a CSV or JSON mapping and run the bulk linker:
+
+```bash
+node scripts/bulk-link-mux-videos.js path/to/mapping.csv
+# or
+node scripts/bulk-link-mux-videos.js path/to/mapping.json
+```
+
+CSV header (required):
+
+```
+courseId,moduleId,lessonId,assetId,playbackId,title,index,freePreview,durationSec
+```
+
+- `playbackId` is optional; if omitted, the script will fetch it from Mux
+- `title/index/freePreview/durationSec` are optional
+
+Example CSV row:
+
+```
+technical-101,module-1,lesson-1,02Vp3dV4QiLM22Ge2n004DfOFkxWJp6kpBhBtddLILwKw,,How To Shorten Background Music,1,false,138
+```
+
 ### Option B: Manual Firestore Update
 If you prefer to manually update Firestore:
 
@@ -120,6 +145,16 @@ Once your video is linked, Mux will send webhooks when:
 Check your webhook endpoint: `/api/webhooks/mux`
 - Should receive `video.asset.ready` event
 - Should update the lesson document with `durationSec` and other metadata
+
+### Auto-Link via Mux Passthrough (no manual mapping)
+
+If you create assets via the Mux API or Direct Uploads, set the asset `passthrough` with where the lesson lives, for example:
+
+```json
+{"courseId":"technical-101","moduleId":"module-1","lessonId":"lesson-1"}
+```
+
+Our webhook will parse `passthrough` and automatically set `muxAssetId`, `muxPlaybackId`, and `durationSec` on the lesson. If `passthrough` is not present, the webhook will attempt to find a lesson that already has `muxAssetId` matching the asset.
 
 ## Example: Complete Flow
 

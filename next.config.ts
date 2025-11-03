@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   compress: true,
+  async rewrites() {
+    return [
+      {
+        source: '/integrations/mma/:path*',
+        destination: '/api/integrations/mma/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

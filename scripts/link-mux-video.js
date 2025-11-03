@@ -15,6 +15,13 @@
  * - Lesson title (optional)
  */
 
+// Load environment variables from .env.local if available
+try {
+  require('dotenv').config({ path: '.env.local' });
+} catch (e) {
+  // dotenv not installed or file not found, use process.env directly
+}
+
 const readline = require('readline');
 const admin = require('firebase-admin');
 

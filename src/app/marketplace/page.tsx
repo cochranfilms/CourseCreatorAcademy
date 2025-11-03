@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, orderBy, query, addDoc, updateDoc, serverTimestamp, where, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, addDoc, updateDoc, serverTimestamp, where, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth, firebaseReady } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { ListingImageUpload } from '@/components/ListingImageUpload';
@@ -21,6 +21,7 @@ type Listing = {
   images?: string[];
   creatorName?: string;
   creatorEmail?: string;
+  connectAccountId?: string;
 };
 
 const conditions = ['All Conditions', 'New', 'Like New', 'Excellent', 'Good', 'Fair'];
@@ -51,6 +52,85 @@ export default function MarketplacePage() {
   const [location, setLocation] = useState('United States');
   const [images, setImages] = useState<string[]>([]);
 
+  // Terms & Conditions gating
+  const [termsRequiredVersion, setTermsRequiredVersion] = useState<string | null>(null);
+  const [userTermsVersion, setUserTermsVersion] = useState<string | null>(null);
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState<boolean>(false);
+  const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
+  const [termsLoading, setTermsLoading] = useState<boolean>(true);
+  const [termsTitle, setTermsTitle] = useState<string | null>(null);
+  const [termsUrl, setTermsUrl] = useState<string | null>(null);
+
+  // Fetch terms requirement and user acceptance
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!firebaseReady || !db) { setTermsLoading(false); return; }
+      try {
+        // Read config/terms
+        const cfgSnap = await getDoc(doc(db, 'config', 'terms'));
+        const cfgData = cfgSnap.exists() ? (cfgSnap.data() as any) : null;
+        const required = cfgData ? cfgData.requiredVersion || null : null;
+        if (!cancelled) setTermsRequiredVersion(required);
+        if (!cancelled) setTermsTitle(cfgData?.title || 'Terms & Conditions');
+        if (!cancelled) setTermsUrl(cfgData?.url || cfgData?.termsUrl || null);
+
+        if (user) {
+          const userSnap = await getDoc(doc(db, 'users', user.uid));
+          const u = userSnap.exists() ? userSnap.data() as any : {};
+          const accepted = Boolean(u?.terms?.accepted);
+          const version = u?.terms?.version || null;
+          if (!cancelled) {
+            setHasAcceptedTerms(accepted && required ? version === required : false);
+            setUserTermsVersion(version);
+          }
+        } else {
+          if (!cancelled) {
+            setHasAcceptedTerms(false);
+            setUserTermsVersion(null);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load terms config/user terms', e);
+      } finally {
+        if (!cancelled) setTermsLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Decide whether to show the modal on visit
+  useEffect(() => {
+    if (!termsLoading && user && termsRequiredVersion) {
+      const needs = !hasAcceptedTerms || userTermsVersion !== termsRequiredVersion;
+      if (needs) setShowTermsModal(true);
+    }
+  }, [termsLoading, user, termsRequiredVersion, hasAcceptedTerms, userTermsVersion]);
+
+  const handleAcceptTerms = async () => {
+    if (!firebaseReady || !db || !user || !termsRequiredVersion) { setShowTermsModal(false); return; }
+    try {
+      await setDoc(
+        doc(db, 'users', user.uid),
+        {
+          terms: {
+            accepted: true,
+            version: termsRequiredVersion,
+            acceptedAt: serverTimestamp(),
+          },
+        },
+        { merge: true }
+      );
+      setHasAcceptedTerms(true);
+      setUserTermsVersion(termsRequiredVersion);
+      setShowTermsModal(false);
+    } catch (e) {
+      console.error('Failed to accept terms', e);
+      alert('Could not save your acceptance. Please try again.');
+    }
+  };
+
   // Fetch all listings
   useEffect(() => {
     if (!firebaseReady || !db) return;
@@ -62,6 +142,7 @@ export default function MarketplacePage() {
           // Try to get creator info
           let creatorName = '';
           let creatorEmail = '';
+          let connectAccountId = '';
           if (data.creatorId) {
             try {
               const userDoc = await getDoc(doc(db, 'users', data.creatorId));
@@ -69,6 +150,7 @@ export default function MarketplacePage() {
                 const userData = userDoc.data();
                 creatorName = userData.displayName || '';
                 creatorEmail = userData.email || '';
+                connectAccountId = userData.connectAccountId || '';
               }
             } catch (error) {
               console.error('Error fetching creator info:', error);
@@ -78,7 +160,8 @@ export default function MarketplacePage() {
             id: d.id,
             ...data,
             creatorName,
-            creatorEmail
+            creatorEmail,
+            connectAccountId
           } as Listing;
         })
       );
@@ -326,7 +409,12 @@ export default function MarketplacePage() {
         <button
           onClick={() => {
             if (user) {
-              setShowPostForm(true);
+              const needs = termsRequiredVersion && (!hasAcceptedTerms || userTermsVersion !== termsRequiredVersion);
+              if (needs) {
+                setShowTermsModal(true);
+              } else {
+                setShowPostForm(true);
+              }
             } else {
               alert('Please sign in to sell an item.');
             }
@@ -742,16 +830,48 @@ export default function MarketplacePage() {
                 </div>
 
                 <div className="pt-4">
-                  <button
-                    onClick={() => {
-                      if (!user) { alert('Please sign in to message the seller.'); return; }
-                      setShowListingModal(false);
-                      setShowMessageToSeller(true);
-                    }}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
-                  >
-                    Send Message
-                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <button
+                      onClick={() => {
+                        if (!user) { alert('Please sign in to message the seller.'); return; }
+                        setShowListingModal(false);
+                        setShowMessageToSeller(true);
+                      }}
+                      className="w-full bg-neutral-900 border border-neutral-700 hover:bg-neutral-800 text-white font-semibold py-3 rounded-lg transition"
+                    >
+                      Message Seller
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!user) { alert('Please sign in to purchase.'); return; }
+                        if (!selectedListing?.connectAccountId) { alert('Seller has not connected Stripe yet.'); return; }
+                        const totalCents = Math.round((Number(selectedListing.price || 0) + Number(selectedListing.shipping || 0)) * 100);
+                        try {
+                          const res = await fetch('/api/checkout/listing', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              amount: totalCents,
+                              currency: 'usd',
+                              sellerAccountId: selectedListing.connectAccountId,
+                              listingId: selectedListing.id,
+                              listingTitle: selectedListing.title,
+                              buyerId: user.uid,
+                              sellerId: selectedListing.creatorId
+                            })
+                          });
+                          const json = await res.json();
+                          if (json.url) window.location.href = json.url;
+                          else if (json.error) alert(json.error);
+                        } catch (e: any) {
+                          alert(e.message || 'Failed to start checkout');
+                        }
+                      }}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
+                    >
+                      Buy Now
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -766,6 +886,76 @@ export default function MarketplacePage() {
           onClose={() => setShowMessageToSeller(false)}
           initialRecipientUserId={selectedListing.creatorId || ''}
         />
+      )}
+
+      {/* Terms & Conditions Modal */}
+      {showTermsModal && user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setShowTermsModal(false)}>
+          <div className="relative bg-neutral-950 border border-neutral-800 max-w-2xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-neutral-800 flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold">{termsTitle || 'Terms & Conditions'}</h2>
+                {termsRequiredVersion && (
+                  <p className="text-xs text-neutral-500 mt-1">Version: {termsRequiredVersion}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="text-neutral-400 hover:text-white transition"
+                aria-label="Close terms modal"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+              <p className="text-neutral-300">
+                To sell items on the CCA Marketplace, you must agree to our latest Terms & Conditions.
+              </p>
+              <div className="rounded border border-neutral-800 bg-neutral-900 p-4 text-sm text-neutral-300">
+                <p className="mb-2 font-medium">Highlights</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Provide accurate item descriptions and pricing.</li>
+                  <li>Ship within 72 hours and provide a valid tracking number.</li>
+                  <li>Comply with all platform policies and applicable laws.</li>
+                </ul>
+                {termsUrl && (
+                  <div className="mt-4">
+                    <a
+                      href={termsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 transition-all"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6L10 16" />
+                      </svg>
+                      View full Terms & Conditions
+                    </a>
+                  </div>
+                )}
+              </div>
+              <p className="text-neutral-400 text-sm">
+                By clicking “I Agree”, you confirm you have read and accept the Terms & Conditions.
+              </p>
+            </div>
+            <div className="p-6 border-t border-neutral-800 flex flex-col sm:flex-row gap-3 justify-end">
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="px-5 py-2 bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 transition-all"
+              >
+                Not now
+              </button>
+              <button
+                onClick={handleAcceptTerms}
+                className="px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
+              >
+                I Agree
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

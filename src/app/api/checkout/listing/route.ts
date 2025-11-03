@@ -1,24 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
+import { computeApplicationFeeAmount } from '@/lib/fees';
 
 export async function POST(req: NextRequest) {
   try {
-    const { priceId, destinationAccountId, applicationFeeAmount } = await req.json();
+    const {
+      amount,               // integer cents
+      currency = 'usd',
+      sellerAccountId,      // connected account ID (acct_...)
+      listingId,
+      listingTitle = 'Marketplace item',
+      buyerId,
+      sellerId
+    } = await req.json();
+
     const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || '';
-    if (!priceId || !destinationAccountId) {
-      return NextResponse.json({ error: 'priceId and destinationAccountId required' }, { status: 400 });
+
+    if (!sellerAccountId || !amount || amount <= 0) {
+      return NextResponse.json({ error: 'sellerAccountId and positive amount are required' }, { status: 400 });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: [{ price: priceId, quantity: 1 }],
-      payment_intent_data: {
-        transfer_data: { destination: destinationAccountId },
-        application_fee_amount: applicationFeeAmount ?? 0
+    const applicationFeeAmount = computeApplicationFeeAmount(Number(amount));
+
+    // Verify the connected account can take payments before starting Checkout
+    try {
+      const account = await stripe.accounts.retrieve(sellerAccountId);
+      const chargesEnabled = (account as any).charges_enabled;
+      if (!chargesEnabled) {
+        return NextResponse.json({
+          error: 'Seller is not ready to accept payments yet. Please try again later.'
+        }, { status: 400 });
+      }
+    } catch (e: any) {
+      return NextResponse.json({ error: e?.message || 'Failed to verify seller account' }, { status: 400 });
+    }
+
+    const session = await stripe.checkout.sessions.create(
+      {
+        mode: 'payment',
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency,
+              unit_amount: Number(amount),
+              product_data: { name: String(listingTitle) }
+            }
+          }
+        ],
+        payment_intent_data: {
+          application_fee_amount: applicationFeeAmount,
+          metadata: {
+            listingId: String(listingId || ''),
+            listingTitle: String(listingTitle || ''),
+            buyerId: String(buyerId || ''),
+            sellerId: String(sellerId || ''),
+            applicationFeeAmount: String(applicationFeeAmount)
+          }
+        },
+        shipping_address_collection: { allowed_countries: ['US'] },
+        success_url: `${origin}/checkout/success?listingId=${encodeURIComponent(String(listingId || ''))}`,
+        cancel_url: `${origin}/checkout/canceled?listingId=${encodeURIComponent(String(listingId || ''))}`,
+        metadata: {
+          listingId: String(listingId || ''),
+          listingTitle: String(listingTitle || ''),
+          buyerId: String(buyerId || ''),
+          sellerId: String(sellerId || ''),
+          applicationFeeAmount: String(applicationFeeAmount)
+        }
       },
-      success_url: `${origin}/?success=1`,
-      cancel_url: `${origin}/?canceled=1`
-    });
+      { stripeAccount: sellerAccountId }
+    );
 
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (err: any) {
@@ -26,4 +78,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
+
+export const runtime = 'nodejs';
 

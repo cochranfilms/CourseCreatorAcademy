@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import Link from 'next/link';
+import CourseViewerModal from '@/components/CourseViewerModal';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { isLessonWatched, toggleSaved, isSaved, getCompletedLessons, getModuleProgress, getLessonProgressPercent } from '@/lib/userData';
 
@@ -40,6 +42,8 @@ type Course = {
 
 export default function CourseDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const slug = params?.slug as string || '';
@@ -51,6 +55,9 @@ export default function CourseDetailPage() {
   const [courseProgress, setCourseProgress] = useState<number>(0);
   const [moduleProgress, setModuleProgress] = useState<Record<string, number>>({});
   const [lessonProgress, setLessonProgress] = useState<Record<string, number>>({});
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerModuleId, setViewerModuleId] = useState<string>('');
+  const [viewerLessonId, setViewerLessonId] = useState<string>('');
 
   useEffect(() => {
     async function fetchCourse() {
@@ -137,6 +144,19 @@ export default function CourseDetailPage() {
       fetchCourse();
     }
   }, [slug]);
+
+  // Open modal via deep link ?lesson=moduleId/lessonId
+  useEffect(() => {
+    const q = searchParams?.get('lesson');
+    if (q && course) {
+      const [mod, les] = q.split('/');
+      if (mod && les) {
+        setViewerModuleId(mod);
+        setViewerLessonId(les);
+        setViewerOpen(true);
+      }
+    }
+  }, [searchParams, course]);
 
   useEffect(() => {
     async function computeStates() {
@@ -427,12 +447,19 @@ export default function CourseDetailPage() {
                           </button>
                         )}
                         {lesson.muxPlaybackId ? (
-                          <Link
-                            href={`/learn/${course.slug}/module/${module.id}/lesson/${lesson.id}` as any}
-                            className="text-ccaBlue hover:text-white transition px-3 py-1 rounded hover:bg-ccaBlue/20 text-sm"
+                          <button
+                            onClick={() => {
+                              setViewerModuleId(module.id);
+                              setViewerLessonId(lesson.id);
+                              setViewerOpen(true);
+                              const sp = new URLSearchParams(Array.from(searchParams?.entries() || []));
+                              sp.set('lesson', `${module.id}/${lesson.id}`);
+                              router.replace(`/learn/${course.slug}?${sp.toString()}`);
+                            }}
+                            className="text-ccaBlue hover:text-white transition px-3 py-1 hover:bg-ccaBlue/20 text-sm border border-transparent"
                           >
                             Watch →
-                          </Link>
+                          </button>
                         ) : (
                           <span className="text-neutral-600 text-sm px-3 py-1">Coming Soon</span>
                         )}
@@ -445,6 +472,21 @@ export default function CourseDetailPage() {
           </div>
         )}
       </div>
+      {viewerOpen && course && (
+        <CourseViewerModal
+          courseSlug={course.slug}
+          courseTitle={course.title}
+          modules={course.modules.map(m => ({ id: m.id, title: m.title, index: m.index, lessons: m.lessons.map(l => ({ id: l.id, title: l.title, index: l.index, durationSec: l.durationSec, muxPlaybackId: l.muxPlaybackId })) }))}
+          initialModuleId={viewerModuleId}
+          initialLessonId={viewerLessonId}
+          onClose={() => {
+            setViewerOpen(false);
+            const sp = new URLSearchParams(Array.from(searchParams?.entries() || []));
+            sp.delete('lesson');
+            router.replace(`/learn/${course.slug}${sp.toString() ? `?${sp.toString()}` : ''}`);
+          }}
+        />
+      )}
     </main>
   );
 }

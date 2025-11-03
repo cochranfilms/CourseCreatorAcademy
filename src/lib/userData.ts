@@ -29,7 +29,7 @@ export async function isSaved(userId: string, type: SavedType, targetId: string)
   return snap.exists() && !snap.data()?.removedAt;
 }
 
-// Progress tracking: users/{uid}/progress/courses/{courseId}
+// Progress tracking: users/{uid}/progress/{progressId}/courses/{courseId}
 // Structure: 
 // {
 //   completedLessons: string[], // lessonPaths that are 80%+ watched
@@ -39,6 +39,7 @@ export async function isSaved(userId: string, type: SavedType, targetId: string)
 // }
 
 const COMPLETION_THRESHOLD = 80; // Minimum percentage to mark as complete
+const PROGRESS_DOC_ID = 'default'; // single doc under /progress to host subcollections
 
 export async function updateLessonProgress(
   userId: string, 
@@ -48,7 +49,7 @@ export async function updateLessonProgress(
   lastPosition: number // seconds
 ) {
   if (!db) return;
-  const ref = doc(db, `users/${userId}/progress/courses/${courseId}`);
+  const ref = doc(db, `users/${userId}/progress/${PROGRESS_DOC_ID}/courses/${courseId}`);
   const snap = await getDoc(ref);
   
   const progressData = {
@@ -103,7 +104,7 @@ export async function getLessonProgress(
   lessonPath: string
 ): Promise<{ progressPercent: number; lastPosition: number } | null> {
   if (!db) return null;
-  const ref = doc(db, `users/${userId}/progress/courses/${courseId}`);
+  const ref = doc(db, `users/${userId}/progress/${PROGRESS_DOC_ID}/courses/${courseId}`);
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
   
@@ -113,7 +114,7 @@ export async function getLessonProgress(
 
 export async function unmarkLessonWatched(userId: string, courseId: string, lessonPath: string) {
   if (!db) return;
-  const ref = doc(db, `users/${userId}/progress/courses/${courseId}`);
+  const ref = doc(db, `users/${userId}/progress/${PROGRESS_DOC_ID}/courses/${courseId}`);
   await updateDoc(ref, {
     completedLessons: arrayRemove(lessonPath),
     updatedAt: serverTimestamp(),
@@ -122,7 +123,7 @@ export async function unmarkLessonWatched(userId: string, courseId: string, less
 
 export async function isLessonWatched(userId: string, courseId: string, lessonPath: string) {
   if (!db) return false;
-  const ref = doc(db, `users/${userId}/progress/courses/${courseId}`);
+  const ref = doc(db, `users/${userId}/progress/${PROGRESS_DOC_ID}/courses/${courseId}`);
   const snap = await getDoc(ref);
   if (!snap.exists()) return false;
   const arr = (snap.data()?.completedLessons || []) as string[];
@@ -132,7 +133,7 @@ export async function isLessonWatched(userId: string, courseId: string, lessonPa
 // Get completed lessons for a course
 export async function getCompletedLessons(userId: string, courseId: string): Promise<string[]> {
   if (!db) return [];
-  const ref = doc(db, `users/${userId}/progress/courses/${courseId}`);
+  const ref = doc(db, `users/${userId}/progress/${PROGRESS_DOC_ID}/courses/${courseId}`);
   const snap = await getDoc(ref);
   if (!snap.exists()) return [];
   return (snap.data()?.completedLessons || []) as string[];

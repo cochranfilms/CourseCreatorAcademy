@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
-import Link from 'next/link';
+// Link removed; cards open a modal directly
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { isSaved, toggleSaved, getCourseProgress } from '@/lib/userData';
+import CourseViewerModal from '@/components/CourseViewerModal';
 
 type Course = {
   id: string;
@@ -33,6 +34,35 @@ export default function LearnPage() {
   const { user } = useAuth();
   const [savedCourses, setSavedCourses] = useState<Record<string, boolean>>({});
   const [courseProgress, setCourseProgress] = useState<Record<string, number>>({});
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerCourseTitle, setViewerCourseTitle] = useState('');
+  const [viewerCourseSlug, setViewerCourseSlug] = useState('');
+  const [viewerModules, setViewerModules] = useState<any[]>([]);
+  const [viewerInitial, setViewerInitial] = useState<{ moduleId: string; lessonId: string } | null>(null);
+
+  async function openViewerForCourse(course: Course) {
+    try {
+      const modulesRef = collection(db, `courses/${course.id}/modules`);
+      const modulesSnap = await getDocs(query(modulesRef, orderBy('index', 'asc')));
+      const modules: any[] = [];
+      let firstModuleId = '';
+      let firstLessonId = '';
+      for (const m of modulesSnap.docs) {
+        const lessonsRef = collection(db, `courses/${course.id}/modules/${m.id}/lessons`);
+        const lessonsSnap = await getDocs(query(lessonsRef, orderBy('index', 'asc')));
+        const lessons = lessonsSnap.docs.map(ls => ({ id: ls.id, ...ls.data() }));
+        if (!firstModuleId && lessons.length) { firstModuleId = m.id; firstLessonId = lessons[0].id; }
+        modules.push({ id: m.id, title: m.data().title || 'Module', index: m.data().index || 0, lessons: lessons.map((l: any) => ({ id: l.id, title: l.title || 'Lesson', index: l.index || 0, durationSec: l.durationSec, muxPlaybackId: l.muxPlaybackId })) });
+      }
+      setViewerCourseTitle(course.title);
+      setViewerCourseSlug(course.slug);
+      setViewerModules(modules);
+      setViewerInitial(firstModuleId && firstLessonId ? { moduleId: firstModuleId, lessonId: firstLessonId } : null);
+      setViewerOpen(true);
+    } catch (err) {
+      console.error('Open viewer failed:', err);
+    }
+  }
 
   useEffect(() => {
     async function fetchCourses() {
@@ -158,12 +188,9 @@ export default function LearnPage() {
           {courses.map((course) => (
             <div
               key={course.id}
-              className="rounded-2xl overflow-hidden border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 hover:border-ccaBlue transition group relative"
+              className="rounded-2xl overflow-hidden border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 hover:border-ccaBlue transition group relative cursor-pointer"
+              onClick={() => openViewerForCourse(course)}
             >
-              <Link
-                href={`/learn/${course.slug}` as any}
-                className="block"
-              >
                 <div className="relative h-40 bg-neutral-800 group-hover:bg-neutral-700 transition">
                   {course.thumbnailPlaybackId ? (
                     <Image
@@ -216,7 +243,6 @@ export default function LearnPage() {
                     </div>
                   )}
                 </div>
-              </Link>
               {user && (
                 <button
                   onClick={async (e) => {
@@ -240,6 +266,16 @@ export default function LearnPage() {
             </div>
         ))}
       </div>
+      )}
+      {viewerOpen && viewerInitial && (
+        <CourseViewerModal
+          courseSlug={viewerCourseSlug}
+          courseTitle={viewerCourseTitle}
+          modules={viewerModules}
+          initialModuleId={viewerInitial.moduleId}
+          initialLessonId={viewerInitial.lessonId}
+          onClose={() => setViewerOpen(false)}
+        />
       )}
     </main>
   );
