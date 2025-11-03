@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Create MUX direct upload
+    const corsOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || process.env.APP_URL || '*';
     const upload = await mux.video.uploads.create({
+      cors_origin: corsOrigin,
       new_asset_settings: {
         playback_policy: ['public'],
         passthrough: JSON.stringify({
