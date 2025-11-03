@@ -61,9 +61,23 @@ async function ensureUserProfile(user: User) {
       if (!existingData.displayName && user.displayName) {
         updates.displayName = user.displayName;
       }
-      if (!existingData.photoURL && user.photoURL) {
+      
+      // Sync photoURL from Firebase Auth if:
+      // 1. Firestore doesn't have one (null, undefined, or empty), OR
+      // 2. Firestore has one but it's a Google/OAuth URL (not a custom uploaded Firebase Storage URL)
+      // This ensures Google photos are always synced, but custom uploaded photos are preserved
+      const existingPhotoURL = existingData.photoURL;
+      const hasPhotoURL = existingPhotoURL && typeof existingPhotoURL === 'string' && existingPhotoURL.trim() !== '';
+      const isCustomUploadedPhoto = hasPhotoURL && (
+        existingPhotoURL.includes('firebasestorage.googleapis.com') ||
+        existingPhotoURL.includes('firebase/storage')
+      );
+      
+      if (user.photoURL && (!hasPhotoURL || !isCustomUploadedPhoto)) {
+        // Only update if Firebase Auth has a photoURL and Firestore doesn't have a custom uploaded one
         updates.photoURL = user.photoURL;
       }
+      
       if (!existingData.email && user.email) {
         updates.email = user.email;
       }
