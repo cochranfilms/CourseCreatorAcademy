@@ -34,34 +34,37 @@ export async function POST(req: NextRequest) {
       customerEmail = (userDoc.exists && (userDoc.data() as any)?.email) || undefined;
     } catch {}
 
-    // Create a subscription Checkout Session on the creator's connected account
-    const session = await stripe.checkout.sessions.create(
-      {
-        mode: 'subscription',
-        customer_email: customerEmail,
-        line_items: [
-          {
-            // $10.00 USD monthly
-            price_data: {
-              currency: 'usd',
-              unit_amount: 1000,
-              recurring: { interval: 'month' },
-              product_data: {
-                name: `Legacy+ Support for ${creatorName}`,
-              }
-            },
-            quantity: 1
-          }
-        ],
-        success_url: `${origin}/legacy/success?creatorId=${encodeURIComponent(String(creatorId))}`,
-        cancel_url: `${origin}/legacy/canceled?creatorId=${encodeURIComponent(String(creatorId))}`,
-        metadata: {
-          legacyCreatorId: String(creatorId),
-          buyerId: String(buyerId)
+    // Create a subscription Checkout Session on the PLATFORM account using destination charges
+    // so we can split revenue 70/30 (CCA takes 30% application fee)
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      customer_email: customerEmail,
+      line_items: [
+        {
+          // $10.00 USD monthly
+          price_data: {
+            currency: 'usd',
+            unit_amount: 1000,
+            recurring: { interval: 'month' },
+            product_data: {
+              name: `Legacy+ Support for ${creatorName}`,
+            }
+          },
+          quantity: 1
         }
+      ],
+      // Set transfer to connected account and platform fee percent
+      subscription_data: {
+        transfer_data: { destination: connectAccountId },
+        application_fee_percent: 30,
       },
-      { stripeAccount: connectAccountId }
-    );
+      success_url: `${origin}/legacy/success?creatorId=${encodeURIComponent(String(creatorId))}`,
+      cancel_url: `${origin}/legacy/canceled?creatorId=${encodeURIComponent(String(creatorId))}`,
+      metadata: {
+        legacyCreatorId: String(creatorId),
+        buyerId: String(buyerId)
+      }
+    });
 
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (err: any) {

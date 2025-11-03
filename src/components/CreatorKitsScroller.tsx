@@ -2,8 +2,6 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { db, firebaseReady } from '@/lib/firebaseClient';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
 type Creator = {
   id: string;
@@ -22,30 +20,23 @@ export function CreatorKitsScroller() {
 
   useEffect(() => {
     const load = async () => {
-      if (!firebaseReady || !db) {
-        setCreators([]);
-        setLoading(false);
-        return;
-      }
-
       try {
-        const creatorsQ = query(collection(db, 'legacy_creators'), orderBy('order', 'asc'));
-        const creatorsSnap = await getDocs(creatorsQ).catch(() => getDocs(collection(db, 'legacy_creators')));
-        
-        const results: Creator[] = [];
-        creatorsSnap.forEach((d) => {
-          const data = d.data();
-          results.push({
-            id: d.id,
-            displayName: data.displayName || data.handle || 'Creator',
-            handle: data.handle,
-            bannerUrl: data.bannerUrl || null,
-            avatarUrl: data.avatarUrl || null,
-            kitSlug: data.kitSlug || d.id,
-          });
-        });
-
-        setCreators(results);
+        const res = await fetch('/api/legacy/creators', { cache: 'no-store' });
+        const json = await res.json();
+        if (Array.isArray(json.creators)) {
+          setCreators(
+            json.creators.map((c: any) => ({
+              id: c.id,
+              displayName: c.displayName || c.handle || 'Creator',
+              handle: c.handle,
+              bannerUrl: c.bannerUrl || null,
+              avatarUrl: c.avatarUrl || null,
+              kitSlug: c.kitSlug || c.id,
+            }))
+          );
+        } else {
+          setCreators([]);
+        }
       } catch (e) {
         console.error('Error loading creators:', e);
         setCreators([]);

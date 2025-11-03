@@ -95,8 +95,20 @@ export default function CreatorKitPage() {
 
         // Load videos from creator's legacy content collection
         const videosRef = collection(db, `legacy_creators/${creatorId}/videos`);
-        const videosQ = query(videosRef, orderBy('createdAt', 'desc'));
-        const videosSnap = await getDocs(videosQ).catch(() => ({ empty: true, docs: [] } as any));
+        let videosSnap: any;
+        try {
+          if (subscribed) {
+            // Subscribers can load all videos
+            const videosQ = query(videosRef, orderBy('createdAt', 'desc'));
+            videosSnap = await getDocs(videosQ);
+          } else {
+            // Non-subscribers: only load samples
+            const videosQ = query(videosRef, where('isSample', '==', true), orderBy('createdAt', 'desc'));
+            videosSnap = await getDocs(videosQ);
+          }
+        } catch {
+          videosSnap = { empty: true, docs: [] } as any;
+        }
 
         const videosList: LegacyVideo[] = [];
         videosSnap.forEach((d: QueryDocumentSnapshot<DocumentData>) => {
@@ -114,15 +126,10 @@ export default function CreatorKitPage() {
         });
 
         // Separate samples from full content
+        // videosList already filtered above for non-subscribers
         const samples = videosList.filter(v => v.isSample).slice(0, 3);
         const fullContent = videosList.filter(v => !v.isSample);
-
-        // Show samples to all, full content only to subscribers
-        if (subscribed) {
-          setVideos([...samples, ...fullContent]);
-        } else {
-          setVideos(samples);
-        }
+        setVideos(subscribed ? [...samples, ...fullContent] : samples);
       } catch (e) {
         console.error('Error loading creator kit:', e);
       } finally {
