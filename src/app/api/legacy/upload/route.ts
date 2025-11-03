@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import Mux from '@mux/mux-node';
-
-const { Video } = new Mux(
-  process.env.MUX_TOKEN_ID || '',
-  process.env.MUX_TOKEN_SECRET || ''
-);
+import { mux } from '@/lib/mux';
 
 // POST /api/legacy/upload
 // Body: { creatorId: string, title: string, description?: string, isSample?: boolean }
@@ -28,7 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create MUX direct upload
-    const upload = await Video.DirectUploads.create({
+    const upload = await mux.video.uploads.create({
       new_asset_settings: {
         playback_policy: ['public'],
         passthrough: JSON.stringify({
