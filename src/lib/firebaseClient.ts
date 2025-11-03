@@ -4,12 +4,14 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Normalize storage bucket: Firebase SDK expects the bucket name like
-// "<project-id>.appspot.com". If an env var provides the new
-// download-domain style ("<project-id>.firebasestorage.app"), convert it.
-const rawStorageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "course-creator-academy-866d6.appspot.com";
+// Storage bucket: accept either the legacy appspot.com or the new
+// firebasestorage.app bucket names as-is. Do not force-convert between them.
+// Provide a sane default that matches the bucket shown in Cloud Console.
+const rawStorageBucket =
+  process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+  "course-creator-academy-866d6.firebasestorage.app";
+
 const normalizedStorageBucket = rawStorageBucket
-  .replace(/\.firebasestorage\.app$/i, '.appspot.com')
   .replace(/^https?:\/\/[^/]+\//i, '') // strip accidental protocol/host if provided
   .trim();
 
