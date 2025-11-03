@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Webhooks } from '@mux/mux-node';
+import crypto from 'crypto';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
@@ -52,7 +52,29 @@ export async function POST(req: NextRequest) {
   const secret = process.env.MUX_WEBHOOK_SECRET;
   if (secret) {
     try {
-      Webhooks.verifySignature(raw, sig, secret);
+      // Verify Mux signature: header format "t=timestamp,v1=signature"
+      const parts = String(sig)
+        .split(',')
+        .map((s) => s.trim())
+        .reduce((acc: Record<string, string>, kv) => {
+          const [k, v] = kv.split('=');
+          if (k && v) acc[k] = v;
+          return acc;
+        }, {} as Record<string, string>);
+      const timestamp = parts['t'];
+      const signature = parts['v1'];
+      if (!timestamp || !signature) throw new Error('Missing signature fields');
+      const payload = `${timestamp}.${raw}`;
+      const computed = crypto
+        .createHmac('sha256', secret)
+        .update(payload, 'utf8')
+        .digest('hex');
+      // timing-safe compare
+      const a = Buffer.from(computed);
+      const b = Buffer.from(signature);
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        throw new Error('Signature mismatch');
+      }
     } catch (err: any) {
       return NextResponse.json({ error: 'Invalid Mux signature' }, { status: 400 });
     }

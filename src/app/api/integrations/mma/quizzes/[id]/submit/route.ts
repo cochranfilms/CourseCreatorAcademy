@@ -3,9 +3,9 @@ import { mmaClient } from '@/lib/mmaClient';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, context: any) {
   try {
-    const { id } = params;
+    const id = String(context?.params?.id || '');
     const body = await req.json().catch(() => ({}));
     const answers = Array.isArray(body?.answers) ? body.answers : undefined;
     if (!answers || !answers.every((n: any) => typeof n === 'number')) {
