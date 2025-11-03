@@ -46,6 +46,17 @@ type Course = {
   thumbnailDurationSec?: number;
 };
 
+type Project = {
+  id: string;
+  title: string;
+  description?: string;
+  preview?: string;
+  imageUrl?: string;
+  url?: string;
+  createdAt?: any;
+  skills?: string[];
+};
+
 function getMuxThumbnailUrl(playbackId?: string, durationSec?: number) {
   if (!playbackId) return '';
   const time = durationSec && durationSec > 0 ? Math.floor(durationSec / 2) : 1;
@@ -81,6 +92,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -203,6 +215,43 @@ export default function ProfilePage() {
         } catch (error) {
           console.error('Error fetching courses:', error);
           setCourses([]);
+        }
+
+        // Fetch user's projects
+        try {
+          let projectsDocs: QueryDocumentSnapshot<DocumentData>[];
+          try {
+            const projectsQuery = query(
+              collection(db, 'projects'),
+              where('creatorId', '==', userId),
+              orderBy('createdAt', 'desc')
+            );
+            const projectsSnap = await getDocs(projectsQuery);
+            projectsDocs = projectsSnap.docs;
+          } catch (queryError: any) {
+            console.warn('Projects query failed, falling back to client-side filter:', queryError);
+            const allProjectsSnap = await getDocs(collection(db, 'projects'));
+            projectsDocs = allProjectsSnap.docs.filter(doc => doc.data().creatorId === userId);
+          }
+
+          const projectsData: Project[] = projectsDocs.map((docSnap) => {
+            const d: any = docSnap.data();
+            return {
+              id: docSnap.id,
+              title: d.title || 'Untitled Project',
+              description: d.description,
+              preview: d.preview,
+              imageUrl: d.imageUrl,
+              url: d.url,
+              createdAt: d.createdAt,
+              skills: Array.isArray(d.skills) ? d.skills : [],
+            } as Project;
+          });
+
+          setProjects(projectsData);
+        } catch (error) {
+          console.error('Error fetching projects:', error);
+          setProjects([]);
         }
 
       } catch (error) {
@@ -451,6 +500,61 @@ export default function ProfilePage() {
               </div>
             )}
           </dl>
+        </div>
+      )}
+
+      {/* Projects Section */}
+      {projects.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-white mb-4">Projects</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {projects.map((p) => (
+              <a
+                key={p.id}
+                href={p.url || '#'}
+                target={p.url ? "_blank" : undefined}
+                rel={p.url ? "noopener noreferrer" : undefined}
+                onClick={(e) => { if (!p.url) e.preventDefault(); }}
+                className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 rounded-lg overflow-hidden hover:border-neutral-700 transition group"
+              >
+                <div className="aspect-video bg-neutral-900 relative overflow-hidden">
+                  {p.imageUrl ? (
+                    <img
+                      src={p.imageUrl}
+                      alt={p.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-600">
+                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-white mb-1 line-clamp-2 group-hover:text-ccaBlue transition">
+                    {p.title}
+                  </h3>
+                  {(p.preview || p.description) && (
+                    <p className="text-sm text-neutral-400 line-clamp-2 mb-2">{p.preview || p.description}</p>
+                  )}
+                  {p.skills && p.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {p.skills.slice(0, 4).map((s, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-neutral-800 text-neutral-300 text-xs border border-neutral-700">
+                          {s}
+                        </span>
+                      ))}
+                      {p.skills.length > 4 && (
+                        <span className="text-xs text-neutral-500">+{p.skills.length - 4} more</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </a>
+            ))}
+          </div>
         </div>
       )}
 
