@@ -1,9 +1,9 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function CheckoutSuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const listingId = searchParams.get('listingId') || '';
@@ -25,6 +25,14 @@ export default function CheckoutSuccessPage() {
         <Link href="/marketplace" className="px-5 py-2 bg-neutral-900 border border-neutral-700 text-white">Back to marketplace</Link>
       </div>
     </main>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={<main className="max-w-xl mx-auto px-4 py-16 text-center"><p className="text-neutral-400">Loading…</p></main>}>
+      <SuccessContent />
+    </Suspense>
   );
 }
 
