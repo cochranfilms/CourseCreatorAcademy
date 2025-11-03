@@ -4,9 +4,6 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { db, firebaseReady } from '@/lib/firebaseClient';
-import { doc, getDoc, collection, getDocs, query, where, orderBy } from 'firebase/firestore';
-import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
 import MuxPlayer from '@mux/mux-player-react';
 
@@ -44,99 +41,48 @@ export default function CreatorKitPage() {
 
   useEffect(() => {
     const load = async () => {
-      if (!firebaseReady || !db || !slug) {
-        setLoading(false);
-        return;
-      }
-
+      if (!slug) { setLoading(false); return; }
       try {
-        // Find creator by kitSlug
-        const creatorsSnap = await getDocs(collection(db, 'legacy_creators'));
-        let creatorDoc: any = null;
-        let creatorId: string | null = null;
-
-        creatorsSnap.forEach((d: QueryDocumentSnapshot<DocumentData>) => {
-          const data = d.data();
-          if ((data.kitSlug || d.id) === slug) {
-            creatorDoc = d;
-            creatorId = d.id;
-          }
-        });
-
-        if (!creatorDoc || !creatorId) {
-          setLoading(false);
+        const url = `/api/legacy/creators/${encodeURIComponent(slug)}${user ? `?userId=${encodeURIComponent(user.uid)}` : ''}`;
+        const res = await fetch(url, { cache: 'no-store' });
+        const json = await res.json();
+        if (res.status !== 200) {
+          // Fallback to placeholders
+          setCreator({ id: 'placeholder', displayName: 'Creator', bio: '', kitSlug: slug } as any);
+          setVideos([
+            { id: 'ph-1', title: 'Sample Video 1', description: 'Preview of exclusive content', isSample: true },
+            { id: 'ph-2', title: 'Sample Video 2', description: 'Preview of exclusive content', isSample: true },
+            { id: 'ph-3', title: 'Sample Video 3', description: 'Preview of exclusive content', isSample: true },
+          ] as any);
+          setIsSubscribed(false);
           return;
         }
-
-        const creatorData = creatorDoc.data();
-        setCreator({
-          id: creatorId,
-          displayName: creatorData.displayName || creatorData.handle || 'Creator',
-          handle: creatorData.handle,
-          avatarUrl: creatorData.avatarUrl || null,
-          bannerUrl: creatorData.bannerUrl || null,
-          bio: creatorData.bio || '',
-          kitSlug: creatorData.kitSlug || creatorId,
-        });
-
-        // Check subscription status
-        let subscribed = false;
-        if (user) {
-          const subsQ = query(
-            collection(db, 'legacySubscriptions'),
-            where('userId', '==', user.uid),
-            where('creatorId', '==', creatorId),
-            where('status', 'in', ['active', 'trialing'])
+        const { creator: c, subscribed, samples, full } = json || {};
+        setCreator(c || null);
+        setIsSubscribed(Boolean(subscribed));
+        const vids: LegacyVideo[] = Array.isArray(samples) ? samples.map((v: any) => ({ id: v.id, ...v })) : [];
+        if (Array.isArray(full) && subscribed) vids.push(...full.map((v: any) => ({ id: v.id, ...v })));
+        // Ensure at least 3 placeholders if no samples
+        if (!vids.length) {
+          vids.push(
+            { id: 'ph-1', title: 'Sample Video 1', description: 'Preview of exclusive content', isSample: true } as any,
+            { id: 'ph-2', title: 'Sample Video 2', description: 'Preview of exclusive content', isSample: true } as any,
+            { id: 'ph-3', title: 'Sample Video 3', description: 'Preview of exclusive content', isSample: true } as any,
           );
-          const subsSnap = await getDocs(subsQ);
-          subscribed = !subsSnap.empty;
-          setIsSubscribed(subscribed);
         }
-
-        // Load videos from creator's legacy content collection
-        const videosRef = collection(db, `legacy_creators/${creatorId}/videos`);
-        let videosSnap: any;
-        try {
-          if (subscribed) {
-            // Subscribers can load all videos
-            const videosQ = query(videosRef, orderBy('createdAt', 'desc'));
-            videosSnap = await getDocs(videosQ);
-          } else {
-            // Non-subscribers: only load samples
-            const videosQ = query(videosRef, where('isSample', '==', true), orderBy('createdAt', 'desc'));
-            videosSnap = await getDocs(videosQ);
-          }
-        } catch {
-          videosSnap = { empty: true, docs: [] } as any;
-        }
-
-        const videosList: LegacyVideo[] = [];
-        videosSnap.forEach((d: QueryDocumentSnapshot<DocumentData>) => {
-          const data = d.data();
-          videosList.push({
-            id: d.id,
-            title: data.title || 'Untitled',
-            description: data.description || '',
-            muxPlaybackId: data.muxPlaybackId || null,
-            muxAnimatedGifUrl: data.muxAnimatedGifUrl || null,
-            durationSec: data.durationSec || 0,
-            isSample: Boolean(data.isSample),
-            createdAt: data.createdAt,
-          });
-        });
-
-        // Separate samples from full content
-        // videosList already filtered above for non-subscribers
-        const samples = videosList.filter(v => v.isSample).slice(0, 3);
-        const fullContent = videosList.filter(v => !v.isSample);
-        setVideos(subscribed ? [...samples, ...fullContent] : samples);
+        setVideos(vids);
       } catch (e) {
-        console.error('Error loading creator kit:', e);
+        setCreator({ id: 'placeholder', displayName: 'Creator', bio: '', kitSlug: slug } as any);
+        setVideos([
+          { id: 'ph-1', title: 'Sample Video 1', description: 'Preview of exclusive content', isSample: true },
+          { id: 'ph-2', title: 'Sample Video 2', description: 'Preview of exclusive content', isSample: true },
+          { id: 'ph-3', title: 'Sample Video 3', description: 'Preview of exclusive content', isSample: true },
+        ] as any);
+        setIsSubscribed(false);
       } finally {
         setLoading(false);
       }
     };
-
     load();
   }, [slug, user]);
 
