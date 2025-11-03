@@ -116,31 +116,34 @@ export default function CreatorKitPage() {
   const lockedVideos = videos.filter(v => !v.isSample);
 
   // Featured + sample placeholder data
-  const featured: LegacyVideo | null = (sampleVideos.find(v => v.muxPlaybackId) || sampleVideos[0] || null) || null;
+  // Use creator-configured featured if present, fallback to samples
+  const featuredFromCreator = (creator as any)?.featured as any | null;
+  const featured: LegacyVideo | null = featuredFromCreator && featuredFromCreator.playbackId
+    ? ({ id: 'featured', title: featuredFromCreator.title, description: featuredFromCreator.description, durationSec: featuredFromCreator.durationSec, muxPlaybackId: featuredFromCreator.playbackId, isSample: true } as any)
+    : ((sampleVideos.find(v => v.muxPlaybackId) || sampleVideos[0] || null) as any);
   const assetSamples = {
-    overlays: [
-      { id: 'a1', title: 'GK - Flux Essence', by: creator?.displayName || 'Creator', tag: 'transitions', image: creator?.bannerUrl || '' },
-      { id: 'a2', title: 'GK - Spin Transitions', by: creator?.displayName || 'Creator', tag: 'transitions', image: creator?.bannerUrl || '' },
-      { id: 'a3', title: 'GK - Whip Pans', by: creator?.displayName || 'Creator', tag: 'transitions', image: creator?.bannerUrl || '' },
-      { id: 'a4', title: 'GK - Gate Flare', by: creator?.displayName || 'Creator', tag: 'analog', image: creator?.bannerUrl || '' },
-      { id: 'a5', title: 'GK - Dust Wave', by: creator?.displayName || 'Creator', tag: 'film', image: creator?.bannerUrl || '' },
-      { id: 'a6', title: 'GK - Retro Gate Portra Film', by: creator?.displayName || 'Creator', tag: 'film', image: creator?.bannerUrl || '' },
-    ],
-    sfx: [
-      { id: 's1', title: 'GK - Swoosh Pack', by: creator?.displayName || 'Creator', tag: 'wooshes', image: creator?.bannerUrl || '' },
-      { id: 's2', title: 'GK - Atmospheres', by: creator?.displayName || 'Creator', tag: 'ambience', image: creator?.bannerUrl || '' },
-      { id: 's3', title: 'GK - Risers', by: creator?.displayName || 'Creator', tag: 'risers', image: creator?.bannerUrl || '' },
-    ],
+    overlays: Array.isArray((creator as any)?.assets?.overlays) && (creator as any)?.assets?.overlays.length
+      ? ((creator as any).assets.overlays as Array<{ title?: string; tag?: string; image?: string }>).map((a, i) => ({ id: `co-${i}`, title: a.title, by: creator?.displayName || 'Creator', tag: a.tag, image: a.image }))
+      : [
+          { id: 'a1', title: 'GK - Flux Essence', by: creator?.displayName || 'Creator', tag: 'transitions', image: creator?.bannerUrl || '' },
+          { id: 'a2', title: 'GK - Spin Transitions', by: creator?.displayName || 'Creator', tag: 'transitions', image: creator?.bannerUrl || '' },
+          { id: 'a3', title: 'GK - Whip Pans', by: creator?.displayName || 'Creator', tag: 'transitions', image: creator?.bannerUrl || '' },
+        ],
+    sfx: Array.isArray((creator as any)?.assets?.sfx) && (creator as any)?.assets?.sfx.length
+      ? ((creator as any).assets.sfx as Array<{ title?: string; tag?: string; image?: string }>).map((a, i) => ({ id: `cs-${i}`, title: a.title, by: creator?.displayName || 'Creator', tag: a.tag, image: a.image }))
+      : [
+          { id: 's1', title: 'GK - Swoosh Pack', by: creator?.displayName || 'Creator', tag: 'wooshes', image: creator?.bannerUrl || '' },
+          { id: 's2', title: 'GK - Atmospheres', by: creator?.displayName || 'Creator', tag: 'ambience', image: creator?.bannerUrl || '' },
+        ],
   } as const;
 
-  const gearSamples = [
-    { id: 'g1', name: 'Canon RF 85mm F1.2 L USM DS', category: 'LENSES', image: '/api/placeholder/600/400', url: '#' },
-    { id: 'g2', name: 'Canon C70 Cinema Camera', category: 'CAMERA', image: '/api/placeholder/600/400', url: '#' },
-    { id: 'g3', name: 'Canon EOS R3 Mirrorless Camera', category: 'CAMERA', image: '/api/placeholder/600/400', url: '#' },
-    { id: 'g4', name: 'Canon EOS R5 Mirrorless Camera', category: 'CAMERA', image: '/api/placeholder/600/400', url: '#' },
-    { id: 'g5', name: 'Shortstache Everyday Filter', category: 'FILTER', image: '/api/placeholder/600/400', url: '#' },
-    { id: 'g6', name: 'RED Komodo-X', category: 'CAMERA', image: '/api/placeholder/600/400', url: '#' },
-  ] as const;
+  const gearSamples = Array.isArray((creator as any)?.gear) && (creator as any)?.gear.length
+    ? ((creator as any).gear as Array<{ name?: string; category?: string; image?: string; url?: string }>).map((g, i) => ({ id: `g-${i}`, name: g.name || '', category: g.category || '', image: g.image || '/api/placeholder/600/400', url: g.url || '#' }))
+    : [
+        { id: 'g1', name: 'Canon RF 85mm F1.2 L USM DS', category: 'LENSES', image: '/api/placeholder/600/400', url: '#' },
+        { id: 'g2', name: 'Canon C70 Cinema Camera', category: 'CAMERA', image: '/api/placeholder/600/400', url: '#' },
+        { id: 'g3', name: 'Canon EOS R3 Mirrorless Camera', category: 'CAMERA', image: '/api/placeholder/600/400', url: '#' },
+      ] as const;
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
@@ -345,7 +348,7 @@ export default function CreatorKitPage() {
             <div key={a.id} className="bg-neutral-950 border border-neutral-800 rounded-xl overflow-hidden">
               <div className="aspect-video w-full bg-neutral-900 relative">
                 {a.image ? (
-                  <Image src={a.image} alt={a.title} fill sizes="(max-width:768px) 100vw, 33vw" className="object-cover" />
+                  <Image src={a.image as string} alt={a.title || ''} fill sizes="(max-width:768px) 100vw, 33vw" className="object-cover" />
                 ) : null}
               </div>
               <div className="p-4">

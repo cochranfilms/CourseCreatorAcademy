@@ -40,6 +40,10 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       bannerUrl: cdata.bannerUrl || null,
       bio: cdata.bio || '',
       kitSlug: cdata.kitSlug || creatorId,
+      // Optional customizations for public page
+      featured: cdata.featured || null,
+      assets: cdata.assets || null,
+      gear: cdata.gear || null,
     };
 
     // Determine subscription status (optional)

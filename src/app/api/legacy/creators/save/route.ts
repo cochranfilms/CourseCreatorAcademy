@@ -19,7 +19,13 @@ export async function POST(req: NextRequest) {
     const uid = decoded.uid;
 
     const body = await req.json();
-    const allowedKeys = ['displayName','handle','bio','kitSlug','avatarUrl','bannerUrl'];
+    const allowedKeys = [
+      'displayName','handle','bio','kitSlug','avatarUrl','bannerUrl',
+      // enhanced public page content
+      'featured', // { playbackId, title, description, durationSec }
+      'assets',   // { overlays: [{title, tag, image}], sfx: [{title, tag, image}] }
+      'gear'      // [{ name, category, image, url }]
+    ];
     const updates: Record<string, any> = {};
     for (const k of allowedKeys) {
       if (body[k] !== undefined) updates[k] = body[k];
