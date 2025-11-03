@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { doc, getDoc, collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
 import MuxPlayer from '@mux/mux-player-react';
 
@@ -54,7 +55,7 @@ export default function CreatorKitPage() {
         let creatorDoc: any = null;
         let creatorId: string | null = null;
 
-        creatorsSnap.forEach((d) => {
+        creatorsSnap.forEach((d: QueryDocumentSnapshot<DocumentData>) => {
           const data = d.data();
           if ((data.kitSlug || d.id) === slug) {
             creatorDoc = d;
@@ -98,7 +99,7 @@ export default function CreatorKitPage() {
         const videosSnap = await getDocs(videosQ).catch(() => ({ empty: true, docs: [] } as any));
 
         const videosList: LegacyVideo[] = [];
-        videosSnap.forEach((d) => {
+        videosSnap.forEach((d: QueryDocumentSnapshot<DocumentData>) => {
           const data = d.data();
           videosList.push({
             id: d.id,
