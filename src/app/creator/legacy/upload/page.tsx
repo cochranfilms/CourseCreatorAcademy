@@ -1,15 +1,29 @@
 "use client";
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { db, firebaseReady } from '@/lib/firebaseClient';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function LegacyUploadPage() {
   const { user } = useAuth();
+  const [isLegacyCreator, setIsLegacyCreator] = useState<boolean | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isSample, setIsSample] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+
+  // Gate by legacy flag
+  useEffect(() => {
+    const check = async () => {
+      if (!user || !firebaseReady || !db) { setIsLegacyCreator(null); return; }
+      const uref = await getDoc(doc(db, 'users', user.uid));
+      const udata = uref.exists() ? (uref.data() as any) : {};
+      setIsLegacyCreator(Boolean(udata.isLegacyCreator || udata.roles?.legacyCreator));
+    };
+    check();
+  }, [user]);
 
   const handleCreateUploadAndSend = async () => {
     if (!user) { alert('Sign in first.'); return; }
@@ -59,6 +73,9 @@ export default function LegacyUploadPage() {
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-4">Legacy Creator Upload</h1>
+      {user && isLegacyCreator === false && (
+        <div className="text-neutral-300 mb-6">Your account is not enabled as a Legacy Creator. Contact support to request access.</div>
+      )}
       {!user && (
         <div className="text-neutral-400 mb-6">Please sign in to upload.</div>
       )}
@@ -80,7 +97,7 @@ export default function LegacyUploadPage() {
           <input type="file" accept="video/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={handleCreateUploadAndSend} disabled={!user || uploading || !file} className="px-4 py-2 bg-white text-black border-2 border-ccaBlue disabled:opacity-50">{uploading ? 'Uploading...' : 'Create Upload & Send'}</button>
+          <button onClick={handleCreateUploadAndSend} disabled={!user || isLegacyCreator === false || uploading || !file} className="px-4 py-2 bg-white text-black border-2 border-ccaBlue disabled:opacity-50">{uploading ? 'Uploading...' : 'Create Upload & Send'}</button>
           {status && <span className="text-sm text-neutral-300">{status}</span>}
         </div>
       </div>

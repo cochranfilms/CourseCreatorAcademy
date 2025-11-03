@@ -28,6 +28,7 @@ type UserProfile = {
   displayName?: string;
   handle?: string;
   photoURL?: string;
+  isLegacyCreator?: boolean;
 };
 
 export function SiteHeader() {
@@ -60,13 +61,15 @@ export function SiteHeader() {
             setProfile({
               displayName: data.displayName || user.displayName,
               handle: data.handle,
-              photoURL: data.photoURL || user.photoURL
+              photoURL: data.photoURL || user.photoURL,
+              isLegacyCreator: Boolean(data.isLegacyCreator || data.roles?.legacyCreator)
             });
           } else {
             setProfile({
               displayName: user.displayName || user.email?.split('@')[0] || 'Creator',
               handle: undefined,
-              photoURL: user.photoURL || undefined
+              photoURL: user.photoURL || undefined,
+              isLegacyCreator: false
             });
           }
         } catch (error) {
@@ -74,7 +77,8 @@ export function SiteHeader() {
           setProfile({
             displayName: user.displayName || user.email?.split('@')[0] || 'Creator',
             handle: undefined,
-            photoURL: user.photoURL || undefined
+            photoURL: user.photoURL || undefined,
+            isLegacyCreator: false
           });
         }
       };
@@ -153,6 +157,7 @@ export function SiteHeader() {
   const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Creator';
   const handle = profile?.handle;
   const photoURL = profile?.photoURL || user?.photoURL;
+  const isLegacyCreator = Boolean(profile?.isLegacyCreator);
 
   return (
     <>
@@ -307,6 +312,14 @@ export function SiteHeader() {
                   >
                           Your Profile
                   </Link>
+                  {isLegacyCreator && (
+                    <>
+                      <div className="px-4 py-2 text-xs text-neutral-400 border-t border-neutral-800">Legacy Creator</div>
+                      <Link href="/creator/legacy/profile" className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm" onClick={() => setShowDropdown(false)}>Edit Legacy Profile</Link>
+                      <Link href="/creator/legacy/upload" className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm" onClick={() => setShowDropdown(false)}>Upload Videos</Link>
+                      <Link href="/creator/onboarding" className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm" onClick={() => setShowDropdown(false)}>Stripe Payouts</Link>
+                    </>
+                  )}
                   <button
                           onClick={() => {
                             setShowDropdown(false);
@@ -475,6 +488,13 @@ export function SiteHeader() {
                 >
                   Your Profile
                 </button>
+                {isLegacyCreator && (
+                  <>
+                    <Link href="/creator/legacy/profile" onClick={() => setMobileMenuOpen(false)} className="block w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium">Edit Legacy Profile</Link>
+                    <Link href="/creator/legacy/upload" onClick={() => setMobileMenuOpen(false)} className="block w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium">Upload Videos</Link>
+                    <Link href="/creator/onboarding" onClick={() => setMobileMenuOpen(false)} className="block w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium">Stripe Payouts</Link>
+                  </>
+                )}
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { db, firebaseReady } from '@/lib/firebaseClient';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function LegacyProfileEditorPage() {
   const { user } = useAuth();
@@ -20,6 +22,7 @@ export default function LegacyProfileEditorPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
+  const [isLegacyCreator, setIsLegacyCreator] = useState<boolean | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -27,6 +30,13 @@ export default function LegacyProfileEditorPage() {
       try {
         // Fetch current profile via public API list then pick by slug/uid
         if (!user) { setLoading(false); return; }
+        // Gate by legacy flag
+        if (firebaseReady && db) {
+          const uref = await getDoc(doc(db, 'users', user.uid));
+          const udata = uref.exists() ? (uref.data() as any) : {};
+          const legacy = Boolean(udata.isLegacyCreator || udata.roles?.legacyCreator);
+          setIsLegacyCreator(legacy);
+        }
         const res = await fetch(`/api/legacy/creators/${encodeURIComponent(user.uid)}`);
         if (res.ok) {
           const json = await res.json();
@@ -105,7 +115,13 @@ export default function LegacyProfileEditorPage() {
     <main className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-4">Edit Legacy Creator Profile</h1>
       {!user && <p className="text-neutral-400">Please sign in to edit your profile.</p>}
-      {user && (
+      {user && isLegacyCreator === false && (
+        <div className="border border-neutral-800 p-4 bg-neutral-950">
+          <p className="text-neutral-300">Your account is not enabled as a Legacy Creator yet.</p>
+          <p className="text-neutral-400 text-sm mt-2">Contact support to request Legacy Creator access.</p>
+        </div>
+      )}
+      {user && (isLegacyCreator === true || isLegacyCreator === null) && (
         <div className="space-y-8">
           <section className="border border-neutral-800 p-4 bg-neutral-950">
             <h2 className="text-xl font-semibold mb-4">Profile</h2>
