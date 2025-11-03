@@ -38,6 +38,7 @@ export default function CreatorKitPage() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<LegacyVideo | null>(null);
+  const [assetsTab, setAssetsTab] = useState<'overlays' | 'sfx'>('overlays');
 
   useEffect(() => {
     const load = async () => {
@@ -114,6 +115,33 @@ export default function CreatorKitPage() {
   const sampleVideos = videos.filter(v => v.isSample);
   const lockedVideos = videos.filter(v => !v.isSample);
 
+  // Featured + sample placeholder data
+  const featured: LegacyVideo | null = (sampleVideos.find(v => v.muxPlaybackId) || sampleVideos[0] || null) || null;
+  const assetSamples = {
+    overlays: [
+      { id: 'a1', title: 'GK - Flux Essence', by: creator?.displayName || 'Creator', tag: 'transitions', image: creator?.bannerUrl || '' },
+      { id: 'a2', title: 'GK - Spin Transitions', by: creator?.displayName || 'Creator', tag: 'transitions', image: creator?.bannerUrl || '' },
+      { id: 'a3', title: 'GK - Whip Pans', by: creator?.displayName || 'Creator', tag: 'transitions', image: creator?.bannerUrl || '' },
+      { id: 'a4', title: 'GK - Gate Flare', by: creator?.displayName || 'Creator', tag: 'analog', image: creator?.bannerUrl || '' },
+      { id: 'a5', title: 'GK - Dust Wave', by: creator?.displayName || 'Creator', tag: 'film', image: creator?.bannerUrl || '' },
+      { id: 'a6', title: 'GK - Retro Gate Portra Film', by: creator?.displayName || 'Creator', tag: 'film', image: creator?.bannerUrl || '' },
+    ],
+    sfx: [
+      { id: 's1', title: 'GK - Swoosh Pack', by: creator?.displayName || 'Creator', tag: 'wooshes', image: creator?.bannerUrl || '' },
+      { id: 's2', title: 'GK - Atmospheres', by: creator?.displayName || 'Creator', tag: 'ambience', image: creator?.bannerUrl || '' },
+      { id: 's3', title: 'GK - Risers', by: creator?.displayName || 'Creator', tag: 'risers', image: creator?.bannerUrl || '' },
+    ],
+  } as const;
+
+  const gearSamples = [
+    { id: 'g1', name: 'Canon RF 85mm F1.2 L USM DS', category: 'LENSES', image: '/api/placeholder/600/400', url: '#' },
+    { id: 'g2', name: 'Canon C70 Cinema Camera', category: 'CAMERA', image: '/api/placeholder/600/400', url: '#' },
+    { id: 'g3', name: 'Canon EOS R3 Mirrorless Camera', category: 'CAMERA', image: '/api/placeholder/600/400', url: '#' },
+    { id: 'g4', name: 'Canon EOS R5 Mirrorless Camera', category: 'CAMERA', image: '/api/placeholder/600/400', url: '#' },
+    { id: 'g5', name: 'Shortstache Everyday Filter', category: 'FILTER', image: '/api/placeholder/600/400', url: '#' },
+    { id: 'g6', name: 'RED Komodo-X', category: 'CAMERA', image: '/api/placeholder/600/400', url: '#' },
+  ] as const;
+
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
       {/* Creator Header */}
@@ -164,11 +192,48 @@ export default function CreatorKitPage() {
         )}
       </div>
 
+      {/* Featured Video */}
+      <div className="mb-10">
+        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Featured Video</h2>
+        <p className="text-neutral-400 mb-4">Check out this highlighted video from {creator.displayName}</p>
+        <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800">
+          <div className="relative">
+            {featured && featured.muxPlaybackId ? (
+              <MuxPlayer
+                playbackId={featured.muxPlaybackId}
+                streamType="on-demand"
+                primaryColor="#3B82F6"
+                className="w-full"
+                style={{ aspectRatio: '16 / 9' }}
+              />
+            ) : (
+              <div className="aspect-video w-full bg-neutral-800 flex items-center justify-center">
+                <div className="text-neutral-500">Featured video coming soon</div>
+              </div>
+            )}
+          </div>
+          <div className="p-5">
+            <div className="inline-flex items-center gap-2 text-xs mb-2">
+              <span className="px-2 py-0.5 rounded bg-red-600/20 text-red-400 border border-red-500/30">Featured</span>
+              {featured?.durationSec ? (
+                <span className="text-neutral-400">{Math.floor((featured.durationSec||0)/60)}m</span>
+              ) : null}
+            </div>
+            <div className="text-xl md:text-2xl font-semibold text-white">
+              {featured?.title || `Backstage EP1 — Controlled Chaos with Jeremy Piven`}
+            </div>
+            <p className="text-neutral-300 mt-2">
+              {featured?.description || `Behind-the-scenes look into a live project. No fancy setups — just instinct and fast moves.`}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Videos Grid */}
       <div className="mb-8">
         {sampleVideos.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-white mb-4">Sample Videos</h2>
+            <h2 className="text-2xl font-bold text-white mb-4">Playlists</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {sampleVideos.map((video) => (
                 <div
@@ -264,6 +329,62 @@ export default function CreatorKitPage() {
             <p className="text-neutral-400">No videos available yet.</p>
           </div>
         )}
+      </div>
+
+      {/* Assets */}
+      <div className="mb-12">
+        <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Assets</h2>
+        <div className="flex items-center justify-center mb-6">
+          <div className="inline-flex bg-neutral-900 border border-neutral-800 rounded-full p-1">
+            <button onClick={() => setAssetsTab('overlays')} className={`px-4 py-1 rounded-full text-sm ${assetsTab==='overlays'?'bg-ccaBlue/20 text-ccaBlue border border-ccaBlue/30':'text-neutral-300'}`}>Overlays & Transitions</button>
+            <button onClick={() => setAssetsTab('sfx')} className={`px-4 py-1 rounded-full text-sm ${assetsTab==='sfx'?'bg-ccaBlue/20 text-ccaBlue border border-ccaBlue/30':'text-neutral-300'}`}>Sound Effects</button>
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {(assetsTab==='overlays' ? assetSamples.overlays : assetSamples.sfx).map((a) => (
+            <div key={a.id} className="bg-neutral-950 border border-neutral-800 rounded-xl overflow-hidden">
+              <div className="aspect-video w-full bg-neutral-900 relative">
+                {a.image ? (
+                  <Image src={a.image} alt={a.title} fill sizes="(max-width:768px) 100vw, 33vw" className="object-cover" />
+                ) : null}
+              </div>
+              <div className="p-4">
+                <div className="text-lg font-semibold text-white mb-1">{a.title}</div>
+                <div className="text-sm text-neutral-400 mb-2">By {a.by}</div>
+                <div className="text-xs text-neutral-400">{a.tag}</div>
+                <div className="flex items-center justify-between mt-3 text-neutral-400">
+                  <div className="inline-flex items-center gap-3 text-sm">
+                    <span className="inline-flex items-center gap-1">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 20h14v-2H5v2zm7-18L5.33 15h13.34L12 2z"/></svg> 0
+                    </span>
+                  </div>
+                  <button className="p-2 hover:bg-neutral-800 rounded">
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1 4.13 2.44C11.09 5 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Gear */}
+      <div className="mb-12">
+        <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">{creator.displayName}'s Gear</h2>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {gearSamples.map((g) => (
+            <a key={g.id} href={g.url} target="_blank" rel="noreferrer" className="bg-neutral-950 border border-neutral-800 rounded-xl overflow-hidden hover:border-ccaBlue/50 transition block">
+              <div className="aspect-video w-full bg-neutral-900" />
+              <div className="p-4">
+                <div className="text-xs mb-2">
+                  <span className="px-2 py-1 rounded bg-neutral-800 text-neutral-300">{g.category}</span>
+                </div>
+                <div className="text-white font-semibold">{g.name}</div>
+                <div className="text-sm text-ccaBlue mt-1">View Product ↗</div>
+              </div>
+            </a>
+          ))}
+        </div>
       </div>
 
       {/* Video Player Modal */}
