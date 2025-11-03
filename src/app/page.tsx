@@ -288,11 +288,16 @@ export default function Page() {
           ))}
         </div>
 
-        {/* Personalized Creator Kits rail (only for subscribed kits) */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {/* Component will show nothing if the user has no Legacy+ subs */}
+        {/* All Creator Kits (shows all creators with at least 3 samples) */}
         {typeof window !== 'undefined' && (() => {
-          const C = require('@/components/CreatorKitsRail').CreatorKitsRail; return <C />;
+          const C = require('@/components/CreatorKitsRail').CreatorKitsRail; 
+          return <C showAll={true} showSamplesOnly={true} />;
+        })()}
+
+        {/* Personalized Creator Kits rail (only for subscribed kits) */}
+        {typeof window !== 'undefined' && (() => {
+          const C = require('@/components/CreatorKitsRail').CreatorKitsRail; 
+          return <C showAll={false} />;
         })()}
       </section>
 

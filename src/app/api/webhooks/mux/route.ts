@@ -3,18 +3,22 @@ import crypto from 'crypto';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
-function parsePassthrough(value: any): { courseId?: string; moduleId?: string; lessonId?: string } {
+function parsePassthrough(value: any): { courseId?: string; moduleId?: string; lessonId?: string; legacyCreatorId?: string; title?: string; description?: string; isSample?: boolean } {
   if (!value) return {};
-  // Prefer JSON passthrough like: {"courseId":"foo","moduleId":"mod-1","lessonId":"les-1"}
+  // Prefer JSON passthrough like: {"courseId":"foo","moduleId":"mod-1","lessonId":"les-1"} or {"legacyCreatorId":"...","title":"..."}
   if (typeof value === 'string') {
     const str = value.trim();
     try {
       const obj = JSON.parse(str);
-      if (obj && (obj.courseId || obj.course || obj.slug)) {
+      if (obj && (obj.courseId || obj.course || obj.slug || obj.legacyCreatorId)) {
         return {
           courseId: obj.courseId || obj.course || obj.slug,
           moduleId: obj.moduleId || obj.module,
           lessonId: obj.lessonId || obj.lesson,
+          legacyCreatorId: obj.legacyCreatorId,
+          title: obj.title,
+          description: obj.description,
+          isSample: Boolean(obj.isSample),
         };
       }
     } catch {}
@@ -31,6 +35,10 @@ function parsePassthrough(value: any): { courseId?: string; moduleId?: string; l
         courseId: map.courseid || map.course || map.slug,
         moduleId: map.moduleid || map.module,
         lessonId: map.lessonid || map.lesson,
+        legacyCreatorId: map.legacycreatorid || map.legacycreator,
+        title: map.title,
+        description: map.description,
+        isSample: map.issample === 'true' || map.issample === '1',
       };
     }
 
@@ -107,10 +115,26 @@ export async function POST(req: NextRequest) {
       : null;
 
     try {
-      const { courseId, moduleId, lessonId } = parsePassthrough(passthrough);
+      const { courseId, moduleId, lessonId, legacyCreatorId, title, description, isSample } = parsePassthrough(passthrough);
       let updates = 0;
 
-      if (courseId && moduleId && lessonId && adminDb) {
+      // Handle legacy creator video uploads
+      if (legacyCreatorId && adminDb) {
+        const videoRef = adminDb.collection(`legacy_creators/${legacyCreatorId}/videos`);
+        await videoRef.add({
+          muxAssetId: assetId,
+          muxPlaybackId: playbackId || null,
+          muxAnimatedGifUrl: animatedGifUrl,
+          title: title || 'Untitled Video',
+          description: description || '',
+          durationSec: durationSec || 0,
+          isSample: Boolean(isSample),
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        updates++;
+      } else if (courseId && moduleId && lessonId && adminDb) {
+        // Handle regular course lesson videos
         const ref = adminDb
           .collection('courses').doc(courseId)
           .collection('modules').doc(moduleId)

@@ -10,6 +10,7 @@ import { ProfileImageUpload } from '@/components/ProfileImageUpload';
 import Link from 'next/link';
 import OrdersTab from './OrdersTab';
 import OnboardingTab from './OnboardingTab';
+import { LegacySubscriptions } from '@/components/LegacySubscriptions';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 type UserProfile = {
@@ -52,7 +53,7 @@ type Opportunity = {
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'projects' | 'social' | 'email' | 'privacy' | 'orders' | 'onboarding'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'social' | 'email' | 'privacy' | 'orders' | 'onboarding' | 'legacy'>('projects');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   
@@ -611,7 +612,7 @@ export default function DashboardPage() {
 
         {/* Sub-Navigation Tabs */}
         <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-hide w-full -mx-3 sm:mx-0 px-3 sm:px-0">
-          {(['projects', 'social', 'email', 'privacy', 'orders', 'onboarding'] as const).map((tab) => (
+          {(['projects', 'social', 'email', 'privacy', 'orders', 'onboarding', 'legacy'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -621,7 +622,7 @@ export default function DashboardPage() {
                   : 'bg-neutral-900/60 backdrop-blur-sm text-neutral-400 hover:text-white border border-neutral-800/50'
               }`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'legacy' ? 'Legacy+ Subscriptions' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
@@ -895,6 +896,16 @@ export default function DashboardPage() {
         {activeTab === 'onboarding' && (
           <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <OnboardingTab />
+          </div>
+        )}
+
+        {activeTab === 'legacy' && (
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+            <div className="mb-6">
+              <h2 className="text-xl sm:text-2xl font-semibold mb-2">Legacy+ Subscriptions</h2>
+              <p className="text-neutral-400 text-sm">Manage your Legacy+ creator subscriptions</p>
+            </div>
+            <LegacySubscriptions />
           </div>
         )}
 
