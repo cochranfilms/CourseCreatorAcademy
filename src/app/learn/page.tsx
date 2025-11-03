@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { isSaved, toggleSaved, getCourseProgress } from '@/lib/userData';
 import CourseViewerModal from '@/components/CourseViewerModal';
+import { CreatorKitsScroller } from '@/components/CreatorKitsScroller';
 
 type Course = {
   id: string;
@@ -267,6 +268,10 @@ export default function LearnPage() {
         ))}
       </div>
       )}
+
+      {/* Creator Kits Scroller */}
+      <CreatorKitsScroller />
+
       {viewerOpen && viewerInitial && (
         <CourseViewerModal
           courseSlug={viewerCourseSlug}
