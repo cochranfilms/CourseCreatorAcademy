@@ -89,6 +89,44 @@
 - `opportunities`: `posterId` (Ascending) + `posted` (Descending)
 - `threads`: `members` (Array Contains) + `lastMessageAt` (Descending)
 
+### 5. Firebase Storage CORS Errors
+
+**Error**: `Access to XMLHttpRequest at 'https://firebasestorage.googleapis.com/...' from origin 'https://coursecreatoracademy.vercel.app' has been blocked by CORS policy: Response to preflight request doesn't pass access control check`
+
+**Causes**:
+- Firebase Storage bucket doesn't have CORS configured for your production domain
+- CORS configuration is missing or incorrect
+
+**Solutions**:
+
+1. **Configure CORS using gsutil** (Recommended):
+   ```bash
+   # Install Google Cloud SDK if needed
+   brew install google-cloud-sdk
+   
+   # Authenticate
+   gcloud auth login
+   
+   # Set project
+   gcloud config set project course-creator-academy-866d6
+   
+   # Apply CORS configuration
+   gsutil cors set docs/firebase-storage-cors.json gs://course-creator-academy-866d6.appspot.com
+   ```
+
+2. **Verify CORS configuration**:
+   ```bash
+   gsutil cors get gs://course-creator-academy-866d6.appspot.com
+   ```
+
+3. **Alternative: Use Google Cloud Console**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Navigate to **Cloud Storage** → **Buckets** → `course-creator-academy-866d6.appspot.com`
+   - Go to **Configuration** tab → **CORS configuration**
+   - Edit and paste the JSON from `docs/firebase-storage-cors.json`
+
+**See**: `docs/STORAGE-RULES-SETUP.md` for detailed CORS configuration instructions.
+
 ## Firebase Configuration Checklist
 
 ### Required Environment Variables
