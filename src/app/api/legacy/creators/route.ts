@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
       // If no index for order, just list all
       return await adminDb.collection('legacy_creators').get();
     });
-    const creators = snap.docs.map((d) => {
+    const creators = snap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => {
       const data = d.data() as any;
       return {
         id: d.id,
