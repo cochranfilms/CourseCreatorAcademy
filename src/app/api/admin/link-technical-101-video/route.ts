@@ -90,11 +90,17 @@ async function linkVideo() {
     const lessonRef = moduleRef.collection('lessons').doc(lessonId);
     const lessonDoc = await lessonRef.get();
     
+    // Generate animated GIF thumbnail URL
+    const muxAnimatedGifUrl = muxPlaybackId 
+      ? `https://image.mux.com/${muxPlaybackId}/animated.gif?width=320`
+      : null;
+
     const lessonData = {
       title: lessonTitle,
       index: 1,
       muxAssetId,
       muxPlaybackId,
+      muxAnimatedGifUrl,
       durationSec: 138, // 2:18 in seconds
       freePreview: false,
       resources: [],

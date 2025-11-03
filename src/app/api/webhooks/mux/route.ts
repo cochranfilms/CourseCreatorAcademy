@@ -100,6 +100,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing asset id' }, { status: 400 });
     }
 
+    // Generate animated GIF thumbnail URL (MUX generates on-demand)
+    // Format: https://image.mux.com/{PLAYBACK_ID}/animated.gif?width=320
+    const animatedGifUrl = playbackId 
+      ? `https://image.mux.com/${playbackId}/animated.gif?width=320`
+      : null;
+
     try {
       const { courseId, moduleId, lessonId } = parsePassthrough(passthrough);
       let updates = 0;
@@ -112,6 +118,7 @@ export async function POST(req: NextRequest) {
         await ref.set({
           muxAssetId: assetId,
           muxPlaybackId: playbackId || null,
+          muxAnimatedGifUrl: animatedGifUrl,
           durationSec: durationSec || 0,
           updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
@@ -124,6 +131,7 @@ export async function POST(req: NextRequest) {
         for (const doc of snap.docs) {
           await doc.ref.set({
             muxPlaybackId: playbackId || null,
+            muxAnimatedGifUrl: animatedGifUrl,
             durationSec: durationSec || 0,
             updatedAt: FieldValue.serverTimestamp(),
           }, { merge: true });

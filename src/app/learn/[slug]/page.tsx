@@ -19,6 +19,7 @@ type Lesson = {
   freePreview?: boolean;
   muxAssetId?: string;
   muxPlaybackId?: string;
+  muxAnimatedGifUrl?: string;
 };
 
 type Module = {
@@ -111,6 +112,7 @@ export default function CourseDetailPage() {
               freePreview: lessonData.freePreview || false,
               muxAssetId: lessonData.muxAssetId,
               muxPlaybackId: lessonData.muxPlaybackId,
+              muxAnimatedGifUrl: lessonData.muxAnimatedGifUrl,
             });
           });
 
@@ -366,14 +368,22 @@ export default function CourseDetailPage() {
                         {/* Lesson thumbnail from Mux */}
                         {lesson.muxPlaybackId ? (
                           <div className="relative w-24 h-14 rounded overflow-hidden bg-neutral-800 flex-shrink-0">
-                            <Image
-                              src={getMuxThumbnailUrl(lesson.muxPlaybackId, lesson.durationSec) || ''}
-                              alt={`${lesson.title} thumbnail`}
-                              fill
-                              sizes="96px"
-                              className="object-cover"
-                              priority={false}
-                            />
+                            {lesson.muxAnimatedGifUrl ? (
+                              <img
+                                src={lesson.muxAnimatedGifUrl}
+                                alt={`${lesson.title} animated thumbnail`}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Image
+                                src={getMuxThumbnailUrl(lesson.muxPlaybackId, lesson.durationSec) || ''}
+                                alt={`${lesson.title} thumbnail`}
+                                fill
+                                sizes="96px"
+                                className="object-cover"
+                                priority={false}
+                              />
+                            )}
                           </div>
                         ) : (
                           <div className="w-24 h-14 rounded bg-neutral-800 flex-shrink-0" />
