@@ -178,44 +178,40 @@ export default function LegacyProfileEditorPage() {
       setUploadDescription('');
     } catch (e: any) {
       const msg = String(e?.message || e || 'Upload failed');
-      // Auto-fallback: upload to Firebase Storage and ingest via URL when CORS/TUS fails
-      if (/cors|tus-resumable|preflight/i.test(msg)) {
-        if (!firebaseReady || !storage) { setUploadStatus(msg); return; }
-        try {
-          setUploadStatus('Uploading to storage...');
-          const path = `legacy-uploads/${user.uid}/${Date.now()}_${uploadFile.name.replace(/\s+/g,'_')}`;
-          const sref = storageRef(storage, path);
-          const task = uploadBytesResumable(sref, uploadFile, { contentType: uploadFile.type || 'video/mp4' });
-          await new Promise<void>((resolve, reject) => {
-            task.on('state_changed', (snap) => {
-              const p = (snap.bytesTransferred / snap.totalBytes) * 100;
-              setUploadProgress(p);
-            }, reject, resolve);
-          });
-          const downloadURL = await getDownloadURL(task.snapshot.ref);
-          setUploadStatus('Ingesting to Mux...');
-          const res2 = await fetch('/api/legacy/upload-from-url', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              creatorId: user.uid,
-              title: uploadTitle || 'Untitled Video',
-              description: uploadDescription,
-              isSample: uploadIsSample,
-              fileUrl: downloadURL,
-            })
-          });
-          const j2 = await res2.json();
-          if (!res2.ok) throw new Error(j2?.error || 'Mux ingest failed');
-          setUploadStatus('Upload complete! Mux is processing your video...');
-          setUploadFile(null);
-          setUploadTitle('');
-          setUploadDescription('');
-        } catch (err2: any) {
-          setUploadStatus(err2?.message || msg);
-        }
-      } else {
-        setUploadStatus(msg);
+      // Auto-fallback on any TUS failure: upload to Firebase Storage and ingest into Mux via URL
+      if (!firebaseReady || !storage) { setUploadStatus(msg); return; }
+      try {
+        setUploadStatus('Uploading to storage...');
+        const path = `legacy-uploads/${user.uid}/${Date.now()}_${uploadFile.name.replace(/\s+/g,'_')}`;
+        const sref = storageRef(storage, path);
+        const task = uploadBytesResumable(sref, uploadFile, { contentType: uploadFile.type || 'video/mp4' });
+        await new Promise<void>((resolve, reject) => {
+          task.on('state_changed', (snap) => {
+            const p = (snap.bytesTransferred / snap.totalBytes) * 100;
+            setUploadProgress(p);
+          }, reject, resolve);
+        });
+        const downloadURL = await getDownloadURL(task.snapshot.ref);
+        setUploadStatus('Ingesting to Mux...');
+        const res2 = await fetch('/api/legacy/upload-from-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            creatorId: user.uid,
+            title: uploadTitle || 'Untitled Video',
+            description: uploadDescription,
+            isSample: uploadIsSample,
+            fileUrl: downloadURL,
+          })
+        });
+        const j2 = await res2.json();
+        if (!res2.ok) throw new Error(j2?.error || 'Mux ingest failed');
+        setUploadStatus('Upload complete! Mux is processing your video...');
+        setUploadFile(null);
+        setUploadTitle('');
+        setUploadDescription('');
+      } catch (err2: any) {
+        setUploadStatus(err2?.message || msg);
       }
     } finally {
       setUploading(false);
