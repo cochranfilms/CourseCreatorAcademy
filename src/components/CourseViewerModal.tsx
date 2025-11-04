@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import MuxPlayer from '@mux/mux-player-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toggleSaved, isSaved, updateLessonProgress, getLessonProgress } from '@/lib/userData';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebaseClient';
 
 export type CVLesson = {
   id: string;
@@ -38,6 +40,7 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
   const [progressPct, setProgressPct] = useState(0);
   const [resumePos, setResumePos] = useState<number | null>(null);
   const progressDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const [fetchedDescription, setFetchedDescription] = useState<string | null>(null);
 
   const module = useMemo(() => modules.find(m => m.id === moduleId) || modules[0], [modules, moduleId]);
   const lesson = useMemo(() => module?.lessons.find(l => l.id === lessonId) || module?.lessons[0], [module, lessonId]);
@@ -58,6 +61,34 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
     };
     loadSaved();
   }, [user, courseSlug, moduleId, lessonId, lesson?.id]);
+
+  // Fallback: fetch description directly if missing in props
+  useEffect(() => {
+    const maybeFetchDescription = async () => {
+      setFetchedDescription(null);
+      if (!db || !courseSlug || !moduleId || !lessonId) return;
+      if (lesson?.description) return;
+      try {
+        const coursesRef = collection(db, 'courses');
+        const snap = await getDocs(coursesRef);
+        let courseId: string | null = null;
+        snap.forEach((d) => {
+          const data = d.data() as any;
+          if (data.slug === courseSlug || d.id === courseSlug) {
+            courseId = d.id;
+          }
+        });
+        if (!courseId) return;
+        const lref = doc(db, `courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`);
+        const lsnap = await getDoc(lref);
+        const ldata = lsnap.data() as any;
+        if (ldata?.description) setFetchedDescription(String(ldata.description));
+      } catch {
+        // ignore
+      }
+    };
+    maybeFetchDescription();
+  }, [db, courseSlug, moduleId, lessonId, lesson?.description]);
 
   const closeOnEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
   useEffect(() => {
@@ -156,10 +187,12 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
               )}
             </div>
 
-          {lesson.description ? (
+          {lesson.description || fetchedDescription ? (
             <div className="mt-4">
               <h3 className="text-sm font-semibold text-neutral-300 mb-1">Description</h3>
-              <p className="text-neutral-300 whitespace-pre-wrap">{lesson.description}</p>
+              <div className="border border-neutral-800 bg-neutral-950 p-3 rounded max-h-64 overflow-y-auto">
+                <p className="text-neutral-300 whitespace-pre-wrap">{lesson.description || fetchedDescription}</p>
+              </div>
             </div>
           ) : null}
           </div>

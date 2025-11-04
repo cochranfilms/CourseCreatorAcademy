@@ -289,7 +289,9 @@ export default function LessonPage() {
       {lesson.description ? (
         <div className="mt-4">
           <h3 className="text-sm font-semibold text-neutral-300 mb-1">Description</h3>
-          <p className="text-neutral-300 whitespace-pre-wrap">{lesson.description}</p>
+          <div className="border border-neutral-800 bg-neutral-950 p-3 rounded max-h-64 overflow-y-auto">
+            <p className="text-neutral-300 whitespace-pre-wrap">{lesson.description}</p>
+          </div>
         </div>
       ) : null}
     </main>
