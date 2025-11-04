@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { mux } from '@/lib/mux';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // POST /api/legacy/upload
 // Body: { creatorId: string, title: string, description?: string, isSample?: boolean }
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
       description: description || '',
       isSample: Boolean(isSample),
       status: 'pending',
-      createdAt: adminDb.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
 
     return NextResponse.json({

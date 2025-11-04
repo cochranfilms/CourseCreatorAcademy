@@ -34,6 +34,14 @@ export default function LegacyProfileEditorPage() {
   const [cropAspect, setCropAspect] = useState<number>(1);
   const [pendingPath, setPendingPath] = useState<string>('');
 
+  // Inline video upload state (replaces separate /upload page)
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadIsSample, setUploadIsSample] = useState(true);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -122,6 +130,58 @@ export default function LegacyProfileEditorPage() {
     }
   };
 
+  const createUploadAndSend = async () => {
+    if (!user) { alert('Sign in first.'); return; }
+    if (!uploadFile) { alert('Choose a video file first.'); return; }
+    try {
+      setUploading(true);
+      setUploadStatus('Requesting upload URL...');
+
+      const res = await fetch('/api/legacy/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          creatorId: user.uid,
+          title: uploadTitle || 'Untitled Video',
+          description: uploadDescription,
+          isSample: uploadIsSample,
+        })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to create upload');
+
+      const uploadUrl: string = json.uploadUrl;
+      if (!uploadUrl) throw new Error('Upload URL missing');
+
+      setUploadStatus('Uploading to Mux...');
+      const tus = await import('tus-js-client');
+      await new Promise<void>((resolve, reject) => {
+        const uploader = new tus.Upload(uploadFile, {
+          endpoint: uploadUrl,
+          retryDelays: [0, 1000, 3000, 5000],
+          metadata: {
+            filename: uploadFile.name,
+            filetype: uploadFile.type || 'video/mp4',
+          },
+          uploadSize: uploadFile.size,
+          onError(err: unknown) { reject(err as any); },
+          onSuccess() { resolve(); },
+        } as any);
+        uploader.start();
+      });
+
+      setUploadStatus('Upload complete! Mux is processing your video...');
+      // Reset inputs but keep status message
+      setUploadFile(null);
+      setUploadTitle('');
+      setUploadDescription('');
+    } catch (e: any) {
+      setUploadStatus(e?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-4">Edit Legacy Creator Profile</h1>
@@ -134,6 +194,32 @@ export default function LegacyProfileEditorPage() {
       )}
       {user && (isLegacyCreator === true || isLegacyCreator === null || hasCreatorMapping) && (
         <div className="space-y-8">
+          <section className="border border-neutral-800 p-4 bg-neutral-950">
+            <h2 className="text-xl font-semibold mb-4">Upload Video</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm mb-1 text-neutral-300">Title</label>
+                <input value={uploadTitle} onChange={(e)=>setUploadTitle(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="Sample Video" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 text-neutral-300">Description</label>
+                <textarea value={uploadDescription} onChange={(e)=>setUploadDescription(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" rows={3} placeholder="Short description" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input id="uploadIsSample" type="checkbox" checked={uploadIsSample} onChange={(e)=>setUploadIsSample(e.target.checked)} />
+                <label htmlFor="uploadIsSample" className="text-sm text-neutral-300">Mark as sample (visible to everyone)</label>
+              </div>
+              <div>
+                <label className="block text-sm mb-1 text-neutral-300">Video File</label>
+                <input type="file" accept="video/*" onChange={(e)=>setUploadFile(e.target.files?.[0] || null)} />
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={createUploadAndSend} disabled={!user || uploading || !uploadFile} className="px-4 py-2 bg-white text-black border-2 border-ccaBlue disabled:opacity-50">{uploading ? 'Uploading...' : 'Create Upload & Send'}</button>
+                {uploadStatus && <span className="text-sm text-neutral-300">{uploadStatus}</span>}
+              </div>
+              <p className="text-xs text-neutral-500">After processing completes, your video will appear on your legacy kit automatically.</p>
+            </div>
+          </section>
           <section className="border border-neutral-800 p-4 bg-neutral-950">
             <h2 className="text-xl font-semibold mb-4">Profile</h2>
           <div>

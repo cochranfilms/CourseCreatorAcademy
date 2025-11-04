@@ -315,6 +315,12 @@ export function SiteHeader() {
                         <div className="p-3 border-b border-neutral-800">
                           <div className="font-semibold text-white truncate">{displayName}</div>
                           {handle && <div className="text-sm text-neutral-400 truncate">@{handle}</div>}
+                          {isLegacyCreator && (
+                            <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/30">
+                              <span role="img" aria-label="fire">🔥</span>
+                              <span>Legacy Creator</span>
+                            </div>
+                          )}
                         </div>
                   <Link
                     href={profileHref}
@@ -325,9 +331,6 @@ export function SiteHeader() {
                   </Link>
                   {isLegacyCreator && (
                     <>
-                      <div className="px-4 py-2 text-xs text-neutral-400 border-t border-neutral-800">Legacy Creator</div>
-                      <Link href="/creator/legacy/profile" className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm" onClick={() => setShowDropdown(false)}>Edit Legacy Profile</Link>
-                      <Link href="/creator/legacy/upload" className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm" onClick={() => setShowDropdown(false)}>Upload Videos</Link>
                       <Link href="/creator/onboarding" className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm" onClick={() => setShowDropdown(false)}>Stripe Payouts</Link>
                     </>
                   )}
@@ -431,6 +434,12 @@ export function SiteHeader() {
                   <div>
                     <div className="font-semibold text-white">{displayName}</div>
                     {handle && <div className="text-sm text-neutral-400">@{handle}</div>}
+                    {isLegacyCreator && (
+                      <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/30">
+                        <span role="img" aria-label="fire">🔥</span>
+                        <span>Legacy Creator</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button
@@ -501,8 +510,6 @@ export function SiteHeader() {
                 </button>
                 {isLegacyCreator && (
                   <>
-                    <Link href="/creator/legacy/profile" onClick={() => setMobileMenuOpen(false)} className="block w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium">Edit Legacy Profile</Link>
-                    <Link href="/creator/legacy/upload" onClick={() => setMobileMenuOpen(false)} className="block w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium">Upload Videos</Link>
                     <Link href="/creator/onboarding" onClick={() => setMobileMenuOpen(false)} className="block w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium">Stripe Payouts</Link>
                   </>
                 )}
