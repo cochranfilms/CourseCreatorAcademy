@@ -27,8 +27,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Creator not found or not a Legacy creator' }, { status: 404 });
     }
 
-    // Create MUX direct upload
-    const corsOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || process.env.APP_URL || '*';
+    // Create MUX direct upload. Prefer the caller's origin so previews work.
+    const requestOrigin = req.headers.get('origin');
+    const corsOrigin = requestOrigin || process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || process.env.APP_URL || '*';
     const upload = await mux.video.uploads.create({
       cors_origin: corsOrigin,
       new_asset_settings: {
