@@ -23,6 +23,7 @@ export default function LegacyProfileEditorPage() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [isLegacyCreator, setIsLegacyCreator] = useState<boolean | null>(null);
+  const [hasCreatorMapping, setHasCreatorMapping] = useState<boolean>(false);
 
   useEffect(() => {
     const load = async () => {
@@ -42,6 +43,7 @@ export default function LegacyProfileEditorPage() {
           const json = await res.json();
           const c = json?.creator;
           if (c) {
+            setHasCreatorMapping(true);
             setDisplayName(c.displayName || '');
             setHandle(c.handle || '');
             setBio(c.bio || '');
@@ -115,13 +117,13 @@ export default function LegacyProfileEditorPage() {
     <main className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-4">Edit Legacy Creator Profile</h1>
       {!user && <p className="text-neutral-400">Please sign in to edit your profile.</p>}
-      {user && isLegacyCreator === false && (
+      {user && isLegacyCreator === false && !hasCreatorMapping && (
         <div className="border border-neutral-800 p-4 bg-neutral-950">
           <p className="text-neutral-300">Your account is not enabled as a Legacy Creator yet.</p>
           <p className="text-neutral-400 text-sm mt-2">Contact support to request Legacy Creator access.</p>
         </div>
       )}
-      {user && (isLegacyCreator === true || isLegacyCreator === null) && (
+      {user && (isLegacyCreator === true || isLegacyCreator === null || hasCreatorMapping) && (
         <div className="space-y-8">
           <section className="border border-neutral-800 p-4 bg-neutral-950">
             <h2 className="text-xl font-semibold mb-4">Profile</h2>
