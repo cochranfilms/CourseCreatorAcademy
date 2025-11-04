@@ -5,13 +5,13 @@ import { adminDb } from '@/lib/firebaseAdmin';
 // Returns public creator info and up to 3 sample videos.
 // If userId is provided and user has active subscription to this creator,
 // the response also includes all non-sample videos.
-export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
+export async function GET(req: NextRequest, context: any) {
   try {
     if (!adminDb) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     }
 
-    const slug = decodeURIComponent(params.slug);
+    const slug = decodeURIComponent(String(context?.params?.slug || ''));
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId') || undefined;
 
