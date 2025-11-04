@@ -41,6 +41,7 @@ export default function LegacyProfileEditorPage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -176,7 +177,46 @@ export default function LegacyProfileEditorPage() {
       setUploadTitle('');
       setUploadDescription('');
     } catch (e: any) {
-      setUploadStatus(e?.message || 'Upload failed');
+      const msg = String(e?.message || e || 'Upload failed');
+      // Auto-fallback: upload to Firebase Storage and ingest via URL when CORS/TUS fails
+      if (/cors|tus-resumable|preflight/i.test(msg)) {
+        if (!firebaseReady || !storage) { setUploadStatus(msg); return; }
+        try {
+          setUploadStatus('Uploading to storage...');
+          const path = `legacy-uploads/${user.uid}/${Date.now()}_${uploadFile.name.replace(/\s+/g,'_')}`;
+          const sref = storageRef(storage, path);
+          const task = uploadBytesResumable(sref, uploadFile, { contentType: uploadFile.type || 'video/mp4' });
+          await new Promise<void>((resolve, reject) => {
+            task.on('state_changed', (snap) => {
+              const p = (snap.bytesTransferred / snap.totalBytes) * 100;
+              setUploadProgress(p);
+            }, reject, resolve);
+          });
+          const downloadURL = await getDownloadURL(task.snapshot.ref);
+          setUploadStatus('Ingesting to Mux...');
+          const res2 = await fetch('/api/legacy/upload-from-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              creatorId: user.uid,
+              title: uploadTitle || 'Untitled Video',
+              description: uploadDescription,
+              isSample: uploadIsSample,
+              fileUrl: downloadURL,
+            })
+          });
+          const j2 = await res2.json();
+          if (!res2.ok) throw new Error(j2?.error || 'Mux ingest failed');
+          setUploadStatus('Upload complete! Mux is processing your video...');
+          setUploadFile(null);
+          setUploadTitle('');
+          setUploadDescription('');
+        } catch (err2: any) {
+          setUploadStatus(err2?.message || msg);
+        }
+      } else {
+        setUploadStatus(msg);
+      }
     } finally {
       setUploading(false);
     }
@@ -217,6 +257,9 @@ export default function LegacyProfileEditorPage() {
                 <button onClick={createUploadAndSend} disabled={!user || uploading || !uploadFile} className="px-4 py-2 bg-white text-black border-2 border-ccaBlue disabled:opacity-50">{uploading ? 'Uploading...' : 'Create Upload & Send'}</button>
                 {uploadStatus && <span className="text-sm text-neutral-300">{uploadStatus}</span>}
               </div>
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="mt-2 h-2 bg-neutral-900"><div className="h-full bg-ccaBlue" style={{width: `${Math.round(uploadProgress)}%`}} /></div>
+              )}
               <p className="text-xs text-neutral-500">After processing completes, your video will appear on your legacy kit automatically.</p>
             </div>
           </section>
