@@ -27,8 +27,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Creator not found or not a Legacy creator' }, { status: 404 });
     }
 
-    // Create MUX direct upload. Use wildcard to ensure preflight allows TUS headers across environments.
-    const corsOrigin = '*';
+    // Create MUX direct upload. Prefer exact origin; some providers are stricter than wildcard for TUS preflight.
+    const corsOrigin =
+      req.headers.get('origin') ||
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.SITE_URL ||
+      'https://coursecreatoracademy.vercel.app';
     const upload = await mux.video.uploads.create({
       cors_origin: corsOrigin,
       new_asset_settings: {
