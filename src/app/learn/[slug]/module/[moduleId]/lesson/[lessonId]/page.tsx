@@ -17,6 +17,7 @@ type Lesson = {
   freePreview?: boolean;
   muxAssetId?: string | null;
   muxPlaybackId?: string | null;
+  description?: string;
 };
 
 export default function LessonPage() {
@@ -82,6 +83,7 @@ export default function LessonPage() {
             freePreview: lData?.freePreview || false,
             muxAssetId: lData?.muxAssetId || null,
             muxPlaybackId: lData?.muxPlaybackId || null,
+            description: lData?.description,
           });
         }
       } catch (err) {
@@ -283,6 +285,13 @@ export default function LessonPage() {
           </div>
         )}
       </div>
+
+      {lesson.description ? (
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-neutral-300 mb-1">Description</h3>
+          <p className="text-neutral-300 whitespace-pre-wrap">{lesson.description}</p>
+        </div>
+      ) : null}
     </main>
   );
 }

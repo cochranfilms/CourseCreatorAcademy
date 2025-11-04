@@ -20,6 +20,7 @@ type Lesson = {
   muxAssetId?: string;
   muxPlaybackId?: string;
   muxAnimatedGifUrl?: string;
+  description?: string;
 };
 
 type Module = {
@@ -113,6 +114,7 @@ export default function CourseDetailPage() {
               muxAssetId: lessonData.muxAssetId,
               muxPlaybackId: lessonData.muxPlaybackId,
               muxAnimatedGifUrl: lessonData.muxAnimatedGifUrl,
+              description: lessonData.description,
             });
           });
 
@@ -486,7 +488,7 @@ export default function CourseDetailPage() {
         <CourseViewerModal
           courseSlug={course.slug}
           courseTitle={course.title}
-          modules={course.modules.map(m => ({ id: m.id, title: m.title, index: m.index, lessons: m.lessons.map(l => ({ id: l.id, title: l.title, index: l.index, durationSec: l.durationSec, muxPlaybackId: l.muxPlaybackId })) }))}
+          modules={course.modules.map(m => ({ id: m.id, title: m.title, index: m.index, lessons: m.lessons.map(l => ({ id: l.id, title: l.title, index: l.index, durationSec: l.durationSec, muxPlaybackId: l.muxPlaybackId, description: l.description })) }))}
           initialModuleId={viewerModuleId}
           initialLessonId={viewerLessonId}
           onClose={() => {

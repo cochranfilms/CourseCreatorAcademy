@@ -11,6 +11,7 @@ export type CVLesson = {
   index: number;
   durationSec?: number;
   muxPlaybackId?: string | null;
+  description?: string;
 };
 
 export type CVModule = {
@@ -154,6 +155,13 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
                 <div className="aspect-video flex items-center justify-center text-neutral-400">Video not available</div>
               )}
             </div>
+
+          {lesson.description ? (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold text-neutral-300 mb-1">Description</h3>
+              <p className="text-neutral-300 whitespace-pre-wrap">{lesson.description}</p>
+            </div>
+          ) : null}
           </div>
 
           {/* Right: Playlist */}
