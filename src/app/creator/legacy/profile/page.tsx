@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { db, firebaseReady, storage } from '@/lib/firebaseClient';
 import { doc, getDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import ImageCropperModal from '@/components/ImageCropperModal';
 
 export default function LegacyProfileEditorPage() {
   const { user } = useAuth();
@@ -29,6 +30,9 @@ export default function LegacyProfileEditorPage() {
   const [bannerUploading, setBannerUploading] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState(0);
   const [bannerProgress, setBannerProgress] = useState(0);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropAspect, setCropAspect] = useState<number>(1);
+  const [pendingPath, setPendingPath] = useState<string>('');
 
   useEffect(() => {
     const load = async () => {
@@ -160,18 +164,13 @@ export default function LegacyProfileEditorPage() {
               <input type="file" accept="image/*" onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file || !user || !firebaseReady || !storage) return;
-                setAvatarUploading(true);
-                setAvatarProgress(0);
-                const ref = storageRef(storage, `legacy-creators/${user.uid}/avatar_${Date.now()}_${file.name}`);
-                const task = uploadBytesResumable(ref, file);
-                task.on('state_changed', (snap) => setAvatarProgress((snap.bytesTransferred / snap.totalBytes) * 100), async (err) => {
-                  console.error('Avatar upload error', err);
-                  setAvatarUploading(false);
-                }, async () => {
-                  const url = await getDownloadURL(task.snapshot.ref);
-                  setAvatarUrl(url);
-                  setAvatarUploading(false);
-                });
+                const reader = new FileReader();
+                reader.onload = () => {
+                  setCropSrc(reader.result as string);
+                  setCropAspect(1);
+                  setPendingPath(`legacy-creators/${user.uid}/avatar_${Date.now()}_${file.name.replace(/\s+/g,'_')}`);
+                };
+                reader.readAsDataURL(file);
               }} className="block w-full text-sm text-neutral-300 file:mr-3 file:px-3 file:py-2 file:border file:border-neutral-800 file:bg-neutral-900 file:text-neutral-300 hover:file:bg-neutral-800" />
               {avatarUploading && (
                 <div className="mt-2 h-2 bg-neutral-900"><div className="h-full bg-ccaBlue" style={{width: `${Math.round(avatarProgress)}%`}} /></div>
@@ -187,23 +186,44 @@ export default function LegacyProfileEditorPage() {
               <input type="file" accept="image/*" onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file || !user || !firebaseReady || !storage) return;
-                setBannerUploading(true);
-                setBannerProgress(0);
-                const ref = storageRef(storage, `legacy-creators/${user.uid}/banner_${Date.now()}_${file.name}`);
-                const task = uploadBytesResumable(ref, file);
-                task.on('state_changed', (snap) => setBannerProgress((snap.bytesTransferred / snap.totalBytes) * 100), async (err) => {
-                  console.error('Banner upload error', err);
-                  setBannerUploading(false);
-                }, async () => {
-                  const url = await getDownloadURL(task.snapshot.ref);
-                  setBannerUrl(url);
-                  setBannerUploading(false);
-                });
+                const reader = new FileReader();
+                reader.onload = () => {
+                  setCropSrc(reader.result as string);
+                  setCropAspect(16/9);
+                  setPendingPath(`legacy-creators/${user.uid}/banner_${Date.now()}_${file.name.replace(/\s+/g,'_')}`);
+                };
+                reader.readAsDataURL(file);
               }} className="block w-full text-sm text-neutral-300 file:mr-3 file:px-3 file:py-2 file:border file:border-neutral-800 file:bg-neutral-900 file:text-neutral-300 hover:file:bg-neutral-800" />
               {bannerUploading && (
                 <div className="mt-2 h-2 bg-neutral-900"><div className="h-full bg-ccaBlue" style={{width: `${Math.round(bannerProgress)}%`}} /></div>
               )}
             </div>
+      {cropSrc && storage && (
+        <ImageCropperModal
+          imageSrc={cropSrc}
+          aspect={cropAspect}
+          onCancel={() => setCropSrc(null)}
+          onCropped={(blob) => {
+            if (!user || !firebaseReady || !storage || !pendingPath) { setCropSrc(null); return; }
+            const sref = storageRef(storage, pendingPath);
+            const isAvatar = pendingPath.includes('/avatar_');
+            if (isAvatar) { setAvatarUploading(true); setAvatarProgress(0); } else { setBannerUploading(true); setBannerProgress(0); }
+            const task = uploadBytesResumable(sref, blob, { contentType: 'image/jpeg' });
+            task.on('state_changed', (snap) => {
+              const p = (snap.bytesTransferred / snap.totalBytes) * 100;
+              if (isAvatar) setAvatarProgress(p); else setBannerProgress(p);
+            }, (err) => {
+              console.error('Image upload error', err);
+              if (isAvatar) setAvatarUploading(false); else setBannerUploading(false);
+            }, async () => {
+              const url = await getDownloadURL(task.snapshot.ref);
+              if (isAvatar) setAvatarUrl(url); else setBannerUrl(url);
+              if (isAvatar) setAvatarUploading(false); else setBannerUploading(false);
+              setCropSrc(null);
+            });
+          }}
+        />
+      )}
           </div>
           </section>
 

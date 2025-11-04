@@ -261,6 +261,13 @@ export default function DashboardPage() {
     };
   }, [user]);
 
+  // Redirect legacy creators to the legacy profile editor
+  useEffect(() => {
+    if (user && (profile as any)?.isLegacyCreator) {
+      router.replace('/creator/legacy/profile');
+    }
+  }, [user, profile, router]);
+
   const handleSaveProfile = async () => {
     if (!firebaseReady || !db || !user) return;
     

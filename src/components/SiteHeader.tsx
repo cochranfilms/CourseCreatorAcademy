@@ -158,6 +158,8 @@ export function SiteHeader() {
   const handle = profile?.handle;
   const photoURL = profile?.photoURL || user?.photoURL;
   const isLegacyCreator = Boolean(profile?.isLegacyCreator);
+  const profileHref = isLegacyCreator ? '/creator/legacy/profile' : '/dashboard';
+  const profileLabel = isLegacyCreator ? 'Legacy Profile' : 'Your Profile';
 
   return (
     <>
@@ -306,11 +308,11 @@ export function SiteHeader() {
                           {handle && <div className="text-sm text-neutral-400 truncate">@{handle}</div>}
                         </div>
                   <Link
-                    href="/dashboard"
-                          className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
-                          onClick={() => setShowDropdown(false)}
+                    href={profileHref}
+                    className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
+                    onClick={() => setShowDropdown(false)}
                   >
-                          Your Profile
+                    {profileLabel}
                   </Link>
                   {isLegacyCreator && (
                     <>
@@ -482,11 +484,11 @@ export function SiteHeader() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    router.push('/dashboard');
+                    router.push(profileHref);
                   }}
                   className="w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium"
                 >
-                  Your Profile
+                  {profileLabel}
                 </button>
                 {isLegacyCreator && (
                   <>

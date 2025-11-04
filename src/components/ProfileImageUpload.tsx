@@ -5,6 +5,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { storage, db, auth, firebaseReady } from '@/lib/firebaseClient';
+import ImageCropperModal from './ImageCropperModal';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProfileImageUploadProps {
@@ -17,6 +18,9 @@ export function ProfileImageUpload({ onUploadComplete }: ProfileImageUploadProps
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [pendingFileName, setPendingFileName] = useState<string>('image.jpg');
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,80 +38,53 @@ export function ProfileImageUpload({ onUploadComplete }: ProfileImageUploadProps
       return;
     }
 
+    // Open cropper first; we'll upload the cropped blob
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropSrc(reader.result as string);
+      setPendingFileName(file.name);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadCroppedBlob = async (blob: Blob) => {
     if (!user || !firebaseReady || !storage || !db) {
       setError('Firebase is not configured');
       return;
     }
-
     setUploading(true);
     setError(null);
     setProgress(0);
-
     try {
-      // Create storage reference
-      const storageRef = ref(
-        storage,
-        `profile-images/${user.uid}/${Date.now()}_${file.name}`
-      );
-
-      // Upload file
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setProgress(percent);
-        },
-        (err) => {
-          console.error('Upload error:', err);
-          setError('Failed to upload image. Please try again.');
-          setUploading(false);
-        },
-        async () => {
-          try {
-            // Get download URL
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-            // Update Firebase Auth profile
-            if (auth.currentUser) {
-              await updateProfile(auth.currentUser, { photoURL: downloadURL });
-            }
-
-            // Update Firestore user document
-            const userDocRef = doc(db, 'users', user.uid);
-            await setDoc(
-              userDocRef,
-              {
-                photoURL: downloadURL,
-                displayName: user.displayName || user.email?.split('@')[0],
-                updatedAt: new Date(),
-              },
-              { merge: true }
-            );
-
-            setUploading(false);
-            setProgress(0);
-
-            // Refresh to reflect the new photo immediately
-            if (typeof window !== 'undefined') {
-              window.location.reload();
-            }
-
-            if (onUploadComplete) {
-              onUploadComplete(downloadURL);
-            }
-          } catch (err) {
-            console.error('Error updating profile:', err);
-            setError('Failed to update profile. Please try again.');
-            setUploading(false);
-          }
+      const path = `profile-images/${user.uid}/${Date.now()}_${pendingFileName.replace(/\s+/g,'_')}`;
+      const sref = ref(storage, path);
+      const uploadTask = uploadBytesResumable(sref, blob, { contentType: 'image/jpeg' });
+      uploadTask.on('state_changed', (snap) => {
+        const percent = (snap.bytesTransferred / snap.totalBytes) * 100;
+        setProgress(percent);
+      }, (err) => {
+        console.error('Upload error:', err);
+        setError('Failed to upload image. Please try again.');
+        setUploading(false);
+      }, async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        if (auth.currentUser) {
+          await updateProfile(auth.currentUser, { photoURL: downloadURL });
         }
-      );
-    } catch (err) {
-      console.error('Error starting upload:', err);
-      setError('Failed to upload image. Please try again.');
+        await setDoc(doc(db, 'users', user.uid), {
+          photoURL: downloadURL,
+          displayName: user.displayName || user.email?.split('@')[0],
+          updatedAt: new Date(),
+        }, { merge: true });
+        setUploading(false);
+        setProgress(0);
+        setCropSrc(null);
+        if (onUploadComplete) onUploadComplete(downloadURL);
+      });
+    } catch (e) {
+      console.error(e);
       setUploading(false);
+      setError('Failed to upload image.');
     }
   };
 
@@ -139,6 +116,15 @@ export function ProfileImageUpload({ onUploadComplete }: ProfileImageUploadProps
             style={{ width: `${progress}%` }}
           />
         </div>
+      )}
+
+      {cropSrc && (
+        <ImageCropperModal
+          imageSrc={cropSrc}
+          aspect={1}
+          onCancel={() => setCropSrc(null)}
+          onCropped={(blob) => uploadCroppedBlob(blob)}
+        />
       )}
     </div>
   );
