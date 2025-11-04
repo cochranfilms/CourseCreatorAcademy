@@ -56,24 +56,33 @@ export function SiteHeader() {
       const fetchProfile = async () => {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
+          let isLegacy = false;
+          let base = {
+            displayName: user.displayName || user.email?.split('@')[0] || 'Creator',
+            handle: undefined as string | undefined,
+            photoURL: user.photoURL || undefined,
+          };
           if (userDoc.exists()) {
-            const data = userDoc.data();
-            setProfile({
-              displayName: data.displayName || user.displayName,
-              handle: data.handle,
-              photoURL: data.photoURL || user.photoURL,
-              isLegacyCreator: Boolean(data.isLegacyCreator || data.roles?.legacyCreator)
-            });
-          } else {
-            setProfile({
-              displayName: user.displayName || user.email?.split('@')[0] || 'Creator',
-              handle: undefined,
-              photoURL: user.photoURL || undefined,
-              isLegacyCreator: false
-            });
+            const data = userDoc.data() as any;
+            base = {
+              displayName: data.displayName || base.displayName,
+              handle: data.handle || base.handle,
+              photoURL: data.photoURL || base.photoURL,
+            };
+            isLegacy = Boolean(data.isLegacyCreator || data.roles?.legacyCreator);
           }
+          // Fallback: if user doc doesn't say legacy, check legacy_creators mapping via API
+          if (!isLegacy) {
+            try {
+              const res = await fetch(`/api/legacy/creators/${encodeURIComponent(user.uid)}`, { cache: 'no-store' });
+              const j = res.ok ? await res.json() : null;
+              if (j?.creator) isLegacy = true;
+            } catch {}
+          }
+          setProfile({ ...base, isLegacyCreator: isLegacy });
         } catch (error) {
           console.error('Error fetching profile:', error);
+          // Last-resort: treat as non-legacy
           setProfile({
             displayName: user.displayName || user.email?.split('@')[0] || 'Creator',
             handle: undefined,
