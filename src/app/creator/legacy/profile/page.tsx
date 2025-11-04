@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { db, firebaseReady } from '@/lib/firebaseClient';
+import { db, firebaseReady, storage } from '@/lib/firebaseClient';
 import { doc, getDoc } from 'firebase/firestore';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export default function LegacyProfileEditorPage() {
   const { user } = useAuth();
@@ -24,6 +25,10 @@ export default function LegacyProfileEditorPage() {
   const [status, setStatus] = useState('');
   const [isLegacyCreator, setIsLegacyCreator] = useState<boolean | null>(null);
   const [hasCreatorMapping, setHasCreatorMapping] = useState<boolean>(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const [avatarProgress, setAvatarProgress] = useState(0);
+  const [bannerProgress, setBannerProgress] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -146,12 +151,58 @@ export default function LegacyProfileEditorPage() {
           </div>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm mb-1 text-neutral-300">Avatar URL</label>
-              <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="https://..." />
+              <label className="block text-sm mb-1 text-neutral-300">Avatar</label>
+              {avatarUrl && (
+                <div className="mb-2">
+                  <img src={avatarUrl} alt="Avatar" className="w-24 h-24 object-cover border border-neutral-800" />
+                </div>
+              )}
+              <input type="file" accept="image/*" onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file || !user || !firebaseReady || !storage) return;
+                setAvatarUploading(true);
+                setAvatarProgress(0);
+                const ref = storageRef(storage, `legacy-creators/${user.uid}/avatar_${Date.now()}_${file.name}`);
+                const task = uploadBytesResumable(ref, file);
+                task.on('state_changed', (snap) => setAvatarProgress((snap.bytesTransferred / snap.totalBytes) * 100), async (err) => {
+                  console.error('Avatar upload error', err);
+                  setAvatarUploading(false);
+                }, async () => {
+                  const url = await getDownloadURL(task.snapshot.ref);
+                  setAvatarUrl(url);
+                  setAvatarUploading(false);
+                });
+              }} className="block w-full text-sm text-neutral-300 file:mr-3 file:px-3 file:py-2 file:border file:border-neutral-800 file:bg-neutral-900 file:text-neutral-300 hover:file:bg-neutral-800" />
+              {avatarUploading && (
+                <div className="mt-2 h-2 bg-neutral-900"><div className="h-full bg-ccaBlue" style={{width: `${Math.round(avatarProgress)}%`}} /></div>
+              )}
             </div>
             <div>
-              <label className="block text-sm mb-1 text-neutral-300">Banner URL</label>
-              <input value={bannerUrl} onChange={(e) => setBannerUrl(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="https://..." />
+              <label className="block text-sm mb-1 text-neutral-300">Banner</label>
+              {bannerUrl && (
+                <div className="mb-2">
+                  <img src={bannerUrl} alt="Banner" className="w-full max-w-md h-24 object-cover border border-neutral-800" />
+                </div>
+              )}
+              <input type="file" accept="image/*" onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file || !user || !firebaseReady || !storage) return;
+                setBannerUploading(true);
+                setBannerProgress(0);
+                const ref = storageRef(storage, `legacy-creators/${user.uid}/banner_${Date.now()}_${file.name}`);
+                const task = uploadBytesResumable(ref, file);
+                task.on('state_changed', (snap) => setBannerProgress((snap.bytesTransferred / snap.totalBytes) * 100), async (err) => {
+                  console.error('Banner upload error', err);
+                  setBannerUploading(false);
+                }, async () => {
+                  const url = await getDownloadURL(task.snapshot.ref);
+                  setBannerUrl(url);
+                  setBannerUploading(false);
+                });
+              }} className="block w-full text-sm text-neutral-300 file:mr-3 file:px-3 file:py-2 file:border file:border-neutral-800 file:bg-neutral-900 file:text-neutral-300 hover:file:bg-neutral-800" />
+              {bannerUploading && (
+                <div className="mt-2 h-2 bg-neutral-900"><div className="h-full bg-ccaBlue" style={{width: `${Math.round(bannerProgress)}%`}} /></div>
+              )}
             </div>
           </div>
           </section>
