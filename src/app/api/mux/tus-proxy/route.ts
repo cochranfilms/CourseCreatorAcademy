@@ -56,20 +56,26 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
     headers.set(key, value);
   });
 
-  // Stream body when present
+  // Per TUS: POST (create) has empty body; PATCH streams bytes
+  let body: ReadableStream | null = null;
+  if (method === 'PATCH') {
+    body = req.body;
+  } else if (method === 'POST') {
+    // Ensure POST has Content-Length: 0
+    if (!headers.has('content-length')) {
+      headers.set('content-length', '0');
+    }
+    // Explicitly set empty body for POST
+    body = null;
+  }
+
   const init: RequestInit = {
     method,
     headers,
-    // Per TUS: POST (create) must have an empty body; PATCH streams bytes
-    body: method === 'PATCH' ? (req.body as any) : undefined,
-    // @ts-ignore
+    body: body || null,
+    // @ts-ignore - duplex needed for streaming
     duplex: method === 'PATCH' ? 'half' : undefined,
   };
-
-  // Ensure POST has Content-Length: 0 to satisfy some TUS gateways
-  if (method === 'POST' && !headers.has('content-length')) {
-    headers.set('content-length', '0');
-  }
 
   const upstream = await fetch(target, init);
   const resHeaders = new Headers(corsHeaders(origin));
@@ -96,10 +102,41 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   });
 }
 
-export async function OPTIONS(req: NextRequest) { return handle('OPTIONS', req); }
-export async function POST(req: NextRequest) { return handle('POST', req); }
-export async function PATCH(req: NextRequest) { return handle('PATCH', req); }
-export async function HEAD(req: NextRequest) { return handle('HEAD', req); }
+export async function OPTIONS(req: NextRequest) {
+  try {
+    return await handle('OPTIONS', req);
+  } catch (err: any) {
+    console.error('TUS proxy OPTIONS error:', err);
+    return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500, headers: corsHeaders(req.headers.get('origin')) });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    return await handle('POST', req);
+  } catch (err: any) {
+    console.error('TUS proxy POST error:', err);
+    return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500, headers: corsHeaders(req.headers.get('origin')) });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    return await handle('PATCH', req);
+  } catch (err: any) {
+    console.error('TUS proxy PATCH error:', err);
+    return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500, headers: corsHeaders(req.headers.get('origin')) });
+  }
+}
+
+export async function HEAD(req: NextRequest) {
+  try {
+    return await handle('HEAD', req);
+  } catch (err: any) {
+    console.error('TUS proxy HEAD error:', err);
+    return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500, headers: corsHeaders(req.headers.get('origin')) });
+  }
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
