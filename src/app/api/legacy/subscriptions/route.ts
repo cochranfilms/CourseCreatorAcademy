@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     const enriched = await Promise.all(
       subscriptions.map(async (sub: LegacySub) => {
         const creatorDoc = await adminDb.collection('legacy_creators').doc(String(sub.creatorId)).get();
-        if (creatorDoc.exists()) {
+        if (creatorDoc.exists) {
           const creator = creatorDoc.data() as any;
           return {
             ...sub,

@@ -12,7 +12,7 @@ import {
   FacebookAuthProvider
 } from 'firebase/auth';
 import { auth, firebaseReady, db } from '@/lib/firebaseClient';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -109,6 +109,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Ensure user profile exists in Firestore when user signs in
       if (user) {
         await ensureUserProfile(user);
+        // Attempt to auto-claim any guest purchases made with this email
+        try {
+          if (firebaseReady && db && user.email) {
+            const claimsQ = query(collection(db, 'pendingMemberships'), where('email', '==', user.email), where('claimed', '==', false));
+            const snap = await getDocs(claimsQ);
+            if (!snap.empty) {
+              const batch = writeBatch(db);
+              const userRef = doc(db, 'users', user.uid);
+              // If multiple claims, apply the latest plan; record all as claimed
+              let latestPlan: string | null = null;
+              let latestSub: string | null = null;
+              snap.docs.forEach((d) => {
+                const data = d.data() as any;
+                latestPlan = data?.planType || latestPlan;
+                latestSub = data?.subscriptionId || latestSub;
+                batch.update(doc(db, 'pendingMemberships', d.id), {
+                  claimed: true,
+                  claimedBy: user.uid,
+                  claimedAt: new Date()
+                });
+              });
+              if (latestPlan || latestSub) {
+                batch.set(userRef, {
+                  membershipActive: true,
+                  ...(latestPlan ? { membershipPlan: latestPlan } : {}),
+                  ...(latestSub ? { membershipSubscriptionId: latestSub } : {}),
+                  updatedAt: new Date()
+                }, { merge: true });
+              }
+              await batch.commit();
+            }
+          }
+        } catch (e) {
+          console.error('Failed to claim pending membership for user', e);
+        }
       }
     });
 

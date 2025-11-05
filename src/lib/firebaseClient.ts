@@ -9,7 +9,7 @@ import { getStorage } from 'firebase/storage';
 // Provide a sane default that matches the bucket shown in Cloud Console.
 const rawStorageBucket =
   process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-  "course-creator-academy-866d6.firebasestorage.app";
+  "course-creator-academy-866d6.appspot.com";
 
 const normalizedStorageBucket = rawStorageBucket
   .replace(/^https?:\/\/[^/]+\//i, '') // strip accidental protocol/host if provided

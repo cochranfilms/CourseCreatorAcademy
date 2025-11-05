@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome to CCA</title>
+    <style>
+      /* Mobile-first, inline-friendly styles */
+      body { margin:0; padding:0; background:#0a0a0a; color:#e5e7eb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+      .wrapper { width:100%; background:#0a0a0a; padding:24px 0; }
+      .container { max-width:640px; margin:0 auto; background:#0b0b0b; border:1px solid #1f2937; border-radius:16px; overflow:hidden; }
+      .header { padding:24px; background:linear-gradient(135deg, #0b0b0b, #0f172a); border-bottom:1px solid #1f2937; text-align:center; }
+      .logo { display:inline-block; vertical-align:middle; }
+      .content { padding:24px; }
+      h1 { margin:0 0 12px; font-size:24px; color:#ffffff; }
+      p { margin:0 0 12px; line-height:1.6; color:#d1d5db; }
+      .card { background:#0a0a0a; border:1px solid #1f2937; border-radius:12px; padding:16px; margin:16px 0; }
+      .cta { display:inline-block; background:#312e81; color:#ffffff !important; text-decoration:none; padding:12px 20px; border-radius:10px; font-weight:600; }
+      .muted { color:#9ca3af; font-size:12px; }
+      .footer { padding:16px 24px 24px; text-align:center; color:#6b7280; font-size:12px; }
+      .code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="container">
+        <div class="header">
+          <img class="logo" src="https://coursecreator.academy/logo-cca-email.png" alt="Course Creator Academy" width="120" height="36" />
+        </div>
+        <div class="content">
+          <h1>Welcome to CCA{{#if user_name}}, {{user_name}}{{/if}}!</h1>
+          <p>
+            You now have an active {{plan_name}} subscription for <span class="code">{{customer_email}}</span>.
+          </p>
+          <div class="card">
+            <p style="margin-bottom:16px;">Set your password to enable email login to your account:</p>
+            <p>
+              <a class="cta" href="{{reset_url}}" target="_blank" rel="noopener">Set password</a>
+            </p>
+            <p class="muted" style="margin-top:10px;">This secure link expires automatically. If it stops working, you can request a new one from your account or the login screen.</p>
+          </div>
+          <p>
+            You can access your content any time at <a href="https://coursecreator.academy/home" style="color:#93c5fd; text-decoration:none;">coursecreator.academy/home</a>.
+          </p>
+          <p class="muted" style="margin-top:16px;">
+            If you didn’t create this account, please contact support and we’ll help right away.
+          </p>
+        </div>
+        <div class="footer">
+          © {{year}} Course Creator Academy — All rights reserved
+        </div>
+      </div>
+    </div>
+  </body>
+  </html>
+
+

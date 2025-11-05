@@ -13,6 +13,7 @@ import { useUnreadMessagesCount } from '@/hooks/useUnreadMessagesCount';
 import { Search } from './Search';
 import { SavedItems } from './SavedItems';
 import { LegacyUpgradeModal } from './LegacyUpgradeModal';
+import { PricingModal } from './PricingModal';
 
 const links = [
   { href: '/home', label: "What's New" },
@@ -44,6 +45,8 @@ export function SiteHeader() {
   const [showSearch, setShowSearch] = useState(false);
   const [showSavedItems, setShowSavedItems] = useState(false);
   const [showLegacy, setShowLegacy] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
+  const [hasLegacySub, setHasLegacySub] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -95,6 +98,40 @@ export function SiteHeader() {
     } else {
       setProfile(null);
     }
+  }, [user]);
+
+  // Detect active Legacy+ subscription for the signed-in user
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      if (!user) { setHasLegacySub(false); return; }
+      try {
+        let active = false;
+        try {
+          const res = await fetch(`/api/legacy/subscriptions?userId=${user.uid}`, { cache: 'no-store' });
+          const json = await res.json();
+          if (res.ok && Array.isArray(json.subscriptions)) {
+            active = json.subscriptions.length > 0;
+          }
+        } catch {}
+
+        // Fallback to client query if API not available in local dev
+        if (firebaseReady && db && !active) {
+          try {
+            const { collection, query, where, getDocs } = await import('firebase/firestore');
+            const q = query(collection(db, 'legacySubscriptions'), where('userId', '==', user.uid));
+            const snap = await getDocs(q);
+            active = snap.docs.some(d => ['active','trialing'].includes(String((d.data() as any)?.status || '')));
+          } catch {}
+        }
+
+        if (!cancelled) setHasLegacySub(active);
+      } catch {
+        if (!cancelled) setHasLegacySub(false);
+      }
+    };
+    check();
+    return () => { cancelled = true; };
   }, [user]);
 
   // Close dropdown when clicking outside
@@ -177,7 +214,7 @@ export function SiteHeader() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 w-full relative">
         <div className="flex items-center gap-3">
         <Link href="/" className="flex-shrink-0">
-          <Image src="/logo-hat.png" alt="Course Creator Academy" width={48} height={48} />
+          <Image src="/logo-cca.png" alt="Course Creator Academy" width={160} height={40} />
         </Link>
           
           {/* Mobile Hamburger Menu Button */}
@@ -218,13 +255,25 @@ export function SiteHeader() {
             <div className="flex items-center gap-4 flex-shrink-0">
               {user ? (
                 <>
-                  {/* Your Creator label */}
-                  <span className="hidden md:inline text-sm text-neutral-400">Your Creator:</span>
+                  {/* Your Status label */}
+                  <span className="hidden md:inline text-sm text-neutral-400">Your Status:</span>
                   
-                  {/* Upgrade Button */}
-                  <button onClick={() => setShowLegacy(true)} className="hidden md:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition font-medium text-sm rounded-lg whitespace-nowrap">
-                    Upgrade to Legacy+
+                  {/* Upgrade / Status Button */}
+                  {hasLegacySub ? (
+                    <span className="hidden md:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
+                      Legacy+
+                    </span>
+                  ) : (
+                  <button
+                    type="button"
+                    onClick={isLegacyCreator ? undefined : () => setShowLegacy(true)}
+                    disabled={isLegacyCreator}
+                    aria-disabled={isLegacyCreator}
+                    className="hidden md:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 disabled:hover:from-orange-500 disabled:hover:to-red-500 disabled:cursor-default transition font-medium text-sm rounded-lg whitespace-nowrap"
+                  >
+                    {isLegacyCreator ? 'Legacy+ Creator' : 'Upgrade to Legacy+'}
                   </button>
+                  )}
 
                   {/* Icons */}
                   <div className="hidden md:flex items-center gap-3">
@@ -365,12 +414,12 @@ export function SiteHeader() {
                   >
                     Sign In
                   </Link>
-                  <Link
-                    href="/signup"
+                  <button
+                    onClick={() => setShowPricing(true)}
                     className="px-3 sm:px-4 py-1.5 text-sm font-medium bg-ccaBlue text-white hover:bg-ccaBlue/90 border-2 border-ccaBlue transition-all duration-200 whitespace-nowrap"
                   >
-                    Sign Up
-                  </Link>
+                    Join Now
+                  </button>
                 </>
               )}
             </div>
@@ -392,6 +441,9 @@ export function SiteHeader() {
 
       {/* Legacy Upgrade Modal */}
       {user && <LegacyUpgradeModal isOpen={showLegacy} onClose={() => setShowLegacy(false)} />}
+
+      {/* Pricing Modal for signed-out users */}
+      <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && user && typeof window !== 'undefined' && createPortal(
@@ -516,11 +568,13 @@ export function SiteHeader() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    setShowLegacy(true);
+                    if (!isLegacyCreator) setShowLegacy(true);
                   }}
+                  disabled={isLegacyCreator}
+                  aria-disabled={isLegacyCreator}
                   className="w-full px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 rounded-lg transition font-medium"
                 >
-                  Upgrade to Legacy+
+                  {isLegacyCreator ? 'Legacy+ Creator' : 'Upgrade to Legacy+'}
                 </button>
                 <button
                   onClick={() => {

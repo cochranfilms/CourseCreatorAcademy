@@ -27,18 +27,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Creator not found or not a Legacy creator' }, { status: 404 });
     }
 
-    // Create MUX direct upload. Prefer exact origin; some providers are stricter than wildcard for TUS preflight.
-    const corsOrigin =
-      req.headers.get('origin') ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      process.env.SITE_URL ||
-      'https://coursecreatoracademy.vercel.app';
+    // Resolve canonical legacy creator doc id to store under the correct path
+    const targetIdPre = (creatorDoc as any).id || String(creatorId);
+
+    // Create MUX direct upload. In development, allow any origin to avoid strict CORS issues
+    // with the TUS preflight. In production, prefer an explicit origin.
+    const isDev = process.env.NODE_ENV !== 'production';
+    const corsOrigin = isDev
+      ? '*'
+      : (
+          req.headers.get('origin') ||
+          process.env.NEXT_PUBLIC_SITE_URL ||
+          process.env.SITE_URL ||
+          'https://coursecreatoracademy.vercel.app'
+        );
     const upload = await mux.video.uploads.create({
       cors_origin: corsOrigin,
       new_asset_settings: {
         playback_policy: ['public'],
         passthrough: JSON.stringify({
-          legacyCreatorId: String(creatorId),
+          legacyCreatorId: String(targetIdPre),
           title: String(title),
           description: description || '',
           isSample: Boolean(isSample),
@@ -47,7 +55,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Store upload info in Firestore for tracking
-    const targetId = (creatorDoc as any).id || String(creatorId);
+    const targetId = targetIdPre;
     await adminDb.collection(`legacy_creators/${targetId}/uploads`).add({
       uploadId: upload.id,
       uploadUrl: upload.url,

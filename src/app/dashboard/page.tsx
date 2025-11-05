@@ -3,14 +3,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { updateProfile } from 'firebase/auth';
+import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { updateProfile, sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { db, auth, firebaseReady, storage } from '@/lib/firebaseClient';
 import { ProfileImageUpload } from '@/components/ProfileImageUpload';
 import Link from 'next/link';
 import OrdersTab from './OrdersTab';
 import OnboardingTab from './OnboardingTab';
 import { LegacySubscriptions } from '@/components/LegacySubscriptions';
+import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 type UserProfile = {
@@ -90,6 +91,7 @@ export default function DashboardPage() {
   const [editBio, setEditBio] = useState('');
   const [editSkills, setEditSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
+  const [editPhotoURL, setEditPhotoURL] = useState<string | null>(null);
   
   // Social profiles
   const [linkedin, setLinkedin] = useState('');
@@ -102,10 +104,14 @@ export default function DashboardPage() {
   
   // Privacy
   const [profilePublic, setProfilePublic] = useState(false);
+  const [needsPassword, setNeedsPassword] = useState<boolean>(false);
+  const [passwordEmailSent, setPasswordEmailSent] = useState<boolean>(false);
   
   // Marketplace data
   const [listings, setListings] = useState<Listing[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [hasLegacySub, setHasLegacySub] = useState(false);
+  const [showLegacyModal, setShowLegacyModal] = useState(false);
 
   // Fetch user profile
   useEffect(() => {
@@ -162,6 +168,16 @@ export default function DashboardPage() {
     };
 
     fetchProfile();
+
+    // Check whether user has password sign-in enabled
+    (async () => {
+      try {
+        if (auth && user?.email) {
+          const methods = await fetchSignInMethodsForEmail(auth, user.email);
+          setNeedsPassword(!methods.includes('password'));
+        }
+      } catch {}
+    })();
 
     // Fetch user's projects
     const projectsQuery = query(
@@ -268,6 +284,38 @@ export default function DashboardPage() {
     }
   }, [user, profile, router]);
 
+  // Determine if user has at least one Legacy+ subscription
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      if (!user) { setHasLegacySub(false); return; }
+      try {
+        let active = false;
+        try {
+          const res = await fetch(`/api/legacy/subscriptions?userId=${user.uid}`, { cache: 'no-store' });
+          const json = await res.json();
+          if (res.ok && Array.isArray(json.subscriptions)) {
+            active = json.subscriptions.length > 0;
+          }
+        } catch {}
+
+        if (!active && firebaseReady && db) {
+          try {
+            const q = query(collection(db, 'legacySubscriptions'), where('userId', '==', user.uid));
+            const snap = await getDocs(q);
+            active = snap.docs.some(d => ['active','trialing'].includes(String((d.data() as any)?.status || '')));
+          } catch {}
+        }
+
+        if (!cancelled) setHasLegacySub(active);
+      } catch {
+        if (!cancelled) setHasLegacySub(false);
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, [user]);
+
   const handleSaveProfile = async () => {
     if (!firebaseReady || !db || !user) return;
     
@@ -280,7 +328,7 @@ export default function DashboardPage() {
         location: editLocation,
         bio: editBio,
         skills: editSkills,
-        photoURL: user.photoURL || undefined,
+        photoURL: editPhotoURL || user.photoURL || undefined,
       };
       
       // Update Firebase Auth
@@ -606,12 +654,15 @@ export default function DashboardPage() {
                 <span className="hidden sm:inline">View Certificate</span>
                 <span className="sm:hidden">Certificate</span>
               </button>
-              <button className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition font-medium text-sm whitespace-nowrap">
+              <button
+                onClick={() => setShowLegacyModal(true)}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition font-medium text-sm whitespace-nowrap"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
-                <span className="hidden sm:inline">Upgrade to Legacy+</span>
-                <span className="sm:hidden">Upgrade</span>
+                <span className="hidden sm:inline">{hasLegacySub ? 'Legacy Subscriptions' : 'Upgrade to Legacy+'}</span>
+                <span className="sm:hidden">{hasLegacySub ? 'Legacy+' : 'Upgrade'}</span>
               </button>
             </div>
           </div>
@@ -850,6 +901,28 @@ export default function DashboardPage() {
           <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <h2 className="text-2xl font-semibold mb-2">Privacy Settings</h2>
             <p className="text-neutral-400 mb-6">Control who can see your profile and information</p>
+            {/* Account Security: Set/Reset password */}
+            <div className="mt-8 p-4 rounded-xl border border-neutral-800 bg-neutral-900/40">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <div className="font-semibold text-white">Account Security</div>
+                  <div className="text-sm text-neutral-400">{needsPassword ? 'You have not set a password yet.' : 'You can reset your password at any time.'}</div>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!auth || !user?.email) return;
+                    try {
+                      await sendPasswordResetEmail(auth, user.email);
+                      setPasswordEmailSent(true);
+                      setNeedsPassword(false);
+                    } catch {}
+                  }}
+                  className="px-4 py-2 rounded-lg bg-ccaBlue text-white hover:bg-ccaBlue/90 text-sm font-medium"
+                >
+                  {passwordEmailSent ? 'Email Sent' : (needsPassword ? 'Set Password' : 'Reset Password')}
+                </button>
+              </div>
+            </div>
             
             <div className="space-y-6 mb-6">
               <div>
@@ -1123,7 +1196,7 @@ export default function DashboardPage() {
                     </button>
                   </div>
                   <div className="mt-4">
-                    <ProfileImageUpload />
+                    <ProfileImageUpload onUploadComplete={(url) => setEditPhotoURL(url)} />
                   </div>
                 </div>
 
@@ -1343,6 +1416,10 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        )}
+        {/* Legacy+ selection modal */}
+        {showLegacyModal && (
+          <LegacyUpgradeModal isOpen={showLegacyModal} onClose={() => setShowLegacyModal(false)} />
         )}
       </main>
     </ProtectedRoute>

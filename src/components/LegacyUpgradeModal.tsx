@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { db, firebaseReady } from '@/lib/firebaseClient';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 type Creator = {
   id: string;
@@ -15,6 +17,7 @@ export function LegacyUpgradeModal({ isOpen, onClose }: { isOpen: boolean; onClo
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [creators, setCreators] = useState<Creator[]>([]);
+  const [subscribedCreatorIds, setSubscribedCreatorIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!isOpen) return;
@@ -24,9 +27,40 @@ export function LegacyUpgradeModal({ isOpen, onClose }: { isOpen: boolean; onClo
         const json = await res.json();
         setCreators(json.creators || []);
       } catch {}
+
+      // Load subscriptions for the signed-in user to mark purchased creators
+      if (user) {
+        let creatorIds: string[] = [];
+        try {
+          const res = await fetch(`/api/legacy/subscriptions?userId=${user.uid}`, { cache: 'no-store' });
+          const json = await res.json();
+          if (res.ok && Array.isArray(json.subscriptions)) {
+            creatorIds = json.subscriptions
+              .filter((s: any) => ['active', 'trialing'].includes(String(s?.status || '')))
+              .map((s: any) => String(s?.creatorId || ''))
+              .filter(Boolean);
+          }
+        } catch {}
+
+        if (creatorIds.length === 0 && firebaseReady && db) {
+          try {
+            const q = query(collection(db, 'legacySubscriptions'), where('userId', '==', user.uid));
+            const snap = await getDocs(q);
+            creatorIds = snap.docs
+              .map((d) => d.data() as any)
+              .filter((d) => ['active', 'trialing'].includes(String(d?.status || '')))
+              .map((d) => String(d?.creatorId || ''))
+              .filter(Boolean);
+          } catch {}
+        }
+
+        setSubscribedCreatorIds(new Set(creatorIds));
+      } else {
+        setSubscribedCreatorIds(new Set());
+      }
     };
     load();
-  }, [isOpen]);
+  }, [isOpen, user]);
 
   const startCheckout = async (creatorId: string) => {
     if (!user) { alert('Sign in to upgrade.'); return; }
@@ -62,11 +96,13 @@ export function LegacyUpgradeModal({ isOpen, onClose }: { isOpen: boolean; onClo
         <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
           <div className="text-sm text-neutral-400">Select a creator to support:</div>
           <div className="divide-y divide-neutral-800">
-            {creators.map((c) => (
+            {creators.map((c) => {
+              const isSubscribed = subscribedCreatorIds.has(c.id);
+              return (
               <button
                 key={c.id}
                 onClick={() => startCheckout(c.id)}
-                disabled={loading}
+                disabled={loading || isSubscribed}
                 className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-neutral-900 transition"
               >
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-neutral-800 flex-shrink-0">
@@ -80,9 +116,17 @@ export function LegacyUpgradeModal({ isOpen, onClose }: { isOpen: boolean; onClo
                   <div className="font-medium text-white truncate">{c.displayName}</div>
                   {c.handle && <div className="text-xs text-neutral-400 truncate">@{c.handle}</div>}
                 </div>
-                <div className="text-sm font-semibold text-white">$10/mo</div>
+                {isSubscribed ? (
+                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
+                    Subscribed
+                  </div>
+                ) : (
+                  <div className="text-sm font-semibold text-white">$10/mo</div>
+                )}
               </button>
-            ))}
+              );
+            })}
             {creators.length === 0 && (
               <div className="text-sm text-neutral-500 p-3">No legacy creators available yet.</div>
             )}

@@ -21,6 +21,14 @@ type Thread = {
   unreadCount?: number;
 };
 
+type DirectoryUser = {
+  id: string;
+  displayName: string;
+  photoURL?: string;
+  handle?: string;
+  email?: string;
+};
+
 type Message = {
   id: string;
   senderId: string;
@@ -47,6 +55,7 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [threadUnreadCounts, setThreadUnreadCounts] = useState<{ [threadId: string]: number }>({});
+  const [allUsers, setAllUsers] = useState<DirectoryUser[]>([]);
 
   // Track unread counts per thread
   useEffect(() => {
@@ -81,6 +90,40 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
       messageUnsubscribes.forEach(unsub => unsub());
     };
   }, [threads, isOpen, user]);
+
+  // Load directory users once while Messages is open
+  useEffect(() => {
+    if (!isOpen || !firebaseReady || !db) {
+      setAllUsers([]);
+      return;
+    }
+
+    const usersQuery = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(
+      usersQuery,
+      (snapshot) => {
+        const usersList: DirectoryUser[] = [];
+        snapshot.docs.forEach((docSnap) => {
+          if (docSnap.id === user?.uid) return;
+          const data = docSnap.data();
+          usersList.push({
+            id: docSnap.id,
+            displayName: data.displayName || data.email?.split('@')[0] || 'Unknown User',
+            photoURL: data.photoURL,
+            handle: data.handle,
+            email: data.email,
+          });
+        });
+        usersList.sort((a, b) => a.displayName.localeCompare(b.displayName));
+        setAllUsers(usersList);
+      },
+      (error) => {
+        console.error('Error loading users:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [isOpen, user]);
 
   // Fetch threads for current user
   useEffect(() => {
@@ -336,6 +379,16 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
   if (!isOpen) return null;
 
   const selectedThread = threads.find(t => t.id === selectedThreadId);
+  const filteredUsers: DirectoryUser[] = searchQuery
+    ? allUsers.filter((u) => {
+        const q = searchQuery.toLowerCase();
+        return (
+          u.displayName.toLowerCase().includes(q) ||
+          (u.handle?.toLowerCase().includes(q) ?? false) ||
+          (u.email?.toLowerCase().includes(q) ?? false)
+        );
+      })
+    : [];
 
   return (
     <>
@@ -391,24 +444,49 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                   <div className="flex items-center justify-center h-full">
                     <div className="text-neutral-400">Loading conversations...</div>
                   </div>
-                ) : threads.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                    <svg className="w-16 h-16 text-neutral-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <p className="text-neutral-400 mb-2">No conversations yet</p>
-                    <p className="text-sm text-neutral-500">Start a new conversation to begin messaging</p>
-                  </div>
-                ) : (
+                ) : searchQuery ? (
                   <div className="divide-y divide-neutral-800">
+                    {/* People results (from user directory) */}
+                    <div className="px-4 py-2 text-xs uppercase tracking-wider text-neutral-500">People</div>
+                    {filteredUsers.length === 0 ? (
+                      <div className="px-4 py-3 text-neutral-500">No users found</div>
+                    ) : (
+                      filteredUsers.map((u) => (
+                        <button
+                          key={u.id}
+                          onClick={() => handleCreateThread(u.id)}
+                          className="w-full p-4 hover:bg-neutral-800 transition text-left"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
+                              {u.photoURL ? (
+                                <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-lg font-semibold bg-ccaBlue text-white">
+                                  {u.displayName.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-white truncate">{u.displayName}</div>
+                              <div className="text-sm text-neutral-400 truncate">{u.handle ? `@${u.handle}` : u.email || ''}</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    )}
+
+                    {/* Conversations that match */}
+                    <div className="px-4 py-2 text-xs uppercase tracking-wider text-neutral-500">Conversations</div>
                     {threads
-                      .filter(thread => {
-                        if (!searchQuery) return true;
+                      .filter((thread) => {
                         const searchLower = searchQuery.toLowerCase();
-                        return thread.otherUser?.displayName.toLowerCase().includes(searchLower) ||
-                               thread.otherUser?.handle?.toLowerCase().includes(searchLower);
+                        return (
+                          thread.otherUser?.displayName.toLowerCase().includes(searchLower) ||
+                          thread.otherUser?.handle?.toLowerCase().includes(searchLower)
+                        );
                       })
-                      .map(thread => (
+                      .map((thread) => (
                         <button
                           key={thread.id}
                           onClick={() => setSelectedThreadId(thread.id)}
@@ -430,12 +508,9 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                             </div>
                           )}
                           <div className="absolute bottom-0 right-0 w-3 h-3 bg-neutral-600 rounded-full border-2 border-neutral-900"></div>
-                          {/* Unread badge on avatar */}
                           {threadUnreadCounts[thread.id] > 0 && (
                             <div className="absolute -top-1 -right-1 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center border-2 border-neutral-900">
-                              <span className="text-white text-xs font-bold">
-                                {threadUnreadCounts[thread.id] > 9 ? '9+' : threadUnreadCounts[thread.id]}
-                              </span>
+                                  <span className="text-white text-xs font-bold">{threadUnreadCounts[thread.id] > 9 ? '9+' : threadUnreadCounts[thread.id]}</span>
                             </div>
                           )}
                         </div>
@@ -443,9 +518,7 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                           <div className="flex items-center justify-between mb-1">
                             <div className="font-semibold text-white truncate">
                               {thread.otherUser?.displayName || 'Unknown User'}
-                              {threadUnreadCounts[thread.id] > 0 && (
-                                <span className="ml-2 inline-block w-2 h-2 bg-red-500 rounded-full"></span>
-                              )}
+                                  {threadUnreadCounts[thread.id] > 0 && <span className="ml-2 inline-block w-2 h-2 bg-red-500 rounded-full"></span>}
                             </div>
                             {thread.lastMessageAt && (
                               <span className={`text-xs ml-2 flex-shrink-0 ${
@@ -458,11 +531,65 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                           <div className={`text-sm truncate ${
                             threadUnreadCounts[thread.id] > 0 ? 'text-white font-medium' : 'text-neutral-400'
                           }`}>
-                            {thread.lastMessage 
-                              ? (thread.lastMessageSenderId === user?.uid 
-                                  ? `You: ${thread.lastMessage}` 
-                                  : thread.lastMessage)
-                              : 'No messages yet'}
+                                {thread.lastMessage ? (thread.lastMessageSenderId === user?.uid ? `You: ${thread.lastMessage}` : thread.lastMessage) : 'No messages yet'}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                  </div>
+                ) : threads.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                    <svg className="w-16 h-16 text-neutral-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <p className="text-neutral-400 mb-2">No conversations yet</p>
+                    <p className="text-sm text-neutral-500">Start a new conversation to begin messaging</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-neutral-800">
+                    {threads.map((thread) => (
+                      <button
+                        key={thread.id}
+                        onClick={() => setSelectedThreadId(thread.id)}
+                        className={`w-full p-4 hover:bg-neutral-800 transition text-left relative ${
+                          selectedThreadId === thread.id ? 'bg-neutral-800' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
+                            {thread.otherUser?.photoURL ? (
+                              <img src={thread.otherUser.photoURL} alt={thread.otherUser.displayName} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-lg font-semibold bg-ccaBlue text-white">
+                                {thread.otherUser?.displayName?.charAt(0).toUpperCase() || 'U'}
+                              </div>
+                            )}
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-neutral-600 rounded-full border-2 border-neutral-900"></div>
+                            {threadUnreadCounts[thread.id] > 0 && (
+                              <div className="absolute -top-1 -right-1 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center border-2 border-neutral-900">
+                                <span className="text-white text-xs font-bold">{threadUnreadCounts[thread.id] > 9 ? '9+' : threadUnreadCounts[thread.id]}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="font-semibold text-white truncate">
+                                {thread.otherUser?.displayName || 'Unknown User'}
+                                {threadUnreadCounts[thread.id] > 0 && <span className="ml-2 inline-block w-2 h-2 bg-red-500 rounded-full"></span>}
+                              </div>
+                              {thread.lastMessageAt && (
+                                <span className={`text-xs ml-2 flex-shrink-0 ${
+                                  threadUnreadCounts[thread.id] > 0 ? 'text-white font-semibold' : 'text-neutral-500'
+                                }`}>
+                                  {formatTimestamp(thread.lastMessageAt)}
+                                </span>
+                              )}
+                            </div>
+                            <div className={`text-sm truncate ${
+                              threadUnreadCounts[thread.id] > 0 ? 'text-white font-medium' : 'text-neutral-400'
+                            }`}>
+                              {thread.lastMessage ? (thread.lastMessageSenderId === user?.uid ? `You: ${thread.lastMessage}` : thread.lastMessage) : 'No messages yet'}
                           </div>
                         </div>
                       </div>

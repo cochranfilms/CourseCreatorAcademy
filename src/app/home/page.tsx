@@ -4,6 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
+import { auth } from '@/lib/firebaseClient';
+import { signInWithCustomToken, fetchSignInMethodsForEmail, sendPasswordResetEmail } from 'firebase/auth';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 type UserProfile = {
   displayName?: string;
@@ -42,9 +45,53 @@ export default function HomePage() {
   const { user, loading } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userMemberSince, setUserMemberSince] = useState<Date | null>(null);
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [passwordEmailSent, setPasswordEmailSent] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Post-checkout auto sign-in via custom token
+  useEffect(() => {
+    const sessionId = searchParams?.get('session_id');
+    if (!sessionId || !firebaseReady || !auth) return;
+    if (user) return; // already signed in
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/auth/claim?session_id=${encodeURIComponent(sessionId)}`, { method: 'GET' });
+        const json = await res.json();
+        if (json?.token && !cancelled) {
+          await signInWithCustomToken(auth, json.token);
+          // Remove session_id from URL
+          router.replace('/home');
+        }
+      } catch (e) {
+        // ignore; user can still sign in later and claim
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [searchParams, user]);
 
   useEffect(() => {
     if (user && firebaseReady && db) {
+      // Helper to check if password sign-in is enabled for this account
+      const checkPasswordMethod = async () => {
+        try {
+          if (auth && user.email) {
+            const methods = await fetchSignInMethodsForEmail(auth, user.email);
+            setNeedsPassword(!methods.includes('password'));
+          }
+        } catch {}
+      };
+
+      // Initial check and also whenever tab regains focus/visibility
+      checkPasswordMethod();
+      const onFocus = () => { checkPasswordMethod(); };
+      const onVisibility = () => { if (!document.hidden) checkPasswordMethod(); };
+      window.addEventListener('focus', onFocus);
+      document.addEventListener('visibilitychange', onVisibility);
+
       // Get member since date from Firebase Auth metadata
       const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime) : null;
       if (creationTime) {
@@ -85,6 +132,11 @@ export default function HomePage() {
       };
 
       fetchProfile();
+
+      return () => {
+        window.removeEventListener('focus', onFocus);
+        document.removeEventListener('visibilitychange', onVisibility);
+      };
     } else {
       // Reset profile when user logs out
       setUserProfile(null);
@@ -136,6 +188,27 @@ export default function HomePage() {
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      {/* Prompt to set a password for email login, if needed */}
+      {user && needsPassword && (
+        <div className="mb-6 rounded-xl border border-amber-600/40 bg-amber-500/10 p-4 text-amber-200 flex items-center justify-between gap-4">
+          <div className="text-sm">
+            Secure your account: set a password to enable email login for {user.email}.
+          </div>
+          <button
+            onClick={async () => {
+              if (!auth || !user?.email) return;
+              try {
+                await sendPasswordResetEmail(auth, user.email);
+                setPasswordEmailSent(true);
+                setNeedsPassword(false);
+              } catch {}
+            }}
+            className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 text-sm font-medium border border-amber-500/40"
+          >
+            {passwordEmailSent ? 'Email Sent' : 'Send Password Setup Email'}
+          </button>
+        </div>
+      )}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">

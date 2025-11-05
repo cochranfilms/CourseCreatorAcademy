@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
+import { db, firebaseReady } from '@/lib/firebaseClient';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 type Subscription = {
   id: string;
@@ -23,6 +25,7 @@ export function LegacySubscriptions() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [membershipActive, setMembershipActive] = useState<boolean>(true);
 
   useEffect(() => {
     const load = async () => {
@@ -33,9 +36,52 @@ export function LegacySubscriptions() {
       }
 
       try {
+        let subs: Subscription[] | null = null;
+      try {
         const res = await fetch(`/api/legacy/subscriptions?userId=${user.uid}`);
         const json = await res.json();
-        setSubscriptions(json.subscriptions || []);
+          if (res.ok && Array.isArray(json.subscriptions)) {
+            subs = json.subscriptions as Subscription[];
+          }
+        } catch {}
+
+        // Fallback: query directly from Firestore (client) if API not available locally
+        if (!subs && firebaseReady && db) {
+          try {
+            const q = query(collection(db, 'legacySubscriptions'), where('userId', '==', user.uid));
+            const snap = await getDocs(q);
+            const raw = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+            const filtered = raw.filter((r: any) => ['active', 'trialing'].includes(String(r.status || '')));
+            subs = filtered.map((r: any) => ({
+              id: r.id,
+              creatorId: String(r.creatorId || ''),
+              subscriptionId: String(r.subscriptionId || ''),
+              status: String(r.status || 'active'),
+              amount: Number(r.amount || 1000),
+              currency: String(r.currency || 'usd'),
+            }));
+          } catch {}
+        }
+
+        setSubscriptions(subs || []);
+
+        // Attempt to read explicit membership flag from user profile (optional)
+        if (firebaseReady && db) {
+          try {
+            const ref = doc(db, 'users', user.uid);
+            const snap = await getDoc(ref);
+            if (snap.exists()) {
+              const data = snap.data() as any;
+              if (typeof data?.membershipActive === 'boolean') {
+                setMembershipActive(Boolean(data.membershipActive));
+              } else if (typeof data?.member === 'boolean') {
+                setMembershipActive(Boolean(data.member));
+              }
+            }
+          } catch {
+            // ignore; default stays true
+          }
+        }
       } catch (e) {
         setSubscriptions([]);
       } finally {
@@ -55,17 +101,25 @@ export function LegacySubscriptions() {
     );
   }
 
-  if (subscriptions.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-neutral-400 mb-4">You don't have any active Legacy+ subscriptions.</p>
-        <Link href="/" className="text-ccaBlue hover:underline">Browse Creator Kits</Link>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-4 flex items-center justify-between">
+        <div>
+          <div className="font-semibold text-white">CCA Membership</div>
+          <div className="text-sm text-neutral-400">Platform access to courses, community, and marketplace</div>
+        </div>
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${membershipActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+          {membershipActive ? 'Active' : 'Inactive'}
+        </span>
+      </div>
+
+      {subscriptions.length === 0 ? (
+        <div className="text-center py-6">
+          <p className="text-neutral-400 mb-4">You don't have any active Legacy+ subscriptions.</p>
+          <Link href="/" className="text-ccaBlue hover:underline">Browse Creator Kits</Link>
+        </div>
+      ) : null}
+
       {subscriptions.map((sub) => (
         <div
           key={sub.id}

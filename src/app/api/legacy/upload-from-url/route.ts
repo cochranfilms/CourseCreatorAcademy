@@ -25,12 +25,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Creator not found or not a Legacy creator' }, { status: 404 });
     }
 
+    // Resolve canonical legacy creator doc id so webhook writes to the expected path
+    const targetId = (creatorDoc as any).id || String(creatorId);
     // Create asset from public URL (e.g., Firebase downloadURL)
     const asset = await mux.video.assets.create({
       input: fileUrl,
       playback_policy: ['public'],
       passthrough: JSON.stringify({
-        legacyCreatorId: String(creatorId),
+        legacyCreatorId: String(targetId),
         title: String(title),
         description: description || '',
         isSample: Boolean(isSample),

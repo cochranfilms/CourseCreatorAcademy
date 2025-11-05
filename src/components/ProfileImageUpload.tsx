@@ -21,6 +21,7 @@ export function ProfileImageUpload({ onUploadComplete }: ProfileImageUploadProps
 
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [pendingFileName, setPendingFileName] = useState<string>('image.jpg');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(user?.photoURL || null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,6 +53,15 @@ export function ProfileImageUpload({ onUploadComplete }: ProfileImageUploadProps
       setError('Firebase is not configured');
       return;
     }
+    // Close the cropper immediately so the user sees the progress on the modal behind it
+    setCropSrc(null);
+
+    // Show a local preview right away while the upload runs
+    try {
+      const objectUrl = URL.createObjectURL(blob);
+      setPreviewUrl(objectUrl);
+    } catch {}
+
     setUploading(true);
     setError(null);
     setProgress(0);
@@ -78,7 +88,7 @@ export function ProfileImageUpload({ onUploadComplete }: ProfileImageUploadProps
         }, { merge: true });
         setUploading(false);
         setProgress(0);
-        setCropSrc(null);
+        setPreviewUrl(downloadURL);
         if (onUploadComplete) onUploadComplete(downloadURL);
       });
     } catch (e) {
@@ -90,6 +100,15 @@ export function ProfileImageUpload({ onUploadComplete }: ProfileImageUploadProps
 
   return (
     <div className="space-y-2">
+      {(previewUrl || user?.photoURL) && (
+        <div className="w-20 h-20 rounded-full overflow-hidden border border-neutral-800">
+          <img
+            src={previewUrl || user?.photoURL || ''}
+            alt="Profile preview"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
       <input
         ref={fileInputRef}
         type="file"

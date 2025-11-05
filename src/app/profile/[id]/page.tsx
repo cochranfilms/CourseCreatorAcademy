@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Messages } from '@/components/Messages';
+import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
 
 type UserProfile = {
   displayName?: string;
@@ -97,6 +98,8 @@ export default function ProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [memberSince, setMemberSince] = useState<Date | null>(null);
+  const [hasLegacySub, setHasLegacySub] = useState(false);
+  const [showLegacyModal, setShowLegacyModal] = useState(false);
 
   useEffect(() => {
     if (!userId || !firebaseReady || !db) {
@@ -265,6 +268,39 @@ export default function ProfilePage() {
     fetchProfile();
   }, [userId, currentUser]);
 
+  // Determine if viewing user has an active Legacy+ subscription (to toggle badges/CTAs)
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      if (!currentUser) { setHasLegacySub(false); return; }
+      try {
+        let active = false;
+        try {
+          const res = await fetch(`/api/legacy/subscriptions?userId=${currentUser.uid}`, { cache: 'no-store' });
+          const json = await res.json();
+          if (res.ok && Array.isArray(json.subscriptions)) {
+            active = json.subscriptions.length > 0;
+          }
+        } catch {}
+
+        if (!active && firebaseReady && db) {
+          try {
+            const { collection, query, where, getDocs } = await import('firebase/firestore');
+            const q = query(collection(db, 'legacySubscriptions'), where('userId', '==', currentUser.uid));
+            const snap = await getDocs(q);
+            active = snap.docs.some(d => ['active','trialing'].includes(String((d.data() as any)?.status || '')));
+          } catch {}
+        }
+
+        if (!cancelled) setHasLegacySub(active);
+      } catch {
+        if (!cancelled) setHasLegacySub(false);
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, [currentUser]);
+
   if (loading) {
     return (
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -366,6 +402,16 @@ export default function ProfilePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                   Message
+                </button>
+              )}
+
+              {/* When viewing own profile, show Legacy Subscriptions / Upgrade CTA (opens modal) */}
+              {currentUser && currentUser.uid === userId && (
+                <button
+                  onClick={() => setShowLegacyModal(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 rounded-lg font-semibold transition self-start"
+                >
+                  {hasLegacySub ? 'Legacy Subscriptions' : 'Upgrade to Legacy+'}
                 </button>
               )}
             </div>
@@ -732,6 +778,11 @@ export default function ProfilePage() {
           onClose={() => setShowMessageModal(false)}
           initialRecipientUserId={userId}
         />
+      )}
+
+      {/* Legacy+ creator selection modal (subscribe / add another) */}
+      {showLegacyModal && (
+        <LegacyUpgradeModal isOpen={showLegacyModal} onClose={() => setShowLegacyModal(false)} />
       )}
     </main>
   );

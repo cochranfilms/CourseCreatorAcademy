@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function StickyCTA() {
   const [visible, setVisible] = useState(false);
+  const { user } = useAuth();
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 400);
     window.addEventListener('scroll', onScroll);
@@ -10,9 +12,16 @@ export function StickyCTA() {
   }, []);
 
   const handleJoin = async () => {
-    const res = await fetch('/api/checkout/course', { method: 'POST' });
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
+    try {
+      if (!user) { window.location.href = '/login'; return; }
+      const res = await fetch('/api/subscribe/membership', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ buyerId: user.uid, customerEmail: user.email || undefined })
+      });
+      const data = await res.json();
+      if (data?.url) window.location.href = data.url;
+    } catch {}
   };
 
   return (

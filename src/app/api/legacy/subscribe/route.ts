@@ -21,8 +21,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Creator not found' }, { status: 404 });
     }
     const creator = creatorDoc.data() as any;
-    const connectAccountId = creator?.connectAccountId as string | undefined;
+    let connectAccountId = (creator?.connectAccountId as string | undefined) || undefined;
     const creatorName = creator?.displayName || creator?.handle || 'Creator';
+    // Fallback: derive connect account from owner user's profile if not present on creator doc
+    if (!connectAccountId && creator?.ownerUserId) {
+      try {
+        const owner = await adminDb.collection('users').doc(String(creator.ownerUserId)).get();
+        const ownerData = owner.exists ? (owner.data() as any) : null;
+        if (ownerData?.connectAccountId) {
+          connectAccountId = String(ownerData.connectAccountId);
+          // Persist it on the creator doc for future calls
+          await creatorDoc.ref.set({ connectAccountId }, { merge: true });
+        }
+      } catch {}
+    }
     if (!connectAccountId) {
       return NextResponse.json({ error: 'Creator is not ready to accept subscriptions' }, { status: 400 });
     }
@@ -34,8 +46,8 @@ export async function POST(req: NextRequest) {
       customerEmail = (userDoc.exists && (userDoc.data() as any)?.email) || undefined;
     } catch {}
 
-    // Create a subscription Checkout Session on the PLATFORM account using destination charges
-    // so we can split revenue 70/30 (CCA takes 30% application fee)
+    // Create a subscription Checkout Session on the PLATFORM account (no destination charge).
+    // We will pay the legacy creator a fixed $3 per successful invoice via webhook transfers.
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer_email: customerEmail,
@@ -53,16 +65,19 @@ export async function POST(req: NextRequest) {
           quantity: 1
         }
       ],
-      // Set transfer to connected account and platform fee percent
+      // Put identifiers on the subscription for later invoice handling
       subscription_data: {
-        transfer_data: { destination: connectAccountId },
-        application_fee_percent: 30,
+        metadata: {
+          legacyCreatorId: String(creatorId),
+          connectAccountId: String(connectAccountId)
+        }
       },
       success_url: `${origin}/legacy/success?creatorId=${encodeURIComponent(String(creatorId))}`,
       cancel_url: `${origin}/legacy/canceled?creatorId=${encodeURIComponent(String(creatorId))}`,
       metadata: {
         legacyCreatorId: String(creatorId),
-        buyerId: String(buyerId)
+        buyerId: String(buyerId),
+        connectAccountId: String(connectAccountId)
       }
     });
 

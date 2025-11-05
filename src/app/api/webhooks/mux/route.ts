@@ -120,7 +120,8 @@ export async function POST(req: NextRequest) {
 
       // Handle legacy creator video uploads
       if (legacyCreatorId && adminDb) {
-        const videoRef = adminDb.collection(`legacy_creators/${legacyCreatorId}/videos`);
+        const creatorId = String(legacyCreatorId);
+        const videoRef = adminDb.collection(`legacy_creators/${creatorId}/videos`);
         await videoRef.add({
           muxAssetId: assetId,
           muxPlaybackId: playbackId || null,
@@ -133,6 +134,26 @@ export async function POST(req: NextRequest) {
           updatedAt: FieldValue.serverTimestamp(),
         });
         updates++;
+
+        // If creator has no featured video yet and this is a sample, set it
+        try {
+          const creatorDocRef = adminDb.collection('legacy_creators').doc(creatorId);
+          const creatorSnap = await creatorDocRef.get();
+          const cdata = creatorSnap.exists ? (creatorSnap.data() as any) : null;
+          const hasFeatured = Boolean(cdata?.featured?.playbackId);
+          if (!hasFeatured && playbackId) {
+            await creatorDocRef.set({
+              featured: {
+                playbackId: playbackId,
+                title: title || 'Featured',
+                description: description || '',
+                durationSec: durationSec || 0,
+              },
+              updatedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            updates++;
+          }
+        } catch {}
       } else if (courseId && moduleId && lessonId && adminDb) {
         // Handle regular course lesson videos
         const ref = adminDb

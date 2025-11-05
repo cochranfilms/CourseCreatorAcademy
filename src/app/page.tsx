@@ -4,17 +4,21 @@ import { useState } from 'react';
 import { Trustbar } from '@/components/Trustbar';
 import { FAQ } from '@/components/FAQ';
 import { StickyCTA } from '@/components/StickyCTA';
+import { useAuth } from '@/contexts/AuthContext';
+import { PricingModal } from '@/components/PricingModal';
+import { StripeEmbeddedCheckout } from '@/components/StripeEmbeddedCheckout';
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<'learn' | 'community' | 'opportunities' | 'marketplace'>('learn');
+  const { user } = useAuth();
+  const [showPricing, setShowPricing] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<null | 'monthly37' | 'membership87'>(null);
 
-  const handleJoin = async () => {
-    const res = await fetch('/api/checkout/course', { method: 'POST' });
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
-    }
-  };
+  const openPricing = () => setShowPricing(true);
+
+  const startMonthly = () => setCheckoutPlan('monthly37');
+
+  const startAllAccess = () => setCheckoutPlan('membership87');
 
   const categories = ['Lighting','Composition','Cinematography','Editing','Audio','Business','YouTube','Weddings','Real Estate','Commercial','Travel','Photo','Color','FPV','After Effects','Gear'];
   const perks = ['Software Discounts','Private Community','Case Studies','Mentorship Calls','Video Contests','Budget Calculator','100+ Custom SFX','Keyboard Shortcuts','Access to Future Content'];
@@ -48,14 +52,6 @@ export default function Page() {
 
   return (
     <main className="min-h-screen w-full overflow-x-hidden">
-      {/* Header */}
-      <header className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-between w-full relative z-50">
-        <div className="flex items-center gap-3">
-          <Image src="/logo-cca.png" width={160} height={40} alt="Course Creator Academy" />
-        </div>
-        <button className="cta-button" onClick={handleJoin}>Join Now</button>
-      </header>
-
       {/* Hero Section */}
       <section className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-24 w-full">
         <div className="relative z-10 text-center max-w-5xl mx-auto">
@@ -91,7 +87,7 @@ export default function Page() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-10">
-            <button className="cta-button text-lg px-8 py-4" onClick={handleJoin}>Sign Up Now</button>
+            <button className="cta-button text-lg px-8 py-4" onClick={openPricing}>Sign Up Now</button>
             <a className="px-8 py-4 rounded-lg border-2 border-neutral-700 hover:border-neutral-600 text-lg font-medium transition" href="#pricing">See Pricing</a>
           </div>
           <div className="mt-6 text-sm text-neutral-400">14‑day refund policy • Instant access • Rated Excellent</div>
@@ -366,11 +362,11 @@ export default function Page() {
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
-          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8">
+        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8 items-stretch">
+          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 h-full flex flex-col">
             <div className="text-neutral-400 text-sm font-semibold mb-2">MONTHLY MEMBERSHIP</div>
             <div className="text-6xl font-extrabold mt-2">$37<span className="text-2xl font-semibold">/month</span></div>
-            <ul className="mt-6 text-neutral-300 space-y-3">
+            <ul className="mt-6 text-neutral-300 space-y-3 flex-1">
               <li className="flex items-center gap-3">
                 <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -390,29 +386,36 @@ export default function Page() {
                 Community + downloads
               </li>
             </ul>
-            <button className="cta-button mt-8 w-full text-lg py-4" onClick={handleJoin}>Join Now</button>
+          <div className="flex-1" />
+          <button className="cta-button mt-8 w-full text-lg py-4" onClick={startMonthly}>Join Now</button>
           </div>
 
-          <div className="bg-gradient-to-br from-ccaBlue/20 via-purple-500/20 to-pink-500/20 rounded-2xl border-2 border-ccaBlue p-8 relative overflow-hidden">
+          <div className="bg-gradient-to-br from-ccaBlue/20 via-purple-500/20 to-pink-500/20 rounded-2xl border-2 border-ccaBlue p-8 relative overflow-hidden h-full flex flex-col">
             <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-ccaBlue text-white text-xs font-bold">POPULAR</div>
-            <div className="text-neutral-300 text-sm font-semibold mb-2">ANNUAL MEMBERSHIP</div>
-            <div className="text-6xl font-extrabold mt-2">$25<span className="text-2xl font-semibold">/month</span></div>
-            <div className="text-neutral-400 text-sm mt-2 mb-6">Save 25% (billed annually at $300)</div>
-            <ul className="text-neutral-200 space-y-3">
+            <div className="text-neutral-300 text-sm font-semibold mb-2">ALL‑ACCESS MEMBERSHIP</div>
+            <div className="text-6xl font-extrabold mt-2">$87<span className="text-2xl font-semibold">/month</span></div>
+            <div className="text-neutral-400 text-sm mt-2 mb-6">Site‑wide access to every Legacy+ creator</div>
+            <ul className="text-neutral-200 space-y-3 flex-1">
               <li className="flex items-center gap-3">
                 <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                All monthly benefits
+                Complete access to all Legacy Creator profiles
               </li>
               <li className="flex items-center gap-3">
                 <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Best value for long-term growth
+                All assets, job opportunities, and marketplace access
+              </li>
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Includes everything in Monthly Membership
               </li>
             </ul>
-            <button className="cta-button mt-8 w-full text-lg py-4" onClick={handleJoin}>Join Annually</button>
+            <button className="cta-button mt-8 w-full text-lg py-4" onClick={startAllAccess}>Join All‑Access</button>
           </div>
         </div>
         <div className="mt-8 text-center text-sm text-neutral-400">14‑day refund policy • 96% satisfaction rating • Instant access</div>
@@ -463,7 +466,7 @@ export default function Page() {
           <p className="text-xl text-neutral-300 mb-8 max-w-2xl mx-auto">
             Learn from your favorite creators, save on the tools you already use, and supercharge your network so you can keep creating.
           </p>
-          <button className="cta-button text-lg px-10 py-5" onClick={handleJoin}>Sign Up Now</button>
+          <button className="cta-button text-lg px-10 py-5" onClick={openPricing}>Sign Up Now</button>
         </div>
       </section>
 
@@ -475,6 +478,8 @@ export default function Page() {
       </footer>
 
       <StickyCTA />
+      <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
+      <StripeEmbeddedCheckout plan={checkoutPlan} isOpen={!!checkoutPlan} onClose={() => setCheckoutPlan(null)} />
     </main>
   );
 }

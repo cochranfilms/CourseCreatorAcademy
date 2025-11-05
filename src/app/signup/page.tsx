@@ -67,9 +67,6 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center px-6 py-12 -mt-16">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <Image src="/logo-cca.png" alt="CCA" width={180} height={46} className="mx-auto mb-4" />
-          </Link>
           <h1 className="text-3xl font-bold mb-2">Join Course Creator Academy</h1>
           <p className="text-neutral-400">Create your account to get started</p>
         </div>

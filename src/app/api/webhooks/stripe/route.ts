@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { adminDb } from '@/lib/firebaseAdmin';
+import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { sendEmailJS } from '@/lib/email';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -39,6 +40,23 @@ export async function POST(req: NextRequest) {
 
   const isConnectEvent = verifiedWith === 'connect' || Boolean(event.account);
 
+  // Helper: resolve a charge ID from an invoice (supports newer API shapes)
+  const resolveChargeId = async (invoice: any): Promise<string | null> => {
+    try {
+      if (invoice?.charge && typeof invoice.charge === 'string') {
+        // Some API versions return a charge ID here (ch_...) or a payment id (py_...)
+        if (String(invoice.charge).startsWith('ch_')) return String(invoice.charge);
+      }
+      const piId = invoice?.payment_intent;
+      if (piId) {
+        const pi = await stripe.paymentIntents.retrieve(String(piId));
+        const latestCharge = (pi as any)?.latest_charge;
+        if (latestCharge && typeof latestCharge === 'string') return latestCharge;
+      }
+    } catch {}
+    return null;
+  };
+
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object;
@@ -54,10 +72,11 @@ export async function POST(req: NextRequest) {
         metadata: session.metadata
       });
       try {
-        if (isSubscription && isConnectEvent && adminDb) {
-          // Legacy+ subscription flow
+        if (isSubscription && adminDb) {
+          // Legacy+ subscription flow (created on platform account)
           const creatorId = session.metadata?.legacyCreatorId || null;
           const buyerId = session.metadata?.buyerId || null;
+          const connectAccountId = session.metadata?.connectAccountId || null;
           if (creatorId && buyerId) {
             const subId = session.subscription || null;
             const subDoc = {
@@ -68,11 +87,96 @@ export async function POST(req: NextRequest) {
               currency: session.currency || 'usd',
               amount: session.amount_total || 1000,
               status: 'active',
-              sellerAccountId: event.account || null,
+              sellerAccountId: connectAccountId,
               createdAt: FieldValue.serverTimestamp(),
               updatedAt: FieldValue.serverTimestamp(),
             };
             await adminDb.collection('legacySubscriptions').add(subDoc);
+          }
+
+          // Membership plan: mark user as active member and save subscription mapping
+          const planType = session.metadata?.planType || null;
+          const memberBuyerId = buyerId || session.client_reference_id || null;
+          if ((planType === 'cca_membership_87' || planType === 'cca_monthly_37') && memberBuyerId) {
+            try {
+              await adminDb
+                .collection('users')
+                .doc(String(memberBuyerId))
+                .set(
+                  {
+                    membershipActive: true,
+                    membershipPlan: planType,
+                    membershipSubscriptionId: String(session.subscription || ''),
+                    updatedAt: FieldValue.serverTimestamp(),
+                  },
+                  { merge: true }
+                );
+            } catch (e) {
+              console.error('Failed to persist membership status on checkout.session.completed', e);
+            }
+          } else if ((planType === 'cca_membership_87' || planType === 'cca_monthly_37')) {
+            // Guest checkout (no buyerId). Try to link by email, else record a pending membership.
+            try {
+              const email = (session.customer_details && session.customer_details.email) || session.customer_email || null;
+              if (email && adminDb) {
+                // Try to find an existing user with this email
+                const uq = await adminDb.collection('users').where('email', '==', String(email)).limit(1).get();
+                if (!uq.empty) {
+                  const userId = uq.docs[0].id;
+                  await adminDb
+                    .collection('users')
+                    .doc(String(userId))
+                    .set(
+                      {
+                        membershipActive: true,
+                        membershipPlan: planType,
+                        membershipSubscriptionId: String(session.subscription || ''),
+                        updatedAt: FieldValue.serverTimestamp(),
+                      },
+                      { merge: true }
+                    );
+                } else {
+                  // Save pending claim for auto-link on first sign-in
+                  await adminDb
+                    .collection('pendingMemberships')
+                    .doc(String(session.id))
+                    .set({
+                      email: String(email),
+                      planType,
+                      subscriptionId: String(session.subscription || ''),
+                      sessionId: String(session.id),
+                      claimed: false,
+                      createdAt: FieldValue.serverTimestamp(),
+                    });
+                }
+              }
+            } catch (e) {
+              console.error('Failed to record guest membership claim info', e);
+            }
+          }
+
+          // Send welcome email (idempotent by session)
+          try {
+            const email = (session.customer_details && session.customer_details.email) || session.customer_email || null;
+            if (email && (planType === 'cca_membership_87' || planType === 'cca_monthly_37') && adminDb && adminAuth) {
+              const docRef = adminDb.collection('emails').doc(`welcome_${String(session.id)}`);
+              const sent = await docRef.get();
+              if (!sent.exists) {
+                const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+                const resetUrl = await adminAuth.generatePasswordResetLink(String(email), { url: `${baseUrl}/login` });
+                const templateId = process.env.EMAILJS_TEMPLATE_ID || 'template_a8qgjpy';
+                await sendEmailJS(String(templateId), {
+                  user_name: session.customer_details?.name || '',
+                  customer_email: String(email),
+                  reset_url: resetUrl,
+                  plan_name: planType === 'cca_membership_87' ? 'CCA All‑Access Membership' : 'CCA Monthly Membership',
+                  year: new Date().getFullYear().toString()
+                });
+                await docRef.set({ createdAt: FieldValue.serverTimestamp() });
+              }
+            }
+          } catch (e) {
+            console.error('Failed to send welcome email:', e);
           }
         } else {
           // Marketplace order (existing)
@@ -112,6 +216,215 @@ export async function POST(req: NextRequest) {
       }
       break;
     }
+    case 'invoice.payment_succeeded': {
+      const invoice = event.data.object as any;
+      const subscriptionId = invoice.subscription || null;
+      const invoiceId = invoice.id;
+      const currency = invoice.currency || 'usd';
+      // Only handle Legacy+ subs created on platform
+      try {
+        if (adminDb && subscriptionId) {
+          // Idempotency: skip if payout already recorded for this invoice
+          const existing = await adminDb.collection('legacyPayouts').doc(String(invoiceId)).get();
+          if (existing.exists) break;
+
+          // Lookup subscription mapping
+          const q = await adminDb
+            .collection('legacySubscriptions')
+            .where('subscriptionId', '==', String(subscriptionId))
+            .limit(1)
+            .get();
+          if (!q.empty) {
+            const sub = q.docs[0].data() as any;
+            const destination = sub.sellerAccountId || null;
+            if (destination) {
+              const chargeId = await resolveChargeId(invoice);
+              // Transfer fixed $3 to the legacy creator
+              await stripe.transfers.create({
+                amount: 300,
+                currency,
+                destination: String(destination),
+                ...(chargeId ? { source_transaction: chargeId } : {}),
+                metadata: {
+                  reason: 'Legacy+ monthly payout',
+                  subscriptionId: String(subscriptionId),
+                  invoiceId: String(invoiceId),
+                  creatorId: String(sub.creatorId || ''),
+                },
+              });
+              // Mark payout recorded
+              await adminDb
+                .collection('legacyPayouts')
+                .doc(String(invoiceId))
+                .set({
+                  subscriptionId: String(subscriptionId),
+                  creatorId: String(sub.creatorId || ''),
+                  destination: String(destination),
+                  amount: 300,
+                  currency,
+                  createdAt: FieldValue.serverTimestamp(),
+                });
+            }
+          }
+
+          // If not a single-creator legacy sub, check $87 membership plan and pay all legacy creators
+          if (adminDb) {
+            // Retrieve the subscription to check metadata
+            let planType: string | null = null;
+            try {
+              const subscription = await stripe.subscriptions.retrieve(String(subscriptionId));
+              planType = (subscription.metadata && (subscription.metadata as any).planType) || null;
+            } catch (e) {}
+
+            if (planType === 'cca_membership_87') {
+              const creatorsSnap = await adminDb.collection('legacy_creators').get();
+              const recipients: Array<{ id: string; destination: string }> = [];
+              creatorsSnap.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
+                const data = doc.data() as any;
+                const dest = data?.connectAccountId;
+                if (dest) recipients.push({ id: doc.id, destination: String(dest) });
+              });
+
+              // Create transfers of $3 to each legacy creator
+              const chargeId = await resolveChargeId(invoice);
+              await Promise.all(
+                recipients.map((r) =>
+                  stripe.transfers.create({
+                    amount: 300,
+                    currency,
+                    destination: r.destination,
+                    ...(chargeId ? { source_transaction: chargeId } : {}),
+                    metadata: {
+                      reason: 'CCA Membership monthly payout',
+                      subscriptionId: String(subscriptionId),
+                      invoiceId: String(invoiceId),
+                      legacyCreatorId: r.id,
+                    },
+                  })
+                )
+              );
+
+              // Record idempotency with recipients
+              await adminDb
+                .collection('legacyPayouts')
+                .doc(String(invoiceId))
+                .set({
+                  subscriptionId: String(subscriptionId),
+                  planType,
+                  recipients,
+                  perCreatorAmount: 300,
+                  totalAmount: 300 * recipients.length,
+                  currency,
+                  createdAt: FieldValue.serverTimestamp(),
+                });
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to process legacy+ payout on invoice.payment_succeeded', err);
+      }
+      break;
+    }
+    // Stripe started emitting `invoice.paid` as the canonical event for paid invoices.
+    // Handle it the same way as `invoice.payment_succeeded` so our payouts always run.
+    case 'invoice.paid': {
+      const invoice = event.data.object as any;
+      const subscriptionId = invoice.subscription || null;
+      const invoiceId = invoice.id;
+      const currency = invoice.currency || 'usd';
+      try {
+        if (adminDb && subscriptionId) {
+          const existing = await adminDb.collection('legacyPayouts').doc(String(invoiceId)).get();
+          if (existing.exists) break;
+
+          const q = await adminDb
+            .collection('legacySubscriptions')
+            .where('subscriptionId', '==', String(subscriptionId))
+            .limit(1)
+            .get();
+          if (!q.empty) {
+            const sub = q.docs[0].data() as any;
+            const destination = sub.sellerAccountId || null;
+            if (destination) {
+              const chargeId = await resolveChargeId(invoice);
+              await stripe.transfers.create({
+                amount: 300,
+                currency,
+                destination: String(destination),
+                ...(chargeId ? { source_transaction: chargeId } : {}),
+                metadata: {
+                  reason: 'Legacy+ monthly payout',
+                  subscriptionId: String(subscriptionId),
+                  invoiceId: String(invoiceId),
+                  creatorId: String(sub.creatorId || ''),
+                },
+              });
+              await adminDb
+                .collection('legacyPayouts')
+                .doc(String(invoiceId))
+                .set({
+                  subscriptionId: String(subscriptionId),
+                  creatorId: String(sub.creatorId || ''),
+                  destination: String(destination),
+                  amount: 300,
+                  currency,
+                  createdAt: FieldValue.serverTimestamp(),
+                });
+              break;
+            }
+          }
+
+          // Membership plan fan-out ($87 plan)
+          let planType: string | null = null;
+          try {
+            const subscription = await stripe.subscriptions.retrieve(String(subscriptionId));
+            planType = (subscription.metadata && (subscription.metadata as any).planType) || null;
+          } catch (e) {}
+
+          if (planType === 'cca_membership_87') {
+            const creatorsSnap = await adminDb.collection('legacy_creators').get();
+            const recipients: Array<{ id: string; destination: string }> = [];
+            creatorsSnap.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
+              const data = doc.data() as any;
+              const dest = data?.connectAccountId;
+              if (dest) recipients.push({ id: doc.id, destination: String(dest) });
+            });
+            const chargeId = await resolveChargeId(invoice);
+            await Promise.all(
+              recipients.map((r) =>
+                stripe.transfers.create({
+                  amount: 300,
+                  currency,
+                  destination: r.destination,
+                  ...(chargeId ? { source_transaction: chargeId } : {}),
+                  metadata: {
+                    reason: 'CCA Membership monthly payout',
+                    subscriptionId: String(subscriptionId),
+                    invoiceId: String(invoiceId),
+                    legacyCreatorId: r.id,
+                  },
+                })
+              )
+            );
+            await adminDb
+              .collection('legacyPayouts')
+              .doc(String(invoiceId))
+              .set({
+                subscriptionId: String(subscriptionId),
+                planType,
+                recipients,
+                perCreatorAmount: 300,
+                totalAmount: 300 * recipients.length,
+                currency,
+                createdAt: FieldValue.serverTimestamp(),
+              });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to process legacy+ payout on invoice.paid', err);
+      }
+      break;
+    }
     case 'customer.subscription.updated': {
       const sub = event.data.object;
       console.log('customer.subscription.updated', { account: event.account, id: sub.id, status: sub.status });
@@ -120,6 +433,38 @@ export async function POST(req: NextRequest) {
           const q = await adminDb.collection('legacySubscriptions').where('subscriptionId', '==', sub.id).limit(1).get();
           if (!q.empty) {
             await q.docs[0].ref.set({ status: sub.status || 'active', updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+          }
+
+          // Keep membership flag in sync for CCA Membership plan
+          const planType = (sub.metadata && (sub.metadata as any).planType) || null;
+          const buyerId = (sub.metadata && (sub.metadata as any).buyerId) || null;
+          const active = ['active', 'trialing'].includes(String(sub.status || ''));
+          if (planType === 'cca_membership_87' || planType === 'cca_monthly_37') {
+            let userIdToUpdate: string | null = buyerId ? String(buyerId) : null;
+            if (!userIdToUpdate) {
+              try {
+                const uq = await adminDb
+                  .collection('users')
+                  .where('membershipSubscriptionId', '==', String(sub.id))
+                  .limit(1)
+                  .get();
+                if (!uq.empty) userIdToUpdate = uq.docs[0].id;
+              } catch {}
+            }
+            if (userIdToUpdate) {
+              await adminDb
+                .collection('users')
+                .doc(userIdToUpdate)
+                .set(
+                  {
+                    membershipActive: active,
+                    membershipPlan: planType,
+                    membershipSubscriptionId: String(sub.id),
+                    updatedAt: FieldValue.serverTimestamp(),
+                  },
+                  { merge: true }
+                );
+            }
           }
         }
       } catch (err) {
@@ -135,6 +480,37 @@ export async function POST(req: NextRequest) {
           const q = await adminDb.collection('legacySubscriptions').where('subscriptionId', '==', sub.id).limit(1).get();
           if (!q.empty) {
             await q.docs[0].ref.set({ status: 'canceled', updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+          }
+
+          // Deactivate membership for CCA Membership plan
+          const planType = (sub.metadata && (sub.metadata as any).planType) || null;
+          const buyerId = (sub.metadata && (sub.metadata as any).buyerId) || null;
+          if (planType === 'cca_membership_87' || planType === 'cca_monthly_37') {
+            let userIdToUpdate: string | null = buyerId ? String(buyerId) : null;
+            if (!userIdToUpdate) {
+              try {
+                const uq = await adminDb
+                  .collection('users')
+                  .where('membershipSubscriptionId', '==', String(sub.id))
+                  .limit(1)
+                  .get();
+                if (!uq.empty) userIdToUpdate = uq.docs[0].id;
+              } catch {}
+            }
+            if (userIdToUpdate) {
+              await adminDb
+                .collection('users')
+                .doc(userIdToUpdate)
+                .set(
+                  {
+                    membershipActive: false,
+                    membershipPlan: planType,
+                    membershipSubscriptionId: String(sub.id),
+                    updatedAt: FieldValue.serverTimestamp(),
+                  },
+                  { merge: true }
+                );
+            }
           }
         }
       } catch (err) {
