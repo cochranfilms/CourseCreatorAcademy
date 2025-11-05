@@ -166,11 +166,15 @@ export async function POST(req: NextRequest) {
                 const resetUrl = await adminAuth.generatePasswordResetLink(String(email), { url: `${baseUrl}/login` });
                 const templateId = process.env.EMAILJS_TEMPLATE_ID || 'template_a8qgjpy';
                 await sendEmailJS(String(templateId), {
+                  // Template variables
                   user_name: session.customer_details?.name || '',
                   customer_email: String(email),
                   reset_url: resetUrl,
                   plan_name: planType === 'cca_membership_87' ? 'CCA All‑Access Membership' : 'CCA Monthly Membership',
-                  year: new Date().getFullYear().toString()
+                  year: new Date().getFullYear().toString(),
+                  // Common aliases some templates expect
+                  to_email: String(email),
+                  name: 'Course Creator Academy'
                 });
                 await docRef.set({ createdAt: FieldValue.serverTimestamp() });
               }

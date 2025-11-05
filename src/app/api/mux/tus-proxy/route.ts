@@ -60,10 +60,16 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   const init: RequestInit = {
     method,
     headers,
-    body: method === 'POST' || method === 'PATCH' ? (req.body as any) : undefined,
+    // Per TUS: POST (create) must have an empty body; PATCH streams bytes
+    body: method === 'PATCH' ? (req.body as any) : undefined,
     // @ts-ignore
-    duplex: 'half',
+    duplex: method === 'PATCH' ? 'half' : undefined,
   };
+
+  // Ensure POST has Content-Length: 0 to satisfy some TUS gateways
+  if (method === 'POST' && !headers.has('content-length')) {
+    headers.set('content-length', '0');
+  }
 
   const upstream = await fetch(target, init);
   const resHeaders = new Headers(corsHeaders(origin));
