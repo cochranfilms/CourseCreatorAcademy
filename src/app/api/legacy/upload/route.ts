@@ -68,9 +68,9 @@ export async function POST(req: NextRequest) {
 
     // Return proxy endpoint in production to avoid Mux CORS issues
     const baseUrl = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || process.env.SITE_URL || '';
-    const uploadUrl = isDev || !baseUrl
-      ? upload.url
-      : `${baseUrl.replace(/\/$/, '')}/api/mux/tus-proxy?u=${encodeURIComponent(upload.url)}`;
+    const uploadUrl = baseUrl
+      ? `${baseUrl.replace(/\/$/, '')}/api/mux/tus-proxy?u=${encodeURIComponent(upload.url)}`
+      : upload.url;
 
     return NextResponse.json({ uploadId: upload.id, uploadUrl });
   } catch (err: any) {
