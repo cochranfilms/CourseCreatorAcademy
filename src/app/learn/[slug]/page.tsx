@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
@@ -42,7 +42,7 @@ type Course = {
   modules: Module[];
 };
 
-export default function CourseDetailPage() {
+function CourseDetailPageInner() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -500,6 +500,14 @@ export default function CourseDetailPage() {
         />
       )}
     </main>
+  );
+}
+
+export default function CourseDetailPage() {
+  return (
+    <Suspense fallback={<main className="max-w-7xl mx-auto px-6 py-8"><div className="text-neutral-400">Loading…</div></main>}>
+      <CourseDetailPageInner />
+    </Suspense>
   );
 }
 

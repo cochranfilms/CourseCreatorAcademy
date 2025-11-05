@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { doc, getDoc } from 'firebase/firestore';
@@ -41,16 +41,10 @@ function formatMemberSince(date: Date | null) {
   return date.getFullYear().toString();
 }
 
-export default function HomePage() {
-  const { user, loading } = useAuth();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [userMemberSince, setUserMemberSince] = useState<Date | null>(null);
-  const [needsPassword, setNeedsPassword] = useState(false);
-  const [passwordEmailSent, setPasswordEmailSent] = useState(false);
+function ClaimFromSessionId() {
   const searchParams = useSearchParams();
   const router = useRouter();
-
-  // Post-checkout auto sign-in via custom token
+  const { user } = useAuth();
   useEffect(() => {
     const sessionId = searchParams?.get('session_id');
     if (!sessionId || !firebaseReady || !auth) return;
@@ -62,16 +56,25 @@ export default function HomePage() {
         const json = await res.json();
         if (json?.token && !cancelled) {
           await signInWithCustomToken(auth, json.token);
-          // Remove session_id from URL
           router.replace('/home');
         }
-      } catch (e) {
-        // ignore; user can still sign in later and claim
-      }
+      } catch {}
     };
     run();
     return () => { cancelled = true; };
   }, [searchParams, user]);
+  return null;
+}
+
+export default function HomePage() {
+  const { user, loading } = useAuth();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userMemberSince, setUserMemberSince] = useState<Date | null>(null);
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [passwordEmailSent, setPasswordEmailSent] = useState(false);
+  const router = useRouter();
+
+  // Post-checkout auto sign-in via custom token handled in Suspense-wrapped child
 
   useEffect(() => {
     if (user && firebaseReady && db) {
@@ -188,6 +191,7 @@ export default function HomePage() {
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <Suspense fallback={null}><ClaimFromSessionId /></Suspense>
       {/* Prompt to set a password for email login, if needed */}
       {user && needsPassword && (
         <div className="mb-6 rounded-xl border border-amber-600/40 bg-amber-500/10 p-4 text-amber-200 flex items-center justify-between gap-4">
