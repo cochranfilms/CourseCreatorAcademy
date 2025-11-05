@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 type PageProps = {
-  searchParams: { creatorId?: string };
+  searchParams: Promise<{ creatorId?: string } | Record<string, any>>;
 };
 
 async function getCreator(creatorId?: string) {
@@ -17,7 +17,8 @@ async function getCreator(creatorId?: string) {
 }
 
 export default async function LegacySuccessPage({ searchParams }: PageProps) {
-  const creatorId = searchParams?.creatorId;
+  const sp = await searchParams;
+  const creatorId = (sp as any)?.creatorId as string | undefined;
   const creator = await getCreator(creatorId);
 
   const title = creator ? `You’re subscribed to ${creator.displayName}!` : 'Subscription successful!';
