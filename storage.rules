@@ -1,0 +1,77 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Profile images - users can upload/read their own profile images
+    match /profile-images/{userId}/{allPaths=**} {
+      // Allow users to read any profile image (for displaying avatars)
+      allow read: if request.auth != null;
+      // Allow users to write only to their own folder
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024  // 5MB max
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Listing images - users can upload/read listing images
+    match /listing-images/{userId}/{allPaths=**} {
+      // Allow users to read any listing image
+      allow read: if request.auth != null;
+      // Allow users to write only to their own folder
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024  // 5MB max
+        && request.resource.contentType.matches('image/.*');
+      // Allow users to delete their own images
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Project images - users can upload/read project images
+    match /project-images/{userId}/{allPaths=**} {
+      // Allow users to read any project image
+      allow read: if request.auth != null;
+      // Allow users to write only to their own folder
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024  // 5MB max
+        && request.resource.contentType.matches('image/.*');
+      // Allow users to delete their own images
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Legacy creator video uploads (staging for Mux ingest)
+    // Owner needs read access to generate downloadURL for Mux ingest
+    match /legacy-uploads/{userId}/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 2 * 1024 * 1024 * 1024 // 2 GB max
+        && (
+          request.resource.contentType.matches('video/.*') ||
+          request.resource.contentType == 'application/octet-stream' // some browsers/flows use this
+        );
+    }
+
+    // Legacy creator public assets (avatar/banner). Shown on public pages
+    // Read is public; only the owner can write. 5MB image max.
+    match /legacy-creators/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Course resources (for future use)
+    match /courses/{courseId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
