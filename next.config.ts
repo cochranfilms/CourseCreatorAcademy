@@ -5,13 +5,13 @@ const nextConfig: NextConfig = {
   async headers() {
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.mux.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.mux.com https://www.google.com https://www.gstatic.com https://apis.google.com https://connect.facebook.net https://accounts.google.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://image.mux.com https://firebasestorage.googleapis.com https://*.firebasestorage.app",
       "media-src 'self' blob: https://stream.mux.com https://*.mux.com",
       "font-src 'self' data:",
-      "connect-src 'self' https://api.mux.com https://stream.mux.com https://image.mux.com https://js.stripe.com https://api.stripe.com https://firebasestorage.googleapis.com https://*.firebasestorage.app",
-      "frame-src https://js.stripe.com",
+      "connect-src 'self' https://api.mux.com https://stream.mux.com https://image.mux.com https://js.stripe.com https://api.stripe.com https://firebasestorage.googleapis.com https://*.firebasestorage.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com https://graph.facebook.com",
+      "frame-src https://js.stripe.com https://www.google.com https://www.gstatic.com https://accounts.google.com https://www.facebook.com https://connect.facebook.net",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
