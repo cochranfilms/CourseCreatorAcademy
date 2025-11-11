@@ -38,6 +38,7 @@ export default function CreatorKitPage() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<LegacyVideo | null>(null);
+  const [selectedVideoToken, setSelectedVideoToken] = useState<string | null>(null);
   const [assetsTab, setAssetsTab] = useState<'overlays' | 'sfx'>('overlays');
 
   useEffect(() => {
@@ -86,6 +87,34 @@ export default function CreatorKitPage() {
     };
     load();
   }, [slug, user]);
+
+  // Fetch signed playback token for locked videos when opened
+  useEffect(() => {
+    let cancelled = false;
+    const fetchToken = async () => {
+      setSelectedVideoToken(null);
+      if (!selectedVideo) return;
+      // Samples are public; tokens are for non-sample only
+      if (selectedVideo.isSample) return;
+      try {
+        let headers: Record<string, string> = {};
+        if (user) {
+          try {
+            const idt = await user.getIdToken();
+            headers['Authorization'] = `Bearer ${idt}`;
+          } catch {}
+        }
+        const res = await fetch(`/api/mux/token?playbackId=${encodeURIComponent(String(selectedVideo.muxPlaybackId || ''))}`, {
+          headers
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!cancelled) setSelectedVideoToken(String(json?.token || ''));
+      } catch {}
+    };
+    fetchToken();
+    return () => { cancelled = true; };
+  }, [selectedVideo, user]);
 
   if (loading) {
     return (
@@ -409,6 +438,7 @@ export default function CreatorKitPage() {
                 primaryColor="#3B82F6"
                 className="w-full"
                 style={{ aspectRatio: '16 / 9' }}
+                {...(selectedVideoToken ? { tokens: { playback: selectedVideoToken } as any } : {})}
               />
               <div className="p-6">
                 <h3 className="text-2xl font-bold text-white mb-2">{selectedVideo.title}</h3>

@@ -1,16 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { mux } from '@/lib/mux';
+import { z } from 'zod';
+import { logInfo, logError } from '@/lib/log';
+import { recordAudit } from '@/lib/audit';
 
 // POST /api/legacy/upload-from-url
 // Body: { creatorId: string, title: string, description?: string, isSample?: boolean, fileUrl: string }
 // Ingests a browser-uploaded file (e.g., Firebase Storage download URL) into Mux, avoiding TUS CORS.
 export async function POST(req: NextRequest) {
   try {
-    const { creatorId, title, description, isSample, fileUrl } = await req.json();
-    if (!creatorId || !title || !fileUrl) {
-      return NextResponse.json({ error: 'creatorId, title, and fileUrl are required' }, { status: 400 });
+    const schema = z.object({
+      creatorId: z.string().min(1),
+      title: z.string().min(1),
+      description: z.string().optional(),
+      isSample: z.boolean().optional(),
+      fileUrl: z.string().url(),
+    });
+    const parsed = schema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
     }
+    const { creatorId, title, description, isSample, fileUrl } = parsed.data;
     if (!adminDb) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     }
@@ -30,7 +41,8 @@ export async function POST(req: NextRequest) {
     // Create asset from public URL (e.g., Firebase downloadURL)
     const asset = await mux.video.assets.create({
       input: fileUrl,
-      playback_policy: ['public'],
+      // Samples remain public; all other assets use signed playback
+      playback_policy: Boolean(isSample) ? ['public'] : ['signed'],
       passthrough: JSON.stringify({
         legacyCreatorId: String(targetId),
         title: String(title),
@@ -39,9 +51,11 @@ export async function POST(req: NextRequest) {
       }),
     } as any);
 
+    logInfo('legacy.uploadFromUrl.created', { creatorId: targetId, isSample: Boolean(isSample) });
+    recordAudit('legacy_upload_from_url_created', { creatorId: targetId, assetId: asset.id, isSample: Boolean(isSample) }).catch(()=>{});
     return NextResponse.json({ assetId: asset.id });
   } catch (err: any) {
-    console.error('Legacy upload-from-url error:', err);
+    logError('legacy.uploadFromUrl.error', { error: err?.message || String(err) });
     return NextResponse.json({ error: err?.message || 'Failed to create asset from URL' }, { status: 500 });
   }
 }

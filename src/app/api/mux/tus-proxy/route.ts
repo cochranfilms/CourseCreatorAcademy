@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+function getAllowedOrigin(requestOrigin?: string | null): string | null {
+  const isDev = process.env.NODE_ENV !== 'production';
+  if (isDev) return requestOrigin || '*';
+  const allowlist = (process.env.CORS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!allowlist.length) {
+    const fallback = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || null;
+    return fallback;
+  }
+  if (requestOrigin && allowlist.includes(requestOrigin)) return requestOrigin;
+  return allowlist[0] || null;
+}
+
 function corsHeaders(origin?: string | null) {
-  const allowOrigin = origin || '*';
-  return {
-    'Access-Control-Allow-Origin': allowOrigin,
+  const allowOrigin = origin || '';
+  const headers: Record<string, string> = {
+    ...(allowOrigin ? { 'Access-Control-Allow-Origin': allowOrigin } : {}),
     'Access-Control-Allow-Methods': 'OPTIONS, POST, PATCH, HEAD',
     'Access-Control-Allow-Headers': [
       'authorization',
@@ -22,7 +37,8 @@ function corsHeaders(origin?: string | null) {
       'tus-resumable', 'Tus-Resumable',
     ].join(', '),
     'Vary': 'Origin',
-  } as Record<string, string>;
+  };
+  return headers;
 }
 
 function isAllowedMuxUploadUrl(url: string): boolean {
@@ -38,14 +54,22 @@ function isAllowedMuxUploadUrl(url: string): boolean {
 }
 
 async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest) {
-  const origin = req.headers.get('origin');
+  const requestOrigin = req.headers.get('origin');
+  const allowedOrigin = getAllowedOrigin(requestOrigin);
+  // In production, block disallowed origins for CORS handshake
+  if (process.env.NODE_ENV === 'production' && method === 'OPTIONS') {
+    if (!allowedOrigin) {
+      return new NextResponse(null, { status: 403 });
+    }
+    return new NextResponse(null, { status: 204, headers: corsHeaders(allowedOrigin) });
+  }
   if (method === 'OPTIONS') {
-    return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
+    return new NextResponse(null, { status: 204, headers: corsHeaders(allowedOrigin) });
   }
 
   const target = req.nextUrl.searchParams.get('u');
   if (!target || !isAllowedMuxUploadUrl(target)) {
-    return NextResponse.json({ error: 'Invalid target' }, { status: 400, headers: corsHeaders(origin) });
+    return NextResponse.json({ error: 'Invalid target' }, { status: 400, headers: corsHeaders(allowedOrigin) });
   }
 
   const headers = new Headers();
@@ -78,7 +102,7 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   };
 
   const upstream = await fetch(target, init);
-  const resHeaders = new Headers(corsHeaders(origin));
+  const resHeaders = new Headers(corsHeaders(allowedOrigin));
 
   // Copy upstream headers
   upstream.headers.forEach((value, key) => {

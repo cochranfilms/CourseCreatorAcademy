@@ -59,6 +59,19 @@ export default function CreatorOnboardingPage() {
       const res = await fetch(`/api/stripe/connect/status?accountId=${connectAccountId}`);
       const json = await res.json();
       setStatus(json);
+      // Auto-enable legacy creator once charges are enabled
+      if (json?.charges_enabled) {
+        try {
+          const enableRes = await fetch('/api/legacy/creators/enable', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          const enableJson = await enableRes.json();
+          if (!enableRes.ok && enableJson?.error) {
+            console.warn('Enable legacy creator failed:', enableJson.error);
+          }
+        } catch (e) {}
+      }
     } catch {}
     setLoading(false);
   };

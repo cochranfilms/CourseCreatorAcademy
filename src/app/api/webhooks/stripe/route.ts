@@ -38,6 +38,25 @@ export async function POST(req: NextRequest) {
     return new NextResponse('Webhook signature verification failed', { status: 400 });
   }
 
+  // Idempotency: short-circuit if event already processed
+  try {
+    if (adminDb && event.id) {
+      const processedRef = adminDb.collection('webhookEventsProcessed').doc(String(event.id));
+      const snap = await processedRef.get();
+      if (snap.exists) {
+        return NextResponse.json({ received: true, duplicate: true });
+      }
+      // Mark as processed early; handlers should be idempotent
+      await processedRef.set({
+        source: 'stripe',
+        type: String(event.type || ''),
+        created: new Date(),
+      }, { merge: true });
+    }
+  } catch (e) {
+    // continue; best-effort
+  }
+
   const isConnectEvent = verifiedWith === 'connect' || Boolean(event.account);
 
   // Helper: resolve a charge ID from an invoice (supports newer API shapes)

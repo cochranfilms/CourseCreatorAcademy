@@ -96,6 +96,20 @@ export async function POST(req: NextRequest) {
   }
 
   const type = payload?.type as string | undefined;
+  // Idempotency: prevent duplicate handling (best-effort)
+  try {
+    if (adminDb) {
+      const idKey = `${String(type || '')}:${String(payload?.data?.id || '')}`;
+      if (idKey) {
+        const ref = adminDb.collection('webhookEventsProcessed').doc(idKey);
+        const snap = await ref.get();
+        if (snap.exists) {
+          return NextResponse.json({ received: true, duplicate: true });
+        }
+        await ref.set({ source: 'mux', type: type || '', created: new Date() }, { merge: true });
+      }
+    }
+  } catch {}
   // Handle asset ready to populate playbackId/duration
   if (type === 'video.asset.ready' || type === 'video.asset.updated') {
     const data = payload?.data || {};
