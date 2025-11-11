@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
       "media-src 'self' blob: https://stream.mux.com https://*.mux.com",
       "font-src 'self' data:",
       "connect-src 'self' https://api.mux.com https://stream.mux.com https://image.mux.com https://js.stripe.com https://api.stripe.com https://firebasestorage.googleapis.com https://*.firebasestorage.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com https://graph.facebook.com",
-      "frame-src https://js.stripe.com https://www.google.com https://www.gstatic.com https://accounts.google.com https://www.facebook.com https://connect.facebook.net",
+      "frame-src https://js.stripe.com https://www.google.com https://www.gstatic.com https://accounts.google.com https://www.facebook.com https://connect.facebook.net https://www.youtube.com https://www.youtube-nocookie.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
