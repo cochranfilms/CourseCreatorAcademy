@@ -81,6 +81,11 @@ export default function HomePage() {
       // Helper to check if password sign-in is enabled for this account
       const checkPasswordMethod = async () => {
         try {
+          // Fast path: if providerData already includes password provider, no prompt
+          if (user?.providerData?.some((p) => p?.providerId === 'password')) {
+            setNeedsPassword(false);
+            return;
+          }
           if (auth && user.email) {
             const methods = await fetchSignInMethodsForEmail(auth, user.email);
             setNeedsPassword(!methods.includes('password'));
@@ -193,7 +198,7 @@ export default function HomePage() {
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <Suspense fallback={null}><ClaimFromSessionId /></Suspense>
       {/* Prompt to set a password for email login, if needed */}
-      {user && needsPassword && (
+      {user && needsPassword && !user?.providerData?.some((p) => p?.providerId === 'password') && (
         <div className="mb-6 rounded-xl border border-amber-600/40 bg-amber-500/10 p-4 text-amber-200 flex items-center justify-between gap-4">
           <div className="text-sm">
             Secure your account: set a password to enable email login for {user.email}.
