@@ -4,6 +4,7 @@ import { generateMuxPlaybackToken } from '@/lib/muxSigning';
 import { z } from 'zod';
 import { logInfo, logWarn } from '@/lib/log';
 import { recordAudit } from '@/lib/audit';
+import { hasAccessToCreator } from '@/lib/entitlements';
 
 async function getUserFromAuthHeader(req: NextRequest): Promise<string | null> {
   const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
@@ -56,20 +57,11 @@ export async function GET(req: NextRequest) {
       const creatorId = getAncestorIdFromPath(d.ref.path, 'legacy_creators');
       if (!creatorId) return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
       if (!isSample) {
-        // Require auth + active legacy subscription
+        // Require auth + entitlement (global CCA membership OR creator Legacy+ sub)
         const uid = await getUserFromAuthHeader(req);
         if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        const subs = await adminDb
-          .collection('legacySubscriptions')
-          .where('userId', '==', String(uid))
-          .where('creatorId', '==', String(creatorId))
-          .where('status', 'in', ['active', 'trialing'])
-          .limit(1)
-          .get()
-          .catch(() => null as any);
-        if (!subs || subs.empty) {
-          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
+        const allowed = await hasAccessToCreator(uid, String(creatorId));
+        if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
       const token = generateMuxPlaybackToken(playbackId, { audience: 'v', expiresInSeconds: 15 * 60 });
       logInfo('mux.token.issued', { type: 'legacy', creatorId, isSample });

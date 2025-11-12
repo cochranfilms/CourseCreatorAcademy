@@ -20,8 +20,15 @@ service cloud.firestore {
     }
     
     // Users collection - users can read/write their own data
+    // Public profiles: safe subset exposed for public reads
+    match /publicProfiles/{userId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
+    
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      // Restrict reads of private user docs to owner only
+      allow read: if isOwner(userId);
       allow create: if isAuthenticated() && isOwner(userId);
       allow update: if isAuthenticated() && isOwner(userId);
       allow delete: if isAuthenticated() && isOwner(userId);

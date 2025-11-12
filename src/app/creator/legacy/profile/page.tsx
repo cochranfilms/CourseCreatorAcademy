@@ -8,6 +8,7 @@ import ImageCropperModal from '@/components/ImageCropperModal';
 
 export default function LegacyProfileEditorPage() {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'profile'|'upload'|'assets'|'gear'|'payouts'>('profile');
   const [displayName, setDisplayName] = useState('');
   const [handle, setHandle] = useState('');
   const [bio, setBio] = useState('');
@@ -42,6 +43,10 @@ export default function LegacyProfileEditorPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  // Payouts (Stripe Connect) state
+  const [connectAccountId, setConnectAccountId] = useState<string | null>(null);
+  const [connectStatus, setConnectStatus] = useState<any>(null);
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -92,6 +97,59 @@ export default function LegacyProfileEditorPage() {
     load();
   }, [user]);
 
+  // Load payouts/connect status
+  useEffect(() => {
+    const loadConnect = async () => {
+      if (!firebaseReady || !db || !user) return;
+      try {
+        const uref = doc(db, 'users', user.uid);
+        const snap = await getDoc(uref);
+        const data = snap.data() as any;
+        if (data?.connectAccountId) {
+          setConnectAccountId(data.connectAccountId);
+          try {
+            const res = await fetch(`/api/stripe/connect/status?accountId=${data.connectAccountId}`);
+            const json = await res.json();
+            setConnectStatus(json);
+          } catch {}
+        }
+      } catch {}
+    };
+    loadConnect();
+  }, [user]);
+
+  const startOnboarding = async () => {
+    if (!user) { alert('Sign in first.'); return; }
+    setPayoutsLoading(true);
+    try {
+      const res = await fetch('/api/stripe/connect/onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: connectAccountId || undefined })
+      });
+      const json = await res.json();
+      if (json.accountId && firebaseReady && db) {
+        await fetch('/api/creator/save-connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountId: json.accountId }) }).catch(()=>{});
+        setConnectAccountId(json.accountId);
+      }
+      if (json.url) window.location.href = json.url;
+    } catch (e: any) {
+      alert(e?.message || 'Failed to start onboarding');
+    } finally {
+      setPayoutsLoading(false);
+    }
+  };
+
+  const refreshStatus = async () => {
+    if (!connectAccountId) return;
+    setPayoutsLoading(true);
+    try {
+      const res = await fetch(`/api/stripe/connect/status?accountId=${connectAccountId}`);
+      const json = await res.json();
+      setConnectStatus(json);
+    } catch {}
+    setPayoutsLoading(false);
+  };
   const save = async () => {
     if (!user) { alert('Sign in first'); return; }
     setSaving(true);
@@ -195,6 +253,18 @@ export default function LegacyProfileEditorPage() {
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-4">Edit Legacy Creator Profile</h1>
+      {/* Tabs */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        {(['profile','upload','assets','gear','payouts'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-3 py-1.5 text-sm rounded border ${activeTab===tab ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:text-white'}`}
+          >
+            {tab.charAt(0).toUpperCase()+tab.slice(1)}
+          </button>
+        ))}
+      </div>
       {!user && <p className="text-neutral-400">Please sign in to edit your profile.</p>}
       {user && isLegacyCreator === false && !hasCreatorMapping && (
         <div className="border border-neutral-800 p-4 bg-neutral-950">
@@ -204,6 +274,7 @@ export default function LegacyProfileEditorPage() {
       )}
       {user && (isLegacyCreator === true || isLegacyCreator === null || hasCreatorMapping) && (
         <div className="space-y-8">
+          {activeTab === 'upload' && (
           <section className="border border-neutral-800 p-4 bg-neutral-950">
             <h2 className="text-xl font-semibold mb-4">Upload Video</h2>
             <div className="space-y-4">
@@ -233,6 +304,8 @@ export default function LegacyProfileEditorPage() {
               <p className="text-xs text-neutral-500">After processing completes, your video will appear on your legacy kit automatically.</p>
             </div>
           </section>
+          )}
+          {activeTab === 'profile' && (
           <section className="border border-neutral-800 p-4 bg-neutral-950">
             <h2 className="text-xl font-semibold mb-4">Profile</h2>
           <div>
@@ -325,7 +398,9 @@ export default function LegacyProfileEditorPage() {
       )}
           </div>
           </section>
+          )}
 
+          {activeTab === 'profile' && (
           <section className="border border-neutral-800 p-4 bg-neutral-950">
             <h2 className="text-xl font-semibold mb-4">Featured Video</h2>
             <div className="grid md:grid-cols-2 gap-4">
@@ -349,7 +424,9 @@ export default function LegacyProfileEditorPage() {
               </div>
             </div>
           </section>
+          )}
 
+          {activeTab === 'assets' && (
           <section className="border border-neutral-800 p-4 bg-neutral-950">
             <h2 className="text-xl font-semibold mb-4">Assets</h2>
             <h3 className="text-sm text-neutral-400 mb-2">Overlays & Transitions</h3>
@@ -357,11 +434,44 @@ export default function LegacyProfileEditorPage() {
             <h3 className="text-sm text-neutral-400 mt-6 mb-2">Sound Effects</h3>
             <ListEditor items={assetsSfx} onChange={setAssetsSfx} labels={{title:'Title', tag:'Tag', image:'Image URL'}} />
           </section>
+          )}
 
+          {activeTab === 'gear' && (
           <section className="border border-neutral-800 p-4 bg-neutral-950">
             <h2 className="text-xl font-semibold mb-4">Gear</h2>
             <GearEditor items={gear} onChange={setGear} />
           </section>
+          )}
+
+          {activeTab === 'payouts' && (
+          <section className="border border-neutral-800 p-4 bg-neutral-950">
+            <h2 className="text-xl font-semibold mb-4">Payouts</h2>
+            <p className="text-neutral-300 mb-3">Connect your Stripe account to receive marketplace sales and Legacy+ subscription payouts.</p>
+            <div className="space-y-3">
+              <div className="text-sm text-neutral-400">
+                Status: {connectAccountId ? 'Connected' : 'Not connected'}
+                {connectStatus?.charges_enabled === false && connectAccountId ? ' (action required)' : ''}
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={startOnboarding} disabled={payoutsLoading} className="px-4 py-2 bg-white text-black border-2 border-ccaBlue disabled:opacity-50">
+                  {connectAccountId ? 'Update in Stripe' : 'Connect with Stripe'}
+                </button>
+                {connectAccountId && (
+                  <button onClick={refreshStatus} disabled={payoutsLoading} className="px-4 py-2 bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800">
+                    Refresh Status
+                  </button>
+                )}
+              </div>
+              {connectStatus && (
+                <pre className="text-xs text-neutral-400 bg-neutral-900 border border-neutral-800 p-3 overflow-x-auto">{JSON.stringify({
+                  charges_enabled: connectStatus?.charges_enabled,
+                  payouts_enabled: connectStatus?.payouts_enabled,
+                  details_submitted: connectStatus?.details_submitted
+                }, null, 2)}</pre>
+              )}
+            </div>
+          </section>
+          )}
 
           <div className="flex items-center gap-3">
             <button onClick={save} disabled={saving} className="px-4 py-2 bg-white text-black border-2 border-ccaBlue disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>

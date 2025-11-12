@@ -262,9 +262,9 @@ export async function POST(req: NextRequest) {
             const destination = sub.sellerAccountId || null;
             if (destination) {
               const chargeId = await resolveChargeId(invoice);
-              // Transfer fixed $3 to the legacy creator
+              // Transfer fixed $7 to the legacy creator (platform retains $3 of the $10 plan)
               await stripe.transfers.create({
-                amount: 300,
+                amount: 700,
                 currency,
                 destination: String(destination),
                 ...(chargeId ? { source_transaction: chargeId } : {}),
@@ -283,7 +283,7 @@ export async function POST(req: NextRequest) {
                   subscriptionId: String(subscriptionId),
                   creatorId: String(sub.creatorId || ''),
                   destination: String(destination),
-                  amount: 300,
+                  amount: 700,
                   currency,
                   createdAt: FieldValue.serverTimestamp(),
                 });

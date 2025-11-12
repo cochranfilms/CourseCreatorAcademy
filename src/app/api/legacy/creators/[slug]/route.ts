@@ -54,14 +54,23 @@ export async function GET(req: NextRequest, context: any) {
     let subscribed = false;
     if (userId) {
       try {
-        const subs = await adminDb
-          .collection('legacySubscriptions')
-          .where('userId', '==', userId)
-          .where('creatorId', '==', creatorId)
-          .where('status', 'in', ['active', 'trialing'])
-          .limit(1)
-          .get();
-        subscribed = !subs.empty;
+        // Global membership grants access to all creators
+        const userDoc = await adminDb.collection('users').doc(String(userId)).get();
+        const udata = userDoc.exists ? (userDoc.data() as any) : null;
+        const hasMembership = Boolean(udata?.membershipActive);
+        if (hasMembership) {
+          subscribed = true;
+        } else {
+          // Else, check per-creator Legacy+ subscription
+          const subs = await adminDb
+            .collection('legacySubscriptions')
+            .where('userId', '==', userId)
+            .where('creatorId', '==', creatorId)
+            .where('status', 'in', ['active', 'trialing'])
+            .limit(1)
+            .get();
+          subscribed = !subs.empty;
+        }
       } catch {}
     }
 
