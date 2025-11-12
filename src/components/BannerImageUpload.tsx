@@ -59,7 +59,7 @@ export function BannerImageUpload({ onUploadComplete }: Props) {
 
 	return (
 		<div className="space-y-2">
-			<label className="block text-sm font-medium mb-1 text-neutral-300">Profile banner (optional)</label>
+			<label className="block text-sm font-medium mb-1 text-neutral-300">Profile banner</label>
 			<input
 				type="file"
 				accept="image/*"

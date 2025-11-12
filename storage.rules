@@ -12,6 +12,18 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // Public profile banners - public read; owner-only writes
+    match /profile-banners/{userId}/{allPaths=**} {
+      // Banners are shown on public profiles, so allow public read
+      allow read: if true;
+      // Only the owner can upload/update/delete; restrict to images <= 10MB
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Listing images - users can upload/read listing images
     match /listing-images/{userId}/{allPaths=**} {
       // Allow users to read any listing image
