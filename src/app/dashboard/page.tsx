@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
-import { updateProfile, sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth';
+import { updateProfile, fetchSignInMethodsForEmail, EmailAuthProvider, updatePassword, reauthenticateWithCredential, linkWithCredential } from 'firebase/auth';
 import { db, auth, firebaseReady, storage } from '@/lib/firebaseClient';
 import { ProfileImageUpload } from '@/components/ProfileImageUpload';
 import Link from 'next/link';
@@ -106,6 +106,12 @@ export default function DashboardPage() {
   const [profilePublic, setProfilePublic] = useState(false);
   const [needsPassword, setNeedsPassword] = useState<boolean>(false);
   const [passwordEmailSent, setPasswordEmailSent] = useState<boolean>(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   
   // Marketplace data
   const [listings, setListings] = useState<Listing[]>([]);
@@ -901,26 +907,109 @@ export default function DashboardPage() {
           <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <h2 className="text-2xl font-semibold mb-2">Privacy Settings</h2>
             <p className="text-neutral-400 mb-6">Control who can see your profile and information</p>
-            {/* Account Security: Set/Reset password */}
+            {/* Account Security: Set/Change password in-app */}
             <div className="mt-8 p-4 rounded-xl border border-neutral-800 bg-neutral-900/40">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <div className="font-semibold text-white">Account Security</div>
-                  <div className="text-sm text-neutral-400">{needsPassword ? 'You have not set a password yet.' : 'You can reset your password at any time.'}</div>
+              <div className="mb-4">
+                <div className="font-semibold text-white">Account Security</div>
+                <div className="text-sm text-neutral-400">
+                  {needsPassword ? 'You have not set a password yet.' : 'Change your password below.'}
                 </div>
-                <button
-                  onClick={async () => {
-                    if (!auth || !user?.email) return;
-                    try {
-                      await sendPasswordResetEmail(auth, user.email);
-                      setPasswordEmailSent(true);
-                      setNeedsPassword(false);
-                    } catch {}
-                  }}
-                  className="px-4 py-2 rounded-lg bg-ccaBlue text-white hover:bg-ccaBlue/90 text-sm font-medium"
-                >
-                  {passwordEmailSent ? 'Email Sent' : (needsPassword ? 'Set Password' : 'Reset Password')}
-                </button>
+              </div>
+              {passwordError && (
+                <div className="mb-3 p-3 border border-red-500/40 text-red-300 bg-red-500/10 text-sm">{passwordError}</div>
+              )}
+              {passwordSuccess && (
+                <div className="mb-3 p-3 border border-green-500/40 text-green-300 bg-green-500/10 text-sm">{passwordSuccess}</div>
+              )}
+              <div className="grid gap-4 max-w-md">
+                {!needsPassword && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-neutral-300">Current password</label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Current password"
+                      className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-300">{needsPassword ? 'New password' : 'New password'}</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-300">{needsPassword ? 'Confirm new password' : 'Confirm new password'}</label>
+                  <input
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <button
+                    disabled={changingPassword}
+                    onClick={async () => {
+                      setPasswordError(null);
+                      setPasswordSuccess(null);
+                      if (!auth || !user) return;
+                      try {
+                        if (newPassword.length < 6) {
+                          setPasswordError('Password must be at least 6 characters.');
+                          return;
+                        }
+                        if (newPassword !== confirmNewPassword) {
+                          setPasswordError('New password and confirm do not match.');
+                          return;
+                        }
+                        setChangingPassword(true);
+                        if (needsPassword) {
+                          // Link email/password to this account
+                          if (!user.email) {
+                            setPasswordError('No email associated with this account.');
+                            return;
+                          }
+                          const cred = EmailAuthProvider.credential(user.email, newPassword);
+                          await linkWithCredential(user, cred);
+                          setNeedsPassword(false);
+                          setCurrentPassword('');
+                          setNewPassword('');
+                          setConfirmNewPassword('');
+                          setPasswordSuccess('Password set successfully. You can now sign in with email.');
+                        } else {
+                          // Re-authenticate with current password, then update
+                          if (!user.email) {
+                            setPasswordError('No email associated with this account.');
+                            return;
+                          }
+                          const cred = EmailAuthProvider.credential(user.email, currentPassword);
+                          await reauthenticateWithCredential(user, cred);
+                          await updatePassword(user, newPassword);
+                          setCurrentPassword('');
+                          setNewPassword('');
+                          setConfirmNewPassword('');
+                          setPasswordSuccess('Password updated successfully.');
+                        }
+                      } catch (e: any) {
+                        const msg = e?.message || 'Failed to update password. Please try again.';
+                        setPasswordError(msg);
+                      } finally {
+                        setChangingPassword(false);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg bg-ccaBlue text-white hover:bg-ccaBlue/90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {changingPassword ? 'Saving…' : (needsPassword ? 'Set password' : 'Change password')}
+                  </button>
+                </div>
               </div>
             </div>
             

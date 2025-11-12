@@ -156,8 +156,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
-    if (!auth) throw new Error('Firebase Auth not initialized');
-    await createUserWithEmailAndPassword(auth, email, password);
+    // Direct signup is disabled. Accounts are created after Stripe membership checkout.
+    throw new Error('Direct signup is disabled. Start a membership to create your account.');
   };
 
   const signInWithGoogle = async () => {
