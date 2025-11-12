@@ -66,4 +66,14 @@ body {
   overflow: hidden;
 }
 
+/* iOS Safari safe-area helpers */
+:root {
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
+.pt-safe { padding-top: max(var(--safe-top), 0px); }
+.pb-safe { padding-bottom: max(var(--safe-bottom), 0px); }
+.mb-safe { margin-bottom: max(var(--safe-bottom), 0px); }
+.fixed-bottom-safe { bottom: max(var(--safe-bottom), 0px); }
+
 

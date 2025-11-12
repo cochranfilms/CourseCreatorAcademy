@@ -249,7 +249,7 @@ export default function Page() {
       </section>
 
       {/* Pricing Section - moved up above Creator Kits */}
-      <section id="pricing" className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
+      <section id="pricing" className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 pb-safe w-full">
         <div className="text-center mb-16">
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">
             A SIMPLE PLAN THAT<br />
@@ -469,7 +469,9 @@ export default function Page() {
         </div>
       </footer>
 
-      <StickyCTA />
+      <div className="hidden sm:block">
+        <StickyCTA />
+      </div>
       <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
       <StripeEmbeddedCheckout plan={checkoutPlan} isOpen={!!checkoutPlan} onClose={() => setCheckoutPlan(null)} />
     </main>
