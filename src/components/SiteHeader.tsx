@@ -18,7 +18,7 @@ import { PricingModal } from './PricingModal';
 const links = [
   { href: '/home', label: "What's New" },
   { href: '/learn', label: 'Learn' },
-  { href: '/show', label: 'CCA Show' },
+  { href: '/show', label: 'Show' },
   { href: '/opportunities', label: 'Opportunities' },
   { href: '/assets', label: 'Assets' },
   { href: '/marketplace', label: 'Marketplace' },
@@ -214,7 +214,11 @@ export function SiteHeader() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 w-full relative">
         <div className="flex items-center gap-3">
         <Link href="/" className="flex-shrink-0">
-          <Image src="/logo-cca.png" alt="Course Creator Academy" width={160} height={40} />
+          {pathname?.startsWith('/learn') ? (
+            <Image src="/logo-cca.png" alt="Course Creator Academy" width={180} height={48} />
+          ) : (
+            <Image src="/CC-Logo-White.png" alt="Creator Collective" width={200} height={56} />
+          )}
         </Link>
           
           {/* Mobile Hamburger Menu Button */}

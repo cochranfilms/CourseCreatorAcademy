@@ -8,7 +8,7 @@ import ImageCropperModal from '@/components/ImageCropperModal';
 
 export default function LegacyProfileEditorPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile'|'upload'|'assets'|'gear'|'payouts'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile'|'upload'|'assets'|'gear'|'payouts'|'opportunities'>('profile');
   const [displayName, setDisplayName] = useState('');
   const [handle, setHandle] = useState('');
   const [bio, setBio] = useState('');
@@ -47,6 +47,14 @@ export default function LegacyProfileEditorPage() {
   const [connectAccountId, setConnectAccountId] = useState<string | null>(null);
   const [connectStatus, setConnectStatus] = useState<any>(null);
   const [payoutsLoading, setPayoutsLoading] = useState(false);
+  // Opportunities state
+  const [oppTitle, setOppTitle] = useState('');
+  const [oppLocation, setOppLocation] = useState('');
+  const [oppType, setOppType] = useState('Freelance');
+  const [oppApplyUrl, setOppApplyUrl] = useState('');
+  const [oppDescription, setOppDescription] = useState('');
+  const [oppSaving, setOppSaving] = useState(false);
+  const [myOpps, setMyOpps] = useState<Array<{ id: string; title: string; location: string; type: string; applyUrl: string; posted?: any }>>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -97,6 +105,52 @@ export default function LegacyProfileEditorPage() {
     load();
   }, [user]);
 
+  // Load creator opportunities
+  useEffect(() => {
+    const loadOpps = async () => {
+      if (!user) return;
+      try {
+        const res = await fetch(`/api/legacy/creators/${encodeURIComponent(user.uid)}/opportunities`, { cache: 'no-store' });
+        const json = await res.json();
+        setMyOpps(Array.isArray(json?.opportunities) ? json.opportunities : []);
+      } catch {}
+    };
+    loadOpps();
+  }, [user]);
+
+  const postOpportunity = async () => {
+    if (!user) { alert('Sign in first.'); return; }
+    if (!oppTitle || !oppLocation || !oppType || !oppApplyUrl) { alert('Please fill in all required fields'); return; }
+    setOppSaving(true);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/legacy/creators/opportunities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+        body: JSON.stringify({
+          title: oppTitle.trim(),
+          location: oppLocation.trim(),
+          type: oppType.trim(),
+          applyUrl: oppApplyUrl.trim(),
+          description: oppDescription.trim()
+        })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to post opportunity');
+      // Refresh list
+      try {
+        const r = await fetch(`/api/legacy/creators/${encodeURIComponent(user.uid)}/opportunities`, { cache: 'no-store' });
+        const j = await r.json();
+        setMyOpps(Array.isArray(j?.opportunities) ? j.opportunities : []);
+      } catch {}
+      setOppTitle(''); setOppLocation(''); setOppType('Freelance'); setOppApplyUrl(''); setOppDescription('');
+      alert('Opportunity posted!');
+    } catch (e: any) {
+      alert(e?.message || 'Failed to post opportunity');
+    } finally {
+      setOppSaving(false);
+    }
+  };
   // Load payouts/connect status
   useEffect(() => {
     const loadConnect = async () => {
@@ -255,7 +309,7 @@ export default function LegacyProfileEditorPage() {
       <h1 className="text-3xl font-bold mb-4">Edit Legacy Creator Profile</h1>
       {/* Tabs */}
       <div className="mb-6 flex flex-wrap gap-2">
-        {(['profile','upload','assets','gear','payouts'] as const).map((tab) => (
+        {(['profile','upload','assets','gear','payouts','opportunities'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -397,6 +451,54 @@ export default function LegacyProfileEditorPage() {
         />
       )}
           </div>
+          </section>
+          )}
+
+          {activeTab === 'opportunities' && (
+          <section className="border border-neutral-800 p-4 bg-neutral-950">
+            <h2 className="text-xl font-semibold mb-4">Opportunities</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm mb-1 text-neutral-300">Title</label>
+                <input value={oppTitle} onChange={(e)=>setOppTitle(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="Video Editor for Product Launch" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 text-neutral-300">Location</label>
+                <input value={oppLocation} onChange={(e)=>setOppLocation(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="Remote / Los Angeles, CA" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 text-neutral-300">Type</label>
+                <input value={oppType} onChange={(e)=>setOppType(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="Freelance" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 text-neutral-300">Apply URL</label>
+                <input value={oppApplyUrl} onChange={(e)=>setOppApplyUrl(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="https://company.com/apply" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="block text-sm mb-1 text-neutral-300">Description (optional)</label>
+              <textarea value={oppDescription} onChange={(e)=>setOppDescription(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" rows={3} placeholder="Short description" />
+            </div>
+            <div className="mt-3">
+              <button onClick={postOpportunity} disabled={oppSaving} className="px-4 py-2 bg-white text-black border-2 border-ccaBlue disabled:opacity-50">{oppSaving ? 'Posting...' : 'Post Opportunity'}</button>
+            </div>
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-2">My Opportunities</h3>
+              {myOpps.length === 0 ? (
+                <div className="text-neutral-400 text-sm">No opportunities posted yet.</div>
+              ) : (
+                <div className="space-y-2">
+                  {myOpps.map((o) => (
+                    <div key={o.id} className="border border-neutral-800 p-3 bg-neutral-900">
+                      <div className="font-medium">{o.title}</div>
+                      <div className="text-sm text-neutral-400">{o.location} • {o.type}</div>
+                      {o.posted && <div className="text-xs text-neutral-500">Posted {new Date(o.posted).toLocaleDateString?.() || ''}</div>}
+                      {o.applyUrl && <a href={o.applyUrl} target="_blank" className="text-ccaBlue text-sm">Apply URL ↗</a>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
           )}
 

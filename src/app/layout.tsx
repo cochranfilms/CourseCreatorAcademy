@@ -4,28 +4,28 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 export const metadata: Metadata = {
-  title: 'Course Creator Academy',
-  description: 'Learn to create, launch, and sell courses — plus a creator marketplace.',
+  title: 'Creator Collective',
+  description: 'The creator economy platform: content, marketplace, and opportunities.',
   icons: {
     icon: '/logo-hat.png',
   },
   openGraph: {
-    title: 'Course Creator Academy',
-    description: 'Learn to create, launch, and sell courses — plus a creator marketplace.',
+    title: 'Creator Collective',
+    description: 'The creator economy platform: content, marketplace, and opportunities.',
     images: [
       {
         url: '/Social-Share.JPEG',
         width: 1200,
         height: 630,
-        alt: 'Course Creator Academy',
+        alt: 'Creator Collective',
       },
     ],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Course Creator Academy',
-    description: 'Learn to create, launch, and sell courses — plus a creator marketplace.',
+    title: 'Creator Collective',
+    description: 'The creator economy platform: content, marketplace, and opportunities.',
     images: ['/Social-Share.JPEG'],
   },
 };

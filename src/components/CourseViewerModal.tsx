@@ -172,16 +172,20 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
 
             <div className="mt-3 bg-black border border-neutral-800">
               {lesson.muxPlaybackId ? (
-                <MuxPlayer
-                  playbackId={lesson.muxPlaybackId || undefined}
-                  streamType="on-demand"
-                  primaryColor="#3B82F6"
-                  className="w-full"
-                  style={{ aspectRatio: '16 / 9' }}
-                  startTime={resumePos || undefined}
-                  onTimeUpdate={handleTimeUpdate}
-                  onEnded={handleEnded}
-                />
+              <MuxPlayer
+                playbackId={lesson.muxPlaybackId || undefined}
+                streamType="on-demand"
+                primaryColor="#3B82F6"
+                className="w-full"
+                style={{ aspectRatio: '16 / 9' }}
+                playsInline
+                preload="metadata"
+                // @ts-ignore
+                preferMse
+                startTime={resumePos || undefined}
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={handleEnded}
+              />
               ) : (
                 <div className="aspect-video flex items-center justify-center text-neutral-400">Video not available</div>
               )}

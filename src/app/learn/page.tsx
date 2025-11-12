@@ -179,7 +179,10 @@ export default function LearnPage() {
 
   return (
     <main className="max-w-7xl mx-auto px-6 py-8">
-      <h1 className="text-3xl md:text-4xl font-bold">All Courses</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl md:text-4xl font-bold">Course Creator Academy</h1>
+        <div className="hidden sm:block text-neutral-400">Premium courses for filmmakers and creators</div>
+      </div>
       {courses.length === 0 ? (
         <div className="mt-8 text-center text-neutral-400">
           <p>No courses available yet.</p>

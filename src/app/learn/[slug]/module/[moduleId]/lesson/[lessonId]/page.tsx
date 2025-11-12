@@ -34,6 +34,7 @@ export default function LessonPage() {
   const [saved, setSaved] = useState(false);
   const [currentProgress, setCurrentProgress] = useState(0);
   const [resumePosition, setResumePosition] = useState<number | null>(null);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
   const playerRef = useRef<any>(null);
   const progressUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -274,10 +275,21 @@ export default function LessonPage() {
               streamType="on-demand"
               primaryColor="#3B82F6"
               accentColor="#1f2937"
+              playsInline
+              preload="metadata"
+              // Prefer MSE on Safari to avoid VTDecompression errors on some devices
+              // @ts-ignore - prop supported by mux-player
+              preferMse
               startTime={resumePosition || undefined}
               onTimeUpdate={handleTimeUpdate}
               onEnded={handleEnded}
+              onError={() => setPlaybackError('There was a problem decoding this video on your device. Try reloading the page, lowering playback quality, or using a different browser.')}
             />
+            {playbackError && (
+              <div className="px-4 py-3 bg-red-500/10 border-t border-red-500/30 text-red-300 text-sm">
+                {playbackError}
+              </div>
+            )}
           </>
         ) : (
           <div className="aspect-video flex items-center justify-center text-neutral-400">

@@ -37,6 +37,7 @@ export default function CreatorKitPage() {
   const [videos, setVideos] = useState<LegacyVideo[]>([]);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [listings, setListings] = useState<Array<{ id: string; title: string; price: number; condition?: string; images?: string[]; location?: string; shipping?: number }>>([]);
+  const [opportunities, setOpportunities] = useState<Array<{ id: string; title: string; location: string; type: string; applyUrl: string; posted?: any }>>([]);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<LegacyVideo | null>(null);
   const [selectedVideoToken, setSelectedVideoToken] = useState<string | null>(null);
@@ -102,6 +103,21 @@ export default function CreatorKitPage() {
       }
     };
     loadListings();
+  }, [slug]);
+
+  // Fetch creator opportunities
+  useEffect(() => {
+    const loadOpps = async () => {
+      if (!slug) return;
+      try {
+        const res = await fetch(`/api/legacy/creators/${encodeURIComponent(slug)}/opportunities`, { cache: 'no-store' });
+        const json = await res.json();
+        setOpportunities(Array.isArray(json?.opportunities) ? json.opportunities : []);
+      } catch {
+        setOpportunities([]);
+      }
+    };
+    loadOpps();
   }, [slug]);
 
   // Fetch signed playback token for locked videos when opened
@@ -436,6 +452,37 @@ export default function CreatorKitPage() {
         )}
       </div>
 
+      {/* Opportunities */}
+      {opportunities.length > 0 && (
+        <div className="mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Opportunities</h2>
+          <div className="space-y-3">
+            {opportunities.map((job) => (
+              <div key={job.id} className="border border-neutral-800 bg-neutral-950 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="font-semibold text-lg">{job.title}</div>
+                    <div className="text-neutral-400 text-sm">{job.location} • {job.type}</div>
+                    {job.posted && (
+                      <div className="text-xs text-neutral-500 mt-1">Posted {new Date(job.posted).toLocaleDateString?.() || ''}</div>
+                    )}
+                  </div>
+                  <div>
+                    {job.applyUrl ? (
+                      <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 border border-white text-white hover:bg-white hover:text-black text-sm">
+                        Apply Now
+                      </a>
+                    ) : (
+                      <button className="px-4 py-2 bg-neutral-800 text-neutral-500 border border-neutral-700 text-sm cursor-not-allowed">Apply Now</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Assets */}
       <div className="mb-12">
         <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Assets</h2>
@@ -511,6 +558,10 @@ export default function CreatorKitPage() {
                 primaryColor="#3B82F6"
                 className="w-full"
                 style={{ aspectRatio: '16 / 9' }}
+                playsInline
+                preload="metadata"
+                // @ts-ignore
+                preferMse
                 {...(selectedVideoToken ? { tokens: { playback: selectedVideoToken } as any } : {})}
               />
               <div className="p-6">

@@ -11,10 +11,8 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center px-6 py-12 -mt-16">
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Join Course Creator Academy</h1>
-          <p className="text-neutral-400">
-            Accounts are created at checkout. Choose a plan to get started.
-          </p>
+          <h1 className="text-3xl font-bold mb-2">Join Creator Collective</h1>
+          <p className="text-neutral-400">Choose a plan to get started. Your account is created at checkout.</p>
         </div>
 
         <div className="bg-neutral-950 border border-neutral-800 p-8">
@@ -23,7 +21,7 @@ export default function SignupPage() {
               onClick={() => { setPlan('membership87'); setOpen(true); }}
               className="w-full bg-ccaBlue text-white py-3 font-semibold hover:opacity-90 transition"
             >
-              Start CCA Membership — $87/mo
+              Start Membership — $87/mo
             </button>
             <button
               onClick={() => { setPlan('monthly37'); setOpen(true); }}

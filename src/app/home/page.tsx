@@ -316,7 +316,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="p-6">
-                <div className="text-xs text-neutral-400 mb-2">CCA SHOW</div>
+                <div className="text-xs text-neutral-400 mb-2">Creator Collective Show</div>
                 <h2 className="text-xl font-bold mb-2">{featuredShow.title}</h2>
                 <p className="text-sm text-neutral-400 line-clamp-2">{featuredShow.description}</p>
                 <Link href="/show" className="inline-flex items-center gap-2 mt-4 text-sm font-medium text-white hover:text-ccaBlue transition">
