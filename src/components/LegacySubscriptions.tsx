@@ -116,7 +116,7 @@ export function LegacySubscriptions() {
       {subscriptions.length === 0 ? (
         <div className="text-center py-6">
           <p className="text-neutral-400 mb-4">You don't have any active Legacy+ subscriptions.</p>
-          <Link href="/" className="text-ccaBlue hover:underline">Browse Creator Kits</Link>
+          <Link href="/learn" className="text-ccaBlue hover:underline">Browse Creator Kits</Link>
         </div>
       ) : null}
 

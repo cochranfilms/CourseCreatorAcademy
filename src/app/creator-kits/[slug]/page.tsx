@@ -215,16 +215,23 @@ export default function CreatorKitPage() {
             <Image src={creator.bannerUrl} alt={creator.displayName} fill sizes="100vw" className="object-cover" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/50 to-transparent" />
-          <div className="absolute bottom-6 left-6 flex items-center gap-4">
+          <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between gap-4">
             {creator.avatarUrl && (
               <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-neutral-900">
                 <Image src={creator.avatarUrl} alt={creator.displayName} fill sizes="96px" className="object-cover" />
               </div>
             )}
-            <div>
+            <div className="flex-1 min-w-0">
               <h1 className="text-3xl font-bold text-white mb-1">{creator.displayName}</h1>
               {creator.handle && <div className="text-neutral-400">@{creator.handle}</div>}
             </div>
+            {isSubscribed && (
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-300 border border-green-500/30 text-xs font-semibold">
+                  Legacy+ Active
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -247,11 +254,11 @@ export default function CreatorKitPage() {
         )}
 
         {isSubscribed && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 text-sm">
+          <div className="sm:hidden flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 text-sm mb-4">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            You have active Legacy+ subscription
+            Legacy+ Active
           </div>
         )}
       </div>
