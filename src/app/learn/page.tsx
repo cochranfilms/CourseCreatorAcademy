@@ -8,7 +8,11 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { isSaved, toggleSaved, getCourseProgress } from '@/lib/userData';
 import CourseViewerModal from '@/components/CourseViewerModal';
-import { CreatorKitsScroller } from '@/components/CreatorKitsScroller';
+import dynamic from 'next/dynamic';
+const CreatorKitsScroller = dynamic(
+  () => import('@/components/CreatorKitsScroller').then(m => m.CreatorKitsScroller),
+  { ssr: false, loading: () => null }
+);
 
 type Course = {
   id: string;

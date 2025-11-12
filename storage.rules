@@ -3,13 +3,15 @@ service firebase.storage {
   match /b/{bucket}/o {
     // Profile images - users can upload/read their own profile images
     match /profile-images/{userId}/{allPaths=**} {
-      // Allow users to read any profile image (for displaying avatars)
-      allow read: if request.auth != null;
+      // Allow public read (avatars are shown on public pages)
+      allow read: if true;
       // Allow users to write only to their own folder
       allow write: if request.auth != null
         && request.auth.uid == userId
         && request.resource.size < 5 * 1024 * 1024  // 5MB max
         && request.resource.contentType.matches('image/.*');
+      // Allow users to delete their own images
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // Public profile banners - public read; owner-only writes
@@ -26,8 +28,8 @@ service firebase.storage {
 
     // Listing images - users can upload/read listing images
     match /listing-images/{userId}/{allPaths=**} {
-      // Allow users to read any listing image
-      allow read: if request.auth != null;
+      // Listing images appear in public contexts (e.g., creator kits), so allow public read
+      allow read: if true;
       // Allow users to write only to their own folder
       allow write: if request.auth != null
         && request.auth.uid == userId
@@ -39,8 +41,8 @@ service firebase.storage {
 
     // Project images - users can upload/read project images
     match /project-images/{userId}/{allPaths=**} {
-      // Allow users to read any project image
-      allow read: if request.auth != null;
+      // Project thumbnails can be shown publicly on profiles
+      allow read: if true;
       // Allow users to write only to their own folder
       allow write: if request.auth != null
         && request.auth.uid == userId
