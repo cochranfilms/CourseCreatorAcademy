@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 // Link removed; cards open a modal directly
@@ -41,7 +40,6 @@ export default function LearnPage() {
   const [viewerCourseSlug, setViewerCourseSlug] = useState('');
   const [viewerModules, setViewerModules] = useState<any[]>([]);
   const [viewerInitial, setViewerInitial] = useState<{ moduleId: string; lessonId: string } | null>(null);
-  const searchParams = useSearchParams();
 
   async function openViewerForCourse(course: Course) {
     try {
@@ -184,14 +182,18 @@ export default function LearnPage() {
 
   // Smooth-scroll to Creator Kits when requested
   useEffect(() => {
-    const section = searchParams?.get('section');
-    if (section === 'creator-kits') {
-      const el = document.getElementById('creator-kits');
-      if (el) {
-        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    if (typeof window === 'undefined') return;
+    try {
+      const sp = new URLSearchParams(window.location.search || '');
+      const section = sp.get('section');
+      if (section === 'creator-kits') {
+        const el = document.getElementById('creator-kits');
+        if (el) {
+          setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+        }
       }
-    }
-  }, [searchParams]);
+    } catch {}
+  }, []);
 
   return (
     <>
