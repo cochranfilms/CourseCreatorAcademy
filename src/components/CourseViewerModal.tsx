@@ -182,6 +182,8 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
                 preload="metadata"
                 // @ts-ignore
                 preferMse
+                // @ts-ignore
+                maxResolution="720p"
                 startTime={resumePos || undefined}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={handleEnded}

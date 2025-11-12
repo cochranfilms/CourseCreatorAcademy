@@ -569,6 +569,8 @@ export default function CreatorKitPage() {
                 preload="metadata"
                 // @ts-ignore
                 preferMse
+                // @ts-ignore
+                maxResolution="720p"
                 {...(selectedVideoToken ? { tokens: { playback: selectedVideoToken } as any } : {})}
               />
               <div className="p-6">

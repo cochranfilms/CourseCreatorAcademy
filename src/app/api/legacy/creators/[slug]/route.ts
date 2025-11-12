@@ -30,6 +30,8 @@ export async function GET(req: NextRequest, context: any) {
     }
 
     if (!creatorDoc || ("exists" in creatorDoc && !creatorDoc.exists)) {
+      const soft = searchParams.get('soft');
+      if (soft) return NextResponse.json({ creator: null });
       return NextResponse.json({ error: 'Creator not found' }, { status: 404 });
     }
 

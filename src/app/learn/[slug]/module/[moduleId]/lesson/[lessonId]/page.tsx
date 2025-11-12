@@ -280,6 +280,8 @@ export default function LessonPage() {
               // Prefer MSE on Safari to avoid VTDecompression errors on some devices
               // @ts-ignore - prop supported by mux-player
               preferMse
+              // @ts-ignore
+              maxResolution="720p"
               startTime={resumePosition || undefined}
               onTimeUpdate={handleTimeUpdate}
               onEnded={handleEnded}

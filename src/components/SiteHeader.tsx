@@ -77,7 +77,7 @@ export function SiteHeader() {
           // Fallback: if user doc doesn't say legacy, check legacy_creators mapping via API
           if (!isLegacy) {
             try {
-              const res = await fetch(`/api/legacy/creators/${encodeURIComponent(user.uid)}`, { cache: 'no-store' });
+              const res = await fetch(`/api/legacy/creators/${encodeURIComponent(user.uid)}?soft=1`, { cache: 'no-store' });
               const j = res.ok ? await res.json() : null;
               if (j?.creator) isLegacy = true;
             } catch {}
