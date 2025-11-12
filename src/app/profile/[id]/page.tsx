@@ -101,6 +101,25 @@ export default function ProfilePage() {
   const [hasLegacySub, setHasLegacySub] = useState(false);
   const [showLegacyModal, setShowLegacyModal] = useState(false);
 
+  // If this is a legacy creator, redirect to their public legacy kit page
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        if (!userId) return;
+        const res = await fetch(`/api/legacy/creators/${encodeURIComponent(userId)}?soft=1`, { cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        const creator = json?.creator || null;
+        if (!cancelled && creator && (creator.kitSlug || creator.id)) {
+          const slug = creator.kitSlug || creator.id;
+          router.replace(`/creator-kits/${encodeURIComponent(slug)}`);
+        }
+      } catch {}
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [userId, router]);
+
   useEffect(() => {
     if (!userId || !firebaseReady || !db) {
       setLoading(false);
