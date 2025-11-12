@@ -182,8 +182,14 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
                 preload="metadata"
                 // @ts-ignore
                 preferMse
+                // Cap resolution to reduce device decoder pressure on Safari/iOS
                 // @ts-ignore
-                maxResolution="720p"
+                maxResolution="540p"
+                // Reduce iOS/Safari edge cases
+                // @ts-ignore
+                disablePictureInPicture
+                // @ts-ignore
+                autoPictureInPicture={false}
                 startTime={resumePos || undefined}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={handleEnded}

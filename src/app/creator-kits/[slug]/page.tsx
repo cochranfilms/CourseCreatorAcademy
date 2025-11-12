@@ -569,8 +569,14 @@ export default function CreatorKitPage() {
                 preload="metadata"
                 // @ts-ignore
                 preferMse
+                // Cap resolution to reduce device decoder pressure on Safari/iOS
                 // @ts-ignore
-                maxResolution="720p"
+                maxResolution="540p"
+                // Reduce iOS/Safari edge cases
+                // @ts-ignore
+                disablePictureInPicture
+                // @ts-ignore
+                autoPictureInPicture={false}
                 {...(selectedVideoToken ? { tokens: { playback: selectedVideoToken } as any } : {})}
               />
               <div className="p-6">
