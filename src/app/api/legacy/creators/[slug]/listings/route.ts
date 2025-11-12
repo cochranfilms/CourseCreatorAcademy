@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 
-export async function GET(req: NextRequest, context: { params: { slug: string } }) {
+export async function GET(req: NextRequest, context: any) {
   try {
     if (!adminDb) return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
-    const slug = String(context.params?.slug || '');
+    const slug = String(context?.params?.slug || '');
     if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 });
 
     // Resolve slug to creatorId
