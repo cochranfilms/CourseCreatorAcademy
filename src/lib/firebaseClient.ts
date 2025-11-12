@@ -1,5 +1,5 @@
 import { getApps, initializeApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { getAuth } from 'firebase/auth';
 import {
   getFirestore,
@@ -80,10 +80,23 @@ if (typeof window !== 'undefined' && firebaseReady && app) {
       process.env.RECAPTCHA_SITE_KEY ||
       '';
 
+    // Choose App Check provider via env: 'enterprise' or 'v3' (default if unset)
+    const providerMode = String(
+      process.env.NEXT_PUBLIC_APPCHECK_PROVIDER ||
+      process.env.APPCHECK_PROVIDER ||
+      ''
+    ).toLowerCase();
+    const useEnterprise =
+      providerMode === 'enterprise' ||
+      providerMode === 'recaptcha_enterprise' ||
+      process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE === 'true';
+
     // Initialize only if we have a site key or debug token; otherwise skip
     if (siteKey || debugToken) {
       initializeAppCheck(app as any, {
-        provider: new ReCaptchaV3Provider(siteKey || 'dev-placeholder'),
+        provider: useEnterprise
+          ? new ReCaptchaEnterpriseProvider(siteKey || 'dev-placeholder')
+          : new ReCaptchaV3Provider(siteKey || 'dev-placeholder'),
         isTokenAutoRefreshEnabled: true,
       });
     }
