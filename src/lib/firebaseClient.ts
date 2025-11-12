@@ -1,7 +1,13 @@
 import { getApps, initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentSingleTabManager,
+  CACHE_SIZE_UNLIMITED
+} from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 // Storage bucket: accept either the legacy appspot.com or the new
@@ -41,7 +47,19 @@ if (firebaseReady) {
 }
 
 export const auth = firebaseReady && app ? getAuth(app) : (null as any);
-export const db = firebaseReady && app ? getFirestore(app) : (null as any);
+// Firestore with persistent local cache for instant, offline-first reads.
+// In the browser we initialize Firestore with IndexedDB-backed cache so that
+// onSnapshot/get* calls return cached data immediately and hydrate in the background.
+export const db = firebaseReady && app
+  ? (typeof window !== 'undefined'
+      ? initializeFirestore(app, {
+          localCache: persistentLocalCache({
+            tabManager: persistentSingleTabManager()
+          }),
+          cacheSizeBytes: CACHE_SIZE_UNLIMITED
+        } as any)
+      : getFirestore(app))
+  : (null as any);
 export const storage = firebaseReady && app ? getStorage(app) : (null as any);
 
 // Initialize App Check in the browser when configured. This prevents
