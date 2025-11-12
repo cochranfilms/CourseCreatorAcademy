@@ -355,6 +355,13 @@ export default function LegacyProfileEditorPage() {
                   Backfill from Mux
                 </button>
               </div>
+              <div className="rounded border border-neutral-800 p-3 bg-neutral-900/40 text-sm text-neutral-300">
+                <div className="font-medium text-white mb-1">Where will my video appear?</div>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><span className="font-medium">Sample (public):</span> shown as “Featured Video” if none exists yet and under “Playlists” on your public Legacy Kit.</li>
+                  <li><span className="font-medium">Exclusive (Legacy+):</span> appears under “Exclusive Content” and is visible only to Legacy+ or CCA members.</li>
+                </ul>
+              </div>
               <div>
                 <label className="block text-sm mb-1 text-neutral-300">Title</label>
                 <input value={uploadTitle} onChange={(e)=>setUploadTitle(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="Sample Video" />
@@ -379,6 +386,11 @@ export default function LegacyProfileEditorPage() {
                 <div className="mt-2 h-2 bg-neutral-900"><div className="h-full bg-ccaBlue" style={{width: `${Math.round(uploadProgress)}%`}} /></div>
               )}
               <p className="text-xs text-neutral-500">After processing completes, your video will appear on your legacy kit automatically.</p>
+            </div>
+            <div className="mt-6 pt-6 border-t border-neutral-800 space-y-3">
+              <div className="font-semibold text-white">Attach existing Mux Asset</div>
+              <p className="text-sm text-neutral-400">If you uploaded directly in the Mux dashboard and see “No public playback ID”, paste the Asset ID here to attach it and create a playback ID.</p>
+              <AttachExistingMuxForm />
             </div>
           </section>
           )}
@@ -606,6 +618,65 @@ export default function LegacyProfileEditorPage() {
         </div>
       )}
     </main>
+  );
+}
+
+function AttachExistingMuxForm() {
+  const { user } = useAuth();
+  const [assetId, setAssetId] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [isSample, setIsSample] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const onAttach = async () => {
+    if (!user) { alert('Sign in first.'); return; }
+    if (!assetId) { alert('Enter an Asset ID.'); return; }
+    setSaving(true);
+    try {
+      const idt = await user.getIdToken();
+      const res = await fetch('/api/legacy/videos/attach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idt}` },
+        body: JSON.stringify({
+          creatorId: user.uid,
+          assetId: assetId.trim(),
+          isSample,
+          title,
+          description,
+        })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Attach failed');
+      alert('Attached! Your video will appear on your kit shortly.');
+      setAssetId(''); setTitle(''); setDescription('');
+    } catch (e: any) {
+      alert(e?.message || 'Attach failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className="grid md:grid-cols-2 gap-3">
+      <div>
+        <label className="block text-sm mb-1 text-neutral-300">Mux Asset ID</label>
+        <input value={assetId} onChange={(e)=>setAssetId(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="hEnlaO..." />
+      </div>
+      <div className="flex items-center gap-2">
+        <input id="attachIsSample" type="checkbox" checked={isSample} onChange={(e)=>setIsSample(e.target.checked)} />
+        <label htmlFor="attachIsSample" className="text-sm text-neutral-300">Mark as sample (public playback)</label>
+      </div>
+      <div>
+        <label className="block text-sm mb-1 text-neutral-300">Title (optional)</label>
+        <input value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" />
+      </div>
+      <div>
+        <label className="block text-sm mb-1 text-neutral-300">Description (optional)</label>
+        <input value={description} onChange={(e)=>setDescription(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" />
+      </div>
+      <div className="md:col-span-2">
+        <button onClick={onAttach} disabled={saving} className="px-4 py-2 bg-white text-black border-2 border-ccaBlue disabled:opacity-50">{saving ? 'Attaching...' : 'Attach Asset'}</button>
+      </div>
+    </div>
   );
 }
 
