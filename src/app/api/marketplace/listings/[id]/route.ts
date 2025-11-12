@@ -24,12 +24,12 @@ async function requireUser(req: NextRequest): Promise<string | null> {
   }
 }
 
-export async function PUT(req: NextRequest, context: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: any) {
   try {
     if (!adminDb) return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     const uid = await requireUser(req);
     if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const id = String(context.params?.id || '');
+    const id = String(context?.params?.id || '');
     const ref = adminDb.collection('listings').doc(id);
     const snap = await ref.get();
     if (!snap.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -50,12 +50,12 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
   }
 }
 
-export async function DELETE(req: NextRequest, context: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, context: any) {
   try {
     if (!adminDb) return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     const uid = await requireUser(req);
     if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const id = String(context.params?.id || '');
+    const id = String(context?.params?.id || '');
     const ref = adminDb.collection('listings').doc(id);
     const snap = await ref.get();
     if (!snap.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
