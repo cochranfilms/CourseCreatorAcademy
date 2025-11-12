@@ -24,8 +24,8 @@ export default async function LegacySuccessPage({ searchParams }: PageProps) {
   const title = creator ? `You’re subscribed to ${creator.displayName}!` : 'Subscription successful!';
   const subtitle = creator ? `Thanks for supporting ${creator.displayName}.` : 'Thanks for supporting our creators!';
   const kitHref = creator
-    ? ({ pathname: '/creator-kits/[slug]', query: { slug: String(creator.kitSlug || creator.id) } } as const)
-    : ({ pathname: '/creator-kits' } as const);
+    ? ({ pathname: '/learn', query: { section: 'creator-kits', kit: String(creator.kitSlug || creator.id) } } as const)
+    : ({ pathname: '/learn', query: { section: 'creator-kits' } } as const);
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6">

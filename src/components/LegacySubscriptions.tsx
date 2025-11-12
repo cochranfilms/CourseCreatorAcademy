@@ -149,7 +149,7 @@ export function LegacySubscriptions() {
             </span>
             {sub.creator && (
               <Link
-                href={`/creator-kits/${sub.creator.id}`}
+                href={`/learn?section=creator-kits&kit=${encodeURIComponent(sub.creator.id)}`}
                 className="px-4 py-2 bg-ccaBlue hover:bg-ccaBlue/90 text-white rounded-lg text-sm font-medium transition"
               >
                 View Kit

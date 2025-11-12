@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 // Link removed; cards open a modal directly
@@ -40,6 +41,7 @@ export default function LearnPage() {
   const [viewerCourseSlug, setViewerCourseSlug] = useState('');
   const [viewerModules, setViewerModules] = useState<any[]>([]);
   const [viewerInitial, setViewerInitial] = useState<{ moduleId: string; lessonId: string } | null>(null);
+  const searchParams = useSearchParams();
 
   async function openViewerForCourse(course: Course) {
     try {
@@ -177,115 +179,188 @@ export default function LearnPage() {
     );
   }
 
+  // Compute featured course for hero
+  const featuredCourse = courses.find(c => c.featured) || courses[0];
+
+  // Smooth-scroll to Creator Kits when requested
+  useEffect(() => {
+    const section = searchParams?.get('section');
+    if (section === 'creator-kits') {
+      const el = document.getElementById('creator-kits');
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+      }
+    }
+  }, [searchParams]);
+
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl md:text-4xl font-bold">Course Creator Academy</h1>
-        <div className="hidden sm:block text-neutral-400">Premium courses for filmmakers and creators</div>
-      </div>
-      {courses.length === 0 ? (
-        <div className="mt-8 text-center text-neutral-400">
-          <p>No courses available yet.</p>
+    <>
+      {/* Full-width Creator Kits rail at the very top */}
+      <section id="creator-kits" className="w-full">
+        <CreatorKitsScroller />
+      </section>
+
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl md:text-4xl font-bold">Course Creator Academy</h1>
+          <div className="hidden sm:block text-neutral-400">Premium courses for filmmakers and creators</div>
         </div>
-      ) : (
-      <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course) => (
+
+        {/* Featured Video hero */}
+        {featuredCourse && (
+          <div className="mt-8 mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Featured Video</h2>
             <div
-              key={course.id}
-              className="rounded-2xl overflow-hidden border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 hover:border-ccaBlue transition group relative cursor-pointer"
-              onClick={() => openViewerForCourse(course)}
+              className="relative rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 cursor-pointer group"
+              onClick={() => openViewerForCourse(featuredCourse)}
             >
-                <div className="relative h-40 bg-neutral-800 group-hover:bg-neutral-700 transition">
-                  {course.thumbnailPlaybackId ? (
-                    <Image
-                      src={getMuxThumbnailUrl(course.thumbnailPlaybackId, course.thumbnailDurationSec) || ''}
-                      alt={`${course.title} thumbnail`}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                      className="object-cover"
-                    />
-                  ) : course.coverImage ? (
-                    <Image
-                      src={course.coverImage}
-                      alt={course.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-neutral-600">
-                      <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  )}
+              <div className="aspect-video relative">
+                {featuredCourse.thumbnailPlaybackId ? (
+                  <Image
+                    src={getMuxThumbnailUrl(featuredCourse.thumbnailPlaybackId, featuredCourse.thumbnailDurationSec) || ''}
+                    alt={`${featuredCourse.title} thumbnail`}
+                    fill
+                    sizes="100vw"
+                    className="object-cover"
+                  />
+                ) : featuredCourse.coverImage ? (
+                  <Image
+                    src={featuredCourse.coverImage}
+                    alt={featuredCourse.title}
+                    fill
+                    sizes="100vw"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-neutral-600">
+                    <svg className="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                )}
+                {/* Play button overlay */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-white/90 text-black flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+                    <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
                 </div>
-                <div className="p-4">
-                  <div className="text-lg font-semibold mb-1">{course.title}</div>
-                  <div className="text-sm text-neutral-400">
-                    {course.lessonsCount} lesson{course.lessonsCount !== 1 ? 's' : ''}
-                    {course.modulesCount > 0 && (
-                      <span className="ml-2">• {course.modulesCount} module{course.modulesCount !== 1 ? 's' : ''}</span>
-                    )}
-                    {user && courseProgress[course.id] !== undefined && (
-                      <span className="ml-2 text-ccaBlue">• {courseProgress[course.id]}% Complete</span>
+              </div>
+              <div className="p-4 md:p-5">
+                <div className="inline-flex items-center gap-2 text-xs mb-2">
+                  <span className="px-2 py-0.5 rounded bg-red-600/20 text-red-400 border border-red-500/30">Featured</span>
+                </div>
+                <div className="text-xl md:text-2xl font-semibold text-white">{featuredCourse.title}</div>
+                {featuredCourse.summary && (
+                  <p className="text-neutral-300 mt-2 line-clamp-2">{featuredCourse.summary}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {courses.length === 0 ? (
+          <div className="mt-8 text-center text-neutral-400">
+            <p>No courses available yet.</p>
+          </div>
+        ) : (
+        <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses.map((course) => (
+              <div
+                key={course.id}
+                className="rounded-2xl overflow-hidden border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 hover:border-ccaBlue transition group relative cursor-pointer"
+                onClick={() => openViewerForCourse(course)}
+              >
+                  <div className="relative h-40 bg-neutral-800 group-hover:bg-neutral-700 transition">
+                    {course.thumbnailPlaybackId ? (
+                      <Image
+                        src={getMuxThumbnailUrl(course.thumbnailPlaybackId, course.thumbnailDurationSec) || ''}
+                        alt={`${course.title} thumbnail`}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover"
+                      />
+                    ) : course.coverImage ? (
+                      <Image
+                        src={course.coverImage}
+                        alt={course.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-neutral-600">
+                        <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
                     )}
                   </div>
-                  {course.summary && (
-                    <p className="text-sm text-neutral-500 mt-2 line-clamp-2">{course.summary}</p>
-                  )}
-                  {/* Course Progress Bar */}
-                  {user && courseProgress[course.id] !== undefined && (
-                    <div className="mt-3">
-                      <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-ccaBlue to-ccaBlue/80 transition-all duration-300"
-                          style={{ width: `${Math.max(courseProgress[course.id] || 0, 0)}%` }}
-                        />
-                      </div>
+                  <div className="p-4">
+                    <div className="text-lg font-semibold mb-1">{course.title}</div>
+                    <div className="text-sm text-neutral-400">
+                      {course.lessonsCount} lesson{course.lessonsCount !== 1 ? 's' : ''}
+                      {course.modulesCount > 0 && (
+                        <span className="ml-2">• {course.modulesCount} module{course.modulesCount !== 1 ? 's' : ''}</span>
+                      )}
+                      {user && courseProgress[course.id] !== undefined && (
+                        <span className="ml-2 text-ccaBlue">• {courseProgress[course.id]}% Complete</span>
+                      )}
                     </div>
-                  )}
-                </div>
-              {user && (
-                <button
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const now = await toggleSaved(user.uid, 'course', course.id, { title: course.title, slug: course.slug });
-                    setSavedCourses(prev => ({ ...prev, [course.id]: now }));
-                  }}
-                  className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm transition ${
-                    savedCourses[course.id] 
-                      ? 'bg-red-500/90 text-white' 
-                      : 'bg-neutral-900/80 text-neutral-400 hover:bg-neutral-800/90'
-                  }`}
-                  aria-label={savedCourses[course.id] ? 'Unsave course' : 'Save course'}
-                >
-                  <svg className={`w-5 h-5 ${savedCourses[course.id] ? 'fill-current' : ''}`} viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1 4.13 2.44C11.09 5 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                  </svg>
-                </button>
-              )}
-            </div>
-        ))}
-      </div>
-      )}
+                    {course.summary && (
+                      <p className="text-sm text-neutral-500 mt-2 line-clamp-2">{course.summary}</p>
+                    )}
+                    {user && courseProgress[course.id] !== undefined && (
+                      <div className="mt-3">
+                        <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-ccaBlue to-ccaBlue/80 transition-all duration-300"
+                            style={{ width: `${Math.max(courseProgress[course.id] || 0, 0)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                {user && (
+                  <button
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const now = await toggleSaved(user.uid, 'course', course.id, { title: course.title, slug: course.slug });
+                      setSavedCourses(prev => ({ ...prev, [course.id]: now }));
+                    }}
+                    className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm transition ${
+                      savedCourses[course.id] 
+                        ? 'bg-red-500/90 text-white' 
+                        : 'bg-neutral-900/80 text-neutral-400 hover:bg-neutral-800/90'
+                    }`}
+                    aria-label={savedCourses[course.id] ? 'Unsave course' : 'Save course'}
+                  >
+                    <svg className={`w-5 h-5 ${savedCourses[course.id] ? 'fill-current' : ''}`} viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1 4.13 2.44C11.09 5 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
+          ))}
+        </div>
+        )}
 
-      {/* Creator Kits Scroller */}
-      <CreatorKitsScroller />
-
-      {viewerOpen && viewerInitial && (
-        <CourseViewerModal
-          courseSlug={viewerCourseSlug}
-          courseTitle={viewerCourseTitle}
-          modules={viewerModules}
-          initialModuleId={viewerInitial.moduleId}
-          initialLessonId={viewerInitial.lessonId}
-          onClose={() => setViewerOpen(false)}
-        />
-      )}
-    </main>
+        {viewerOpen && viewerInitial && (
+          <CourseViewerModal
+            courseSlug={viewerCourseSlug}
+            courseTitle={viewerCourseTitle}
+            modules={viewerModules}
+            initialModuleId={viewerInitial.moduleId}
+            initialLessonId={viewerInitial.lessonId}
+            onClose={() => setViewerOpen(false)}
+          />
+        )}
+      </main>
+    </>
   );
 }
 

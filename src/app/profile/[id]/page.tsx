@@ -123,7 +123,7 @@ export default function ProfilePage() {
         const creator = json?.creator || null;
         if (!cancelled && creator && (creator.kitSlug || creator.id)) {
           const slug = creator.kitSlug || creator.id;
-          router.replace(`/creator-kits/${encodeURIComponent(slug)}`);
+          router.replace(`/learn?section=creator-kits&kit=${encodeURIComponent(slug)}`);
         }
       } catch {}
     };
