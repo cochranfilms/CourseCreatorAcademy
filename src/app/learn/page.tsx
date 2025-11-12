@@ -145,13 +145,28 @@ export default function LearnPage() {
     }
   }, []);
 
-  // Ensure client-only render to avoid hydration edge cases
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
+  // Ensure consistent server/client HTML: render a stable shell until mounted
+  useEffect(() => { setMounted(true); }, []);
   if (!mounted) {
-    return null;
+    return (
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl md:text-4xl font-bold">Course Creator Academy</h1>
+          <div className="hidden sm:block text-neutral-400">Premium courses for filmmakers and creators</div>
+        </div>
+        <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="rounded-2xl overflow-hidden border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 animate-pulse">
+              <div className="h-40 bg-neutral-800" />
+              <div className="p-4">
+                <div className="h-5 bg-neutral-800 rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-neutral-800 rounded w-1/2"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    );
   }
 
   // Compute saved state for courses
