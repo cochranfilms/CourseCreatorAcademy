@@ -54,7 +54,7 @@ export const db = firebaseReady && app
   ? (typeof window !== 'undefined'
       ? initializeFirestore(app, {
           localCache: persistentLocalCache({
-            tabManager: persistentSingleTabManager()
+            tabManager: persistentSingleTabManager({})
           }),
           cacheSizeBytes: CACHE_SIZE_UNLIMITED
         } as any)
