@@ -226,6 +226,8 @@ export async function POST(req: NextRequest) {
             listingTitle: session.metadata?.listingTitle || null,
             buyerId: session.metadata?.buyerId || null,
             sellerId: session.metadata?.sellerId || null,
+            customerId: session.customer || null,
+            customerEmail: (session.customer_details && session.customer_details.email) || session.customer_email || null,
             sellerAccountId: sellerAccountId,
             shippingDetails: session.shipping_details || null,
             status: 'awaiting_tracking',

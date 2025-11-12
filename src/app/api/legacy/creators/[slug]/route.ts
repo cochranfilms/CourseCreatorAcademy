@@ -56,11 +56,16 @@ export async function GET(req: NextRequest, context: any) {
     let subscribed = false;
     if (userId) {
       try {
-        // Global membership grants access to all creators
+        // Global membership (ONLY qualifying plan) grants access to all creators
         const userDoc = await adminDb.collection('users').doc(String(userId)).get();
         const udata = userDoc.exists ? (userDoc.data() as any) : null;
-        const hasMembership = Boolean(udata?.membershipActive);
-        if (hasMembership) {
+        const active = Boolean(udata?.membershipActive);
+        const plan = String(udata?.membershipPlan || '');
+        const allowedPlansEnv = String(process.env.LEGACY_ALL_ACCESS_PLANS || '').trim();
+        const allowedPlans = allowedPlansEnv
+          ? allowedPlansEnv.split(',').map((s) => s.trim()).filter(Boolean)
+          : ['cca_membership_87'];
+        if (active && allowedPlans.includes(plan)) {
           subscribed = true;
         } else {
           // Else, check per-creator Legacy+ subscription

@@ -15,6 +15,7 @@ type Order = {
   currency?: string;
   status?: string;
   shippingDetails?: any;
+  customerEmail?: string | null;
   trackingNumber?: string;
   trackingCarrier?: string;
   trackingUrl?: string;
@@ -30,19 +31,81 @@ export default function OrdersPage() {
   useEffect(() => {
     if (!firebaseReady || !db || !user) { setSold([]); setBought([]); return; }
 
+    // Sold orders (as seller)
     const qSold = query(
       collection(db, 'orders'),
       where('sellerId', '==', user.uid),
       orderBy('trackingDeadlineAtMs', 'desc')
     );
+    const unsub1 = onSnapshot(
+      qSold,
+      (snap) => setSold(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))),
+      () => {
+        const fallback = query(collection(db, 'orders'), where('sellerId', '==', user.uid));
+        onSnapshot(fallback, (snap) => {
+          const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Order[];
+          const sorted = rows.sort((a, b) => (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0));
+          setSold(sorted);
+        });
+      }
+    );
+
+    // Bought orders (as buyer)
     const qBought = query(
       collection(db, 'orders'),
       where('buyerId', '==', user.uid),
       orderBy('trackingDeadlineAtMs', 'desc')
     );
+    const unsub2 = onSnapshot(
+      qBought,
+      (snap) => {
+        const byId = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Order[];
+        if (user.email) {
+          const qByEmail = query(collection(db, 'orders'), where('customerEmail', '==', user.email), orderBy('trackingDeadlineAtMs', 'desc'));
+          onSnapshot(
+            qByEmail,
+            (snap2) => {
+              const byEmail = snap2.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Order[];
+              const map = new Map<string, Order>();
+              [...byId, ...byEmail].forEach((o) => map.set(o.id, o));
+              setBought(Array.from(map.values()));
+            },
+            () => {
+              const fbEmail = query(collection(db, 'orders'), where('customerEmail', '==', String(user.email)));
+              onSnapshot(fbEmail, (snap3) => {
+                const byEmail = snap3.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Order[];
+                const map = new Map<string, Order>();
+                [...byId, ...byEmail].forEach((o) => map.set(o.id, o));
+                const merged = Array.from(map.values()).sort((a, b) => (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0));
+                setBought(merged);
+              });
+            }
+          );
+        } else {
+          setBought(byId);
+        }
+      },
+      () => {
+        const fallback = query(collection(db, 'orders'), where('buyerId', '==', user.uid));
+        onSnapshot(fallback, (snap) => {
+          const byId = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Order[];
+          if (user.email) {
+            const fbEmail = query(collection(db, 'orders'), where('customerEmail', '==', String(user.email)));
+            onSnapshot(fbEmail, (snap2) => {
+              const byEmail = snap2.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Order[];
+              const map = new Map<string, Order>();
+              [...byId, ...byEmail].forEach((o) => map.set(o.id, o));
+              const merged = Array.from(map.values()).sort((a, b) => (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0));
+              setBought(merged);
+            });
+          } else {
+            const sorted = byId.sort((a, b) => (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0));
+            setBought(sorted);
+          }
+        });
+      }
+    );
 
-    const unsub1 = onSnapshot(qSold, (snap) => setSold(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))));
-    const unsub2 = onSnapshot(qBought, (snap) => setBought(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))));
     return () => { unsub1(); unsub2(); };
   }, [user]);
 
