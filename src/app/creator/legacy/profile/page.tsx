@@ -332,6 +332,29 @@ export default function LegacyProfileEditorPage() {
           <section className="border border-neutral-800 p-4 bg-neutral-950">
             <h2 className="text-xl font-semibold mb-4">Upload Video</h2>
             <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-neutral-400">If an upload finished in Mux but didn’t appear yet, backfill from Mux.</div>
+                <button
+                  onClick={async () => {
+                    if (!user) return;
+                    try {
+                      const idt = await user.getIdToken();
+                      const res = await fetch('/api/legacy/backfill/videos', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idt}` },
+                        body: JSON.stringify({ creatorId: user.uid })
+                      });
+                      const json = await res.json();
+                      alert(res.ok ? `Backfill complete. Added ${json.added || 0} video(s).` : (json.error || 'Backfill failed'));
+                    } catch (e: any) {
+                      alert(e?.message || 'Backfill failed');
+                    }
+                  }}
+                  className="px-3 py-2 bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 text-sm"
+                >
+                  Backfill from Mux
+                </button>
+              </div>
               <div>
                 <label className="block text-sm mb-1 text-neutral-300">Title</label>
                 <input value={uploadTitle} onChange={(e)=>setUploadTitle(e.target.value)} className="w-full bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="Sample Video" />
