@@ -94,17 +94,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Trust Bar */}
-      <div className="relative py-12 border-y border-white/10 bg-black/20 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <p className="text-center text-neutral-400 text-sm mb-6">Our members have worked with</p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-8 items-center justify-items-center opacity-70 hover:opacity-100 transition">
-            {['Canon','DJI','Sony','Adobe','RED','Blackmagic','Apple','Bose'].map((brand) => (
-              <div key={brand} className="text-neutral-400 font-semibold text-sm">{brand}</div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Trust Bar removed per request */}
 
       {/* Platform Overview - Tabbed Section */}
       <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
@@ -258,6 +248,77 @@ export default function Page() {
         </div>
       </section>
 
+      {/* Pricing Section - moved up above Creator Kits */}
+      <section id="pricing" className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">
+            A SIMPLE PLAN THAT<br />
+            <span className="text-white">UNLOCKS EVERYTHING</span>
+          </h2>
+          <p className="text-xl text-neutral-400 max-w-3xl mx-auto">
+            Join over 50,000 members who have been growing with us since 2017.
+          </p>
+        </div>
+
+        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8 items-stretch">
+          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 h-full flex flex-col">
+            <div className="text-neutral-400 text-sm font-semibold mb-2">MONTHLY MEMBERSHIP</div>
+            <div className="text-6xl font-extrabold mt-2">$37<span className="text-2xl font-semibold">/month</span></div>
+            <ul className="mt-6 text-neutral-300 space-y-3 flex-1">
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Stream all videos
+              </li>
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Access future content
+              </li>
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Community + downloads
+              </li>
+            </ul>
+          <div className="flex-1" />
+          <button className="cta-button mt-8 w-full text-lg py-4" onClick={startMonthly}>Join Now</button>
+          </div>
+
+          <div className="bg-gradient-to-br from-ccaBlue/20 via-purple-500/20 to-pink-500/20 rounded-2xl border-2 border-ccaBlue p-8 relative overflow-hidden h-full flex flex-col">
+            <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-ccaBlue text-white text-xs font-bold">POPULAR</div>
+            <div className="text-neutral-300 text-sm font-semibold mb-2">ALL‑ACCESS MEMBERSHIP</div>
+            <div className="text-6xl font-extrabold mt-2">$87<span className="text-2xl font-semibold">/month</span></div>
+            <div className="text-neutral-400 text-sm mt-2 mb-6">Site‑wide access to every Legacy+ creator</div>
+            <ul className="text-neutral-200 space-y-3 flex-1">
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Complete access to all Legacy Creator profiles
+              </li>
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                All assets, job opportunities, and marketplace access
+              </li>
+              <li className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Includes everything in Monthly Membership
+              </li>
+            </ul>
+            <button className="cta-button mt-8 w-full text-lg py-4" onClick={startAllAccess}>Join All‑Access</button>
+          </div>
+        </div>
+        <div className="mt-8 text-center text-sm text-neutral-400">14‑day refund policy • 96% satisfaction rating • Instant access</div>
+      </section>
+
       {/* Creator Kits Section */}
       <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
         <div className="text-center mb-16">
@@ -350,76 +411,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">
-            A SIMPLE PLAN THAT<br />
-            <span className="text-white">UNLOCKS EVERYTHING</span>
-          </h2>
-          <p className="text-xl text-neutral-400 max-w-3xl mx-auto">
-            Join over 50,000 members who have been growing with us since 2017.
-          </p>
-        </div>
-
-        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8 items-stretch">
-          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 h-full flex flex-col">
-            <div className="text-neutral-400 text-sm font-semibold mb-2">MONTHLY MEMBERSHIP</div>
-            <div className="text-6xl font-extrabold mt-2">$37<span className="text-2xl font-semibold">/month</span></div>
-            <ul className="mt-6 text-neutral-300 space-y-3 flex-1">
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Stream all videos
-              </li>
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Access future content
-              </li>
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Community + downloads
-              </li>
-            </ul>
-          <div className="flex-1" />
-          <button className="cta-button mt-8 w-full text-lg py-4" onClick={startMonthly}>Join Now</button>
-          </div>
-
-          <div className="bg-gradient-to-br from-ccaBlue/20 via-purple-500/20 to-pink-500/20 rounded-2xl border-2 border-ccaBlue p-8 relative overflow-hidden h-full flex flex-col">
-            <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-ccaBlue text-white text-xs font-bold">POPULAR</div>
-            <div className="text-neutral-300 text-sm font-semibold mb-2">ALL‑ACCESS MEMBERSHIP</div>
-            <div className="text-6xl font-extrabold mt-2">$87<span className="text-2xl font-semibold">/month</span></div>
-            <div className="text-neutral-400 text-sm mt-2 mb-6">Site‑wide access to every Legacy+ creator</div>
-            <ul className="text-neutral-200 space-y-3 flex-1">
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Complete access to all Legacy Creator profiles
-              </li>
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                All assets, job opportunities, and marketplace access
-              </li>
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Includes everything in Monthly Membership
-              </li>
-            </ul>
-            <button className="cta-button mt-8 w-full text-lg py-4" onClick={startAllAccess}>Join All‑Access</button>
-          </div>
-        </div>
-        <div className="mt-8 text-center text-sm text-neutral-400">14‑day refund policy • 96% satisfaction rating • Instant access</div>
-      </section>
+      {/* Pricing Section moved above */}
 
       {/* Included Perks */}
       <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
