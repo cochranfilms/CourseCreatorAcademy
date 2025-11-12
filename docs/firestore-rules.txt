@@ -7,6 +7,43 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    // Pending membership claims:
+    // Created by server-side webhook when buyer email is known but no userId is present.
+    // Allow the authenticated user whose email matches to mark the record as claimed.
+    match /pendingMemberships/{claimId} {
+      function authed() { return request.auth != null; }
+      function emailMatches() {
+        // Safely compare lower-cased emails
+        return authed()
+          && request.auth.token.email != null
+          && lower(resource.data.email) == lower(request.auth.token.email);
+      }
+      allow read: if emailMatches();
+      // Restrict updates to only marking as claimed by the current user
+      allow update: if emailMatches()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['claimed','claimedBy','claimedAt'])
+        && request.resource.data.claimed == true
+        && request.resource.data.claimedBy == request.auth.uid;
+      // Creation/deletion happens server-side only
+      allow create, delete: if false;
+    }
+
+    // Legacy subscriptions - allow users to read their own subscription docs
+    match /legacySubscriptions/{subId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Writes are performed by server webhooks only
+      allow write: if false;
+    }
+
+    // Legacy creators catalog (public)
+    match /legacy_creators/{creatorId} {
+      allow read: if true;
+      // Subcollections: public sample videos
+      match /videos/{videoId} {
+        allow read: if true;
+      }
+    }
+
     // Helper function to check if user owns the resource
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
