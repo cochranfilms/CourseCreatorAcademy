@@ -26,7 +26,7 @@ export function BannerImageUpload({ onUploadComplete }: Props) {
 			setError(null);
 			const path = `profile-banners/${user.uid}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
 			const sref = storageRef(storage, path);
-			const task = uploadBytesResumable(sref, file);
+			const task = uploadBytesResumable(sref, file, { contentType: file.type || 'image/jpeg' });
 			task.on(
 				'state_changed',
 				(snap) => {
