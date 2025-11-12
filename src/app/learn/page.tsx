@@ -36,6 +36,7 @@ function getMuxThumbnailUrl(playbackId?: string, durationSec?: number) {
 export default function LearnPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const { user } = useAuth();
   const [savedCourses, setSavedCourses] = useState<Record<string, boolean>>({});
   const [courseProgress, setCourseProgress] = useState<Record<string, number>>({});
@@ -143,6 +144,15 @@ export default function LearnPage() {
       setLoading(false);
     }
   }, []);
+
+  // Ensure client-only render to avoid hydration edge cases
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   // Compute saved state for courses
   useEffect(() => {
