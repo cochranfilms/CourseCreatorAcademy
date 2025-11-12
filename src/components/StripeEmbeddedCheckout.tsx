@@ -55,13 +55,13 @@ export function StripeEmbeddedCheckout({
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative w-full max-w-2xl sm:max-w-3xl md:max-w-4xl h-[85vh] max-h-[92vh] bg-neutral-950 border border-neutral-800 rounded-2xl shadow-2xl overflow-y-auto overscroll-contain">
+      <div className="relative w-full max-w-2xl sm:max-w-3xl md:max-w-4xl max-h-[92vh] bg-neutral-950 border border-neutral-800 rounded-2xl shadow-2xl overflow-y-auto overscroll-contain">
         <div className="absolute top-3 right-3 z-10">
           <button className="text-neutral-400 hover:text-white" onClick={onClose} aria-label="Close">
             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
-        <div ref={containerRef} className="w-full h-full bg-black" />
+        <div ref={containerRef} className="w-full bg-transparent min-h-[560px] sm:min-h-[600px]" />
         {mounting && (
           <div className="absolute inset-0 flex items-center justify-center text-neutral-400">Loading checkout…</div>
         )}
