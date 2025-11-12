@@ -33,23 +33,42 @@ export async function POST(req: NextRequest) {
 
     // Ensure user is a legacy creator (check users doc or legacy_creators membership)
     let isLegacy = false;
+    let legacyCreatorId: string | null = null;
     try {
       const u = await adminDb.collection('users').doc(String(uid)).get();
       const data = u.exists ? (u.data() as any) : null;
       isLegacy = Boolean(data?.isLegacyCreator || data?.roles?.legacyCreator);
     } catch {}
     if (!isLegacy) {
-      // Fallback: existence under legacy_creators
+      // Fallback: existence under legacy_creators by doc id == uid
       try {
         const lc = await adminDb.collection('legacy_creators').doc(String(uid)).get();
-        isLegacy = lc.exists;
+        if (lc.exists) {
+          isLegacy = true;
+          legacyCreatorId = lc.id;
+        }
+      } catch {}
+    }
+    if (!isLegacy) {
+      // Final fallback: a legacy_creators doc where ownerUserId == uid
+      try {
+        const byOwner = await adminDb
+          .collection('legacy_creators')
+          .where('ownerUserId', '==', String(uid))
+          .limit(1)
+          .get();
+        if (!byOwner.empty) {
+          isLegacy = true;
+          legacyCreatorId = byOwner.docs[0].id;
+        }
       } catch {}
     }
     if (!isLegacy) return NextResponse.json({ error: 'Only legacy creators can post opportunities' }, { status: 403 });
+    const targetCreatorId = legacyCreatorId || String(uid);
 
     // Write under subcollection
     const ref = await adminDb
-      .collection(`legacy_creators/${uid}/opportunities`)
+      .collection(`legacy_creators/${targetCreatorId}/opportunities`)
       .add({
         ...parsed.data,
         posted: new Date()

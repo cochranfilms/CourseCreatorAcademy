@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db, firebaseReady, storage } from '@/lib/firebaseClient';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import ImageCropperModal from '@/components/ImageCropperModal';
 
@@ -55,6 +55,9 @@ export default function LegacyProfileEditorPage() {
   const [oppDescription, setOppDescription] = useState('');
   const [oppSaving, setOppSaving] = useState(false);
   const [myOpps, setMyOpps] = useState<Array<{ id: string; title: string; location: string; type: string; applyUrl: string; posted?: any }>>([]);
+  // My uploaded videos
+  const [myVideos, setMyVideos] = useState<Array<{ id: string; title?: string; description?: string; muxPlaybackId?: string | null; muxAnimatedGifUrl?: string | null; isSample?: boolean; createdAt?: any }>>([]);
+  const [videosLoading, setVideosLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -117,6 +120,55 @@ export default function LegacyProfileEditorPage() {
     };
     loadOpps();
   }, [user]);
+
+  // Load my uploaded videos
+  useEffect(() => {
+    const loadVideos = async () => {
+      if (!user || !firebaseReady || !db) return;
+      setVideosLoading(true);
+      try {
+        // Resolve legacy creator canonical id (doc by uid or ownerUserId)
+        let creatorId = user.uid;
+        try {
+          const direct = await getDoc(doc(db, 'legacy_creators', user.uid));
+          if (!direct.exists()) {
+            const byOwnerQ = query(collection(db, 'legacy_creators'), orderBy('createdAt', 'desc'));
+            // We don't have where on client here without importing; prefer try direct then fallback via server list endpoint
+          }
+        } catch {}
+        // If the direct doc does not exist, fetch via server endpoint which resolves slug/owner mapping
+        let canonicalId = creatorId;
+        try {
+          const res = await fetch(`/api/legacy/creators/${encodeURIComponent(user.uid)}?soft=1`, { cache: 'no-store' });
+          const json = await res.json().catch(() => ({}));
+          const creator = json?.creator;
+          canonicalId = creator?.id || creator?.kitSlug || user.uid;
+        } catch {}
+        // Query the subcollection for videos
+        const vref = collection(db, `legacy_creators/${canonicalId}/videos`);
+        const q = query(vref, orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        const list = snap.docs.map((d) => {
+          const data = d.data() as any;
+          return {
+            id: d.id,
+            title: data?.title || 'Untitled',
+            description: data?.description || '',
+            muxPlaybackId: data?.muxPlaybackId || null,
+            muxAnimatedGifUrl: data?.muxAnimatedGifUrl || null,
+            isSample: Boolean(data?.isSample),
+            createdAt: data?.createdAt || null,
+          };
+        });
+        setMyVideos(list);
+      } catch {
+        setMyVideos([]);
+      } finally {
+        setVideosLoading(false);
+      }
+    };
+    loadVideos();
+  }, [user, firebaseReady, db]);
 
   const postOpportunity = async () => {
     if (!user) { alert('Sign in first.'); return; }
@@ -391,6 +443,59 @@ export default function LegacyProfileEditorPage() {
               <div className="font-semibold text-white">Attach existing Mux Asset</div>
               <p className="text-sm text-neutral-400">If you uploaded directly in the Mux dashboard and see “No public playback ID”, paste the Asset ID here to attach it and create a playback ID.</p>
               <AttachExistingMuxForm />
+            </div>
+            <div className="mt-8 pt-6 border-t border-neutral-800">
+              <h3 className="text-lg font-semibold mb-3">My Uploads</h3>
+              {videosLoading ? (
+                <div className="text-sm text-neutral-400">Loading uploads…</div>
+              ) : myVideos.length === 0 ? (
+                <div className="text-sm text-neutral-400">No uploads yet.</div>
+              ) : (
+                <ul className="grid md:grid-cols-2 gap-3">
+                  {myVideos.map((v) => {
+                    const thumb = v.muxAnimatedGifUrl || (v.muxPlaybackId ? `https://image.mux.com/${v.muxPlaybackId}/thumbnail.jpg?time=1&width=480` : '');
+                    return (
+                      <li key={v.id} className="border border-neutral-800 bg-neutral-900 p-2">
+                        {thumb ? (
+                          <img src={thumb} alt={v.title || 'Video thumbnail'} className="w-full h-40 object-cover border border-neutral-800" />
+                        ) : (
+                          <div className="w-full h-40 bg-neutral-800 flex items-center justify-center text-neutral-400 text-sm">No preview</div>
+                        )}
+                        <div className="mt-2">
+                          <div className="font-medium text-neutral-200 truncate" title={v.title}>{v.title}</div>
+                          <div className="text-xs text-neutral-500">{v.isSample ? 'Sample (public)' : 'Exclusive (Legacy+)'}</div>
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          {v.muxPlaybackId && (
+                            <a href={`https://stream.mux.com/${v.muxPlaybackId}.m3u8`} target="_blank" className="text-sm text-ccaBlue">View ↗</a>
+                          )}
+                          <button
+                            onClick={async () => {
+                              if (!user) return;
+                              if (!confirm('Delete this video? This will remove it from your legacy kit.')) return;
+                              try {
+                                const idt = await user.getIdToken();
+                                const res = await fetch(`/api/legacy/videos/${encodeURIComponent(v.id)}?deleteMux=1`, {
+                                  method: 'DELETE',
+                                  headers: { 'Authorization': `Bearer ${idt}` }
+                                });
+                                const json = await res.json().catch(() => ({}));
+                                if (!res.ok) throw new Error(json?.error || 'Delete failed');
+                                setMyVideos((prev) => prev.filter((x) => x.id !== v.id));
+                              } catch (e: any) {
+                                alert(e?.message || 'Failed to delete');
+                              }
+                            }}
+                            className="ml-auto px-3 py-1.5 bg-neutral-950 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </section>
           )}
