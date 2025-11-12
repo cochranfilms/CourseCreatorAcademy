@@ -5,14 +5,14 @@ import { adminDb } from '@/lib/firebaseAdmin';
  * Source of truth: users/{uid}.membershipActive (kept in sync via Stripe webhook)
  */
 export async function hasGlobalMembership(userId: string): Promise<boolean> {
-	if (!adminDb || !userId) return false;
-	try {
-		const userDoc = await adminDb.collection('users').doc(String(userId)).get();
-		const data = userDoc.exists ? (userDoc.data() as any) : null;
-		return Boolean(data?.membershipActive);
-	} catch {
-		return false;
-	}
+  if (!adminDb || !userId) return false;
+  try {
+    const userDoc = await adminDb.collection('users').doc(String(userId)).get();
+    const data = userDoc.exists ? (userDoc.data() as any) : null;
+    return Boolean(data?.membershipActive);
+  } catch {
+    return false;
+  }
 }
 
 /**

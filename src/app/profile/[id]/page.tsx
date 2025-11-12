@@ -23,6 +23,7 @@ type UserProfile = {
   youtube?: string;
   profilePublic?: boolean;
   photoURL?: string;
+  bannerUrl?: string;
 };
 
 type Listing = {
@@ -45,6 +46,15 @@ type Course = {
   modulesCount: number;
   thumbnailPlaybackId?: string;
   thumbnailDurationSec?: number;
+};
+
+type Opportunity = {
+  id: string;
+  title: string;
+  company?: string;
+  location?: string;
+  type?: string;
+  posted?: any;
 };
 
 type Project = {
@@ -94,6 +104,7 @@ export default function ProfilePage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -174,70 +185,8 @@ export default function ProfilePage() {
           console.error('Error fetching listings:', error);
         }
 
-        // Fetch user's courses
-        try {
-          let coursesDocs: QueryDocumentSnapshot<DocumentData>[];
-          try {
-            // Try query with index first
-            const coursesQuery = query(
-              collection(db, 'courses'),
-              where('createdBy', '==', userId),
-              orderBy('createdAt', 'desc')
-            );
-            const coursesSnap = await getDocs(coursesQuery);
-            coursesDocs = coursesSnap.docs;
-          } catch (queryError: any) {
-            // If query fails (likely missing index), fetch all and filter client-side
-            console.warn('Courses query failed, falling back to client-side filter:', queryError);
-            const allCoursesSnap = await getDocs(collection(db, 'courses'));
-            coursesDocs = allCoursesSnap.docs.filter(doc => doc.data().createdBy === userId);
-          }
-
-          const coursesData: Course[] = await Promise.all(
-            coursesDocs.map(async (docSnap) => {
-              const courseData = docSnap.data();
-              let thumbnailPlaybackId: string | undefined;
-              let thumbnailDurationSec: number | undefined;
-
-              try {
-                // Get thumbnail from first lesson of first module
-                const modulesRef = collection(db, `courses/${docSnap.id}/modules`);
-                const modulesSnap = await getDocs(query(modulesRef, orderBy('index', 'asc')));
-                if (!modulesSnap.empty) {
-                  const firstModuleId = modulesSnap.docs[0].id;
-                  const lessonsRef = collection(db, `courses/${docSnap.id}/modules/${firstModuleId}/lessons`);
-                  const lessonsSnap = await getDocs(query(lessonsRef, orderBy('index', 'asc')));
-                  if (!lessonsSnap.empty) {
-                    const lessonData: any = lessonsSnap.docs[0].data();
-                    thumbnailPlaybackId = lessonData?.muxPlaybackId;
-                    thumbnailDurationSec = lessonData?.durationSec;
-                  }
-                }
-              } catch (e) {
-                console.error('Error fetching course thumbnail:', e);
-              }
-
-              return {
-                id: docSnap.id,
-                title: courseData.title || 'Untitled Course',
-                slug: courseData.slug || docSnap.id,
-                summary: courseData.summary,
-                coverImage: courseData.coverImage,
-                lessonsCount: courseData.lessonsCount || 0,
-                modulesCount: courseData.modulesCount || 0,
-                thumbnailPlaybackId,
-                thumbnailDurationSec
-              };
-            })
-          );
-          // Filter out courses with no title or that aren't published (if published field exists)
-          setCourses(coursesData.filter(c => {
-            return c.title !== 'Untitled Course' || coursesData.length === 1;
-          }));
-        } catch (error) {
-          console.error('Error fetching courses:', error);
-          setCourses([]);
-        }
+        // We are no longer surfacing courses on the public profile.
+        setCourses([]);
 
         // Fetch user's projects
         try {
@@ -274,6 +223,39 @@ export default function ProfilePage() {
         } catch (error) {
           console.error('Error fetching projects:', error);
           setProjects([]);
+        }
+
+        // Fetch user's posted opportunities
+        try {
+          let oppDocs: QueryDocumentSnapshot<DocumentData>[];
+          try {
+            const oppQuery = query(
+              collection(db, 'opportunities'),
+              where('posterId', '==', userId),
+              orderBy('posted', 'desc')
+            );
+            const oppSnap = await getDocs(oppQuery);
+            oppDocs = oppSnap.docs;
+          } catch (queryError: any) {
+            console.warn('Opportunities query failed, falling back to client-side filter:', queryError);
+            const allOppSnap = await getDocs(collection(db, 'opportunities'));
+            oppDocs = allOppSnap.docs.filter(doc => doc.data().posterId === userId);
+          }
+          const oppData: Opportunity[] = oppDocs.map((d) => {
+            const x: any = d.data();
+            return {
+              id: d.id,
+              title: x.title || 'Opportunity',
+              company: x.company,
+              location: x.location,
+              type: x.type,
+              posted: x.posted
+            };
+          });
+          setOpportunities(oppData);
+        } catch (error) {
+          console.error('Error fetching opportunities:', error);
+          setOpportunities([]);
         }
 
       } catch (error) {
@@ -375,9 +357,15 @@ export default function ProfilePage() {
 
   return (
     <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-      {/* Profile Header */}
-      <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 rounded-lg">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+      {/* Profile Banner */}
+      <div className="mb-6 rounded-lg overflow-hidden border border-neutral-800/50">
+        <div
+          className="h-32 sm:h-40 md:h-48 w-full bg-gradient-to-r from-neutral-900 to-neutral-800 relative"
+          style={profile?.bannerUrl ? { backgroundImage: `url(${profile.bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+        />
+        {/* Profile Header */}
+        <div className="bg-neutral-950/80 backdrop-blur-sm p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
           {/* Profile Photo */}
           <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-neutral-800 flex-shrink-0 border-2 border-neutral-700">
             {photoURL ? (
@@ -400,18 +388,18 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Profile Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">{displayName}</h1>
-                {handle && (
-                  <p className="text-neutral-400 text-sm sm:text-base">@{handle}</p>
-                )}
-                {profile?.title && (
-                  <p className="text-neutral-300 mt-1">{profile.title}</p>
-                )}
-              </div>
+            {/* Profile Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">{displayName}</h1>
+                  {handle && (
+                    <p className="text-neutral-400 text-sm sm:text-base">@{handle}</p>
+                  )}
+                  {profile?.title && (
+                    <p className="text-neutral-300 mt-1">{profile.title}</p>
+                  )}
+                </div>
               {currentUser && currentUser.uid !== userId && (
                 <button
                   onClick={() => setShowMessageModal(true)}
@@ -424,36 +412,30 @@ export default function ProfilePage() {
                 </button>
               )}
 
-              {/* When viewing own profile, show Legacy Subscriptions / Upgrade CTA (opens modal) */}
-              {currentUser && currentUser.uid === userId && (
-                <button
-                  onClick={() => setShowLegacyModal(true)}
-                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 rounded-lg font-semibold transition self-start"
-                >
-                  {hasLegacySub ? 'Legacy Subscriptions' : 'Upgrade to Legacy+'}
-                </button>
-              )}
+                {/* When viewing own profile, show Legacy Subscriptions / Upgrade CTA (opens modal) */}
+                {currentUser && currentUser.uid === userId && (
+                  <button
+                    onClick={() => setShowLegacyModal(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 rounded-lg font-semibold transition self-start"
+                  >
+                    {hasLegacySub ? 'Legacy Subscriptions' : 'Upgrade to Legacy+'}
+                  </button>
+                )}
+              </div>
             </div>
-
           </div>
         </div>
       </div>
 
-      {/* Stats Section */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
-          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{courses.length}</div>
-          <div className="text-sm text-neutral-400">{courses.length === 1 ? 'Course' : 'Courses'}</div>
-        </div>
+      {/* Stats Section (Listings, Opportunities, Member Since) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
           <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{listings.length}</div>
           <div className="text-sm text-neutral-400">{listings.length === 1 ? 'Listing' : 'Listings'}</div>
         </div>
         <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
-          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
-            {courses.reduce((sum, c) => sum + (c.lessonsCount || 0), 0)}
-          </div>
-          <div className="text-sm text-neutral-400">Total Lessons</div>
+          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{opportunities.length}</div>
+          <div className="text-sm text-neutral-400">{opportunities.length === 1 ? 'Opportunity' : 'Opportunities'}</div>
         </div>
         <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
           <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
@@ -671,51 +653,23 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Courses Section */}
-      {courses.length > 0 && (
+      {/* Opportunities Section */}
+      {opportunities.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">Courses</h2>
+          <h2 className="text-xl font-bold text-white mb-4">Opportunities</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {courses.map((course) => {
-              const thumbnailUrl = course.coverImage || getMuxThumbnailUrl(course.thumbnailPlaybackId, course.thumbnailDurationSec);
-              return (
-                <Link
-                  key={course.id}
-                  href={`/learn/${course.slug}`}
-                  className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 rounded-lg overflow-hidden hover:border-neutral-700 transition group"
-                >
-                  <div className="aspect-video bg-neutral-900 relative overflow-hidden">
-                    {thumbnailUrl ? (
-                      <img
-                        src={thumbnailUrl}
-                        alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-neutral-600">
-                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-white mb-1 line-clamp-2 group-hover:text-ccaBlue transition">
-                      {course.title}
-                    </h3>
-                    {course.summary && (
-                      <p className="text-sm text-neutral-400 line-clamp-2 mb-2">{course.summary}</p>
-                    )}
-                    <div className="flex items-center gap-2 text-xs text-neutral-500">
-                      <span>{course.modulesCount} {course.modulesCount === 1 ? 'module' : 'modules'}</span>
-                      <span>•</span>
-                      <span>{course.lessonsCount} {course.lessonsCount === 1 ? 'lesson' : 'lessons'}</span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+            {opportunities.map((o) => (
+              <div key={o.id} className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 rounded-lg p-4">
+                <div className="text-sm text-neutral-500 mb-1">{o.company || 'Opportunity'}</div>
+                <div className="font-semibold text-white">{o.title}</div>
+                <div className="text-xs text-neutral-400 mt-1">
+                  {o.location || 'Remote'} {o.type ? `• ${o.type}` : ''}
+                </div>
+                {o.posted && (
+                  <div className="text-xs text-neutral-500 mt-1">Posted {formatDate(o.posted)}</div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -768,16 +722,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Empty State for Courses */}
-      {courses.length === 0 && (
-        <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-8 rounded-lg text-center mb-6">
-          <svg className="w-16 h-16 text-neutral-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-          <h3 className="text-lg font-semibold text-white mb-2">No Courses Yet</h3>
-          <p className="text-neutral-400">This creator hasn't published any courses yet.</p>
-        </div>
-      )}
+      {/* Removed the Courses empty state as courses are not shown on public profile */}
 
       {/* Empty State for Listings */}
       {listings.length === 0 && (

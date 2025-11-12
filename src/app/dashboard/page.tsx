@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc, addDoc, serverTimestamp, getDocs, limit } from 'firebase/firestore';
 import { updateProfile, fetchSignInMethodsForEmail, EmailAuthProvider, updatePassword, reauthenticateWithCredential, linkWithCredential, updateEmail, sendEmailVerification } from 'firebase/auth';
 import { db, auth, firebaseReady, storage } from '@/lib/firebaseClient';
 import { ProfileImageUpload } from '@/components/ProfileImageUpload';
+import { BannerImageUpload } from '@/components/BannerImageUpload';
 import Link from 'next/link';
 import OrdersTab from './OrdersTab';
 import OnboardingTab from './OnboardingTab';
@@ -29,6 +30,7 @@ type UserProfile = {
   emailMarketplaceUpdates?: boolean;
   profilePublic?: boolean;
   photoURL?: string;
+  bannerUrl?: string;
 };
 
 type Listing = { 
@@ -81,6 +83,14 @@ export default function DashboardPage() {
   // Profile state
   const [profile, setProfile] = useState<UserProfile>({});
   const [loading, setLoading] = useState(true);
+  // Seller analytics
+  const [ordersCount, setOrdersCount] = useState(0);
+  const [grossCents, setGrossCents] = useState(0);
+  const [platformFeeCents, setPlatformFeeCents] = useState(0);
+  const [lastOrderAt, setLastOrderAt] = useState<Date | null>(null);
+  const [lastLegacyPayout, setLastLegacyPayout] = useState<{ amount: number; currency: string; createdAt?: any } | null>(null);
+  const [stripeFeesCents, setStripeFeesCents] = useState<number | null>(null);
+  const [netAfterStripeCents, setNetAfterStripeCents] = useState<number | null>(null);
   
   // Form state for editing
   const [editDisplayName, setEditDisplayName] = useState('');
@@ -289,6 +299,127 @@ export default function DashboardPage() {
       unsubscribeListings();
       unsubscribeOpportunities();
     };
+  }, [user]);
+
+  // Aggregate seller orders (gross/net) and last payout (legacy)
+  useEffect(() => {
+    if (!firebaseReady || !db || !user) {
+      setOrdersCount(0);
+      setGrossCents(0);
+      setPlatformFeeCents(0);
+      setLastOrderAt(null);
+      setLastLegacyPayout(null);
+      return;
+    }
+
+    // Orders aggregate for seller
+    const qSeller = query(collection(db, 'orders'), where('sellerId', '==', user.uid));
+    const unsubOrders = onSnapshot(qSeller, (snap) => {
+      let count = 0;
+      let gross = 0;
+      let fees = 0;
+      let latest: Date | null = null;
+      snap.docs.forEach((d) => {
+        const o: any = d.data();
+        count += 1;
+        gross += Number(o?.amount || 0);
+        fees += Number(o?.application_fee_amount || 0);
+        const created = o?.createdAt?.toDate ? o.createdAt.toDate() : (o?.createdAt ? new Date(o.createdAt) : null);
+        if (created && (!latest || created > latest)) latest = created;
+      });
+      setOrdersCount(count);
+      setGrossCents(gross);
+      setPlatformFeeCents(fees);
+      setLastOrderAt(latest);
+    }, () => {
+      // Fallback one-time fetch
+      (async () => {
+        try {
+          const snap = await getDocs(qSeller);
+          let count = 0, gross = 0, fees = 0; let latest: Date | null = null;
+          snap.docs.forEach((d) => {
+            const o: any = d.data();
+            count += 1;
+            gross += Number(o?.amount || 0);
+            fees += Number(o?.application_fee_amount || 0);
+            const created = o?.createdAt?.toDate ? o.createdAt.toDate() : (o?.createdAt ? new Date(o.createdAt) : null);
+            if (created && (!latest || created > latest)) latest = created;
+          });
+          setOrdersCount(count); setGrossCents(gross); setPlatformFeeCents(fees); setLastOrderAt(latest);
+        } catch {}
+      })();
+    });
+
+    // Last legacy payout (optional)
+    (async () => {
+      try {
+        let lastDoc: any = null;
+        try {
+          const qPayouts = query(
+            collection(db, 'legacyPayouts'),
+            where('creatorId', '==', user.uid),
+            orderBy('createdAt', 'desc'),
+            limit(1)
+          );
+          const snap = await getDocs(qPayouts);
+          lastDoc = snap.docs[0];
+        } catch (err) {
+          // Fallback without orderBy
+          const all = await getDocs(collection(db, 'legacyPayouts'));
+          const mine = all.docs
+            .filter((d) => (d.data() as any)?.creatorId === user.uid)
+            .sort((a, b) => {
+              const aT = (a.data() as any)?.createdAt?.toDate?.() || (a.data() as any)?.createdAt || 0;
+              const bT = (b.data() as any)?.createdAt?.toDate?.() || (b.data() as any)?.createdAt || 0;
+              return Number(bT) - Number(aT);
+            });
+          lastDoc = mine[0] || null;
+        }
+        if (lastDoc) {
+          const d = lastDoc.data() as any;
+          setLastLegacyPayout({ amount: Number(d?.amount || d?.perCreatorAmount || 0), currency: String(d?.currency || 'usd'), createdAt: d?.createdAt });
+        } else {
+          setLastLegacyPayout(null);
+        }
+      } catch {
+        setLastLegacyPayout(null);
+      }
+    })();
+
+    return () => {
+      unsubOrders();
+    };
+  }, [user]);
+
+  const formatMoney = (cents: number, currency = 'usd') => {
+    const sign = cents < 0 ? '-' : '';
+    const abs = Math.abs(cents);
+    return `${sign}$${(abs / 100).toFixed(2)} ${currency}`.trim();
+  };
+
+  // Fetch Stripe processing fee totals from server (secure)
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!user) { setStripeFeesCents(null); setNetAfterStripeCents(null); return; }
+        if (!auth?.currentUser) { return; }
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch('/api/analytics/seller', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await res.json();
+        if (json && json.ok) {
+          setStripeFeesCents(Number(json.stripeFees || 0));
+          setNetAfterStripeCents(Number(json.netAfterStripe || 0));
+        } else {
+          setStripeFeesCents(null);
+          setNetAfterStripeCents(null);
+        }
+      } catch {
+        setStripeFeesCents(null);
+        setNetAfterStripeCents(null);
+      }
+    })();
   }, [user]);
 
   // Redirect legacy creators to the legacy profile editor
@@ -1164,6 +1295,44 @@ export default function DashboardPage() {
 
         {activeTab === 'orders' && (
           <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+            {/* Seller Analytics Card */}
+            <div className="mb-4 grid grid-cols-1 lg:grid-cols-4 gap-3">
+              <div className="border border-neutral-800 bg-neutral-950 p-4">
+                <div className="text-sm text-neutral-400 mb-1">Orders</div>
+                <div className="text-2xl font-semibold text-white">{ordersCount}</div>
+                {lastOrderAt && <div className="text-xs text-neutral-500 mt-1">Last order {lastOrderAt.toLocaleString()}</div>}
+              </div>
+              <div className="border border-neutral-800 bg-neutral-950 p-4">
+                <div className="text-sm text-neutral-400 mb-1">Gross</div>
+                <div className="text-2xl font-semibold text-white">{formatMoney(grossCents)}</div>
+              </div>
+              <div className="border border-neutral-800 bg-neutral-950 p-4">
+                <div className="text-sm text-neutral-400 mb-1">Platform Fees</div>
+                <div className="text-2xl font-semibold text-white">{formatMoney(platformFeeCents)}</div>
+              </div>
+              <div className="border border-neutral-800 bg-neutral-950 p-4">
+                <div className="text-sm text-neutral-400 mb-1">Net to You</div>
+                <div className="text-2xl font-semibold text-white">
+                  {formatMoney(netAfterStripeCents != null ? netAfterStripeCents : Math.max(grossCents - platformFeeCents, 0))}
+                </div>
+                <div className="text-[11px] text-neutral-500 mt-1">
+                  {stripeFeesCents != null ? `Includes ${formatMoney(stripeFeesCents)} Stripe fees` : 'Excludes Stripe processing fees'}
+                </div>
+              </div>
+            </div>
+            {lastLegacyPayout && (
+              <div className="mb-4 border border-neutral-800 bg-neutral-950 p-4">
+                <div className="text-sm text-neutral-400 mb-1">Last Legacy+ payout</div>
+                <div className="text-lg font-semibold text-white">
+                  {formatMoney(lastLegacyPayout.amount, lastLegacyPayout.currency)}
+                </div>
+                {lastLegacyPayout.createdAt && (
+                  <div className="text-xs text-neutral-500 mt-1">
+                    {lastLegacyPayout.createdAt?.toDate ? lastLegacyPayout.createdAt.toDate().toLocaleString() : new Date(lastLegacyPayout.createdAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
             <OrdersTab />
           </div>
         )}
@@ -1392,6 +1561,9 @@ export default function DashboardPage() {
                   </div>
                   <div className="mt-4">
                     <ProfileImageUpload onUploadComplete={(url) => setEditPhotoURL(url)} />
+                  </div>
+                  <div className="mt-4">
+                    <BannerImageUpload />
                   </div>
                 </div>
 
