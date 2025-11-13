@@ -163,10 +163,10 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
     const fetchApplicantProfiles = async () => {
       const profiles: Record<string, { photoURL?: string; displayName?: string }> = {};
       
-      // Fetch profiles for all visible applications except rejected (keeps avatars after completion/paid)
-      const applicationsToShow = applicationsReceived.filter(app => app.status !== 'rejected');
+      // Only fetch profiles after deposit is actually paid (escrow)
+      const applicationsToShow = applicationsReceived.filter(app => app.depositPaid === true);
       
-      console.log('JobsTab: Applications to show avatars for (received):', applicationsToShow.length);
+      console.log('JobsTab: Applications to show avatars for (received, depositPaid only):', applicationsToShow.length);
       console.log('JobsTab: Applications received:', applicationsReceived.map(app => ({
         id: app.id,
         depositPaid: app.depositPaid,
@@ -482,13 +482,8 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
             <div className="space-y-4">
               {applicationsReceived.map((app) => {
                 const applicantProfile = applicantProfiles[app.applicantId];
-                // Check multiple indicators for deposit paid
-                const depositIsPaid = app.depositPaid || 
-                                      app.depositPaymentIntentId || 
-                                      app.depositCheckoutSessionId ||
-                                      (app.status !== 'pending' && app.status !== 'rejected');
-                // Keep avatar visible after completion/paid: hide only for rejected
-                const showProfilePicture = app.status !== 'rejected' && applicantProfile;
+                // Only show avatar once deposit is paid into escrow
+                const showProfilePicture = app.depositPaid === true && applicantProfile;
                 
                 return (
                 <div key={app.id} className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-6 rounded-lg">
