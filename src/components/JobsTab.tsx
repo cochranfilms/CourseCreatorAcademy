@@ -28,6 +28,7 @@ type JobApplication = {
   depositAmount?: number;
   totalAmount?: number;
   depositPaymentIntentId?: string;
+  depositCheckoutSessionId?: string;
   finalPaymentIntentId?: string;
   finalPaymentPaid?: boolean;
   depositPaid?: boolean;
