@@ -13,6 +13,7 @@ import OrdersTab from './OrdersTab';
 import OnboardingTab from './OnboardingTab';
 import { LegacySubscriptions } from '@/components/LegacySubscriptions';
 import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
+import { JobsTab } from '@/components/JobsTab';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 type UserProfile = {
@@ -56,7 +57,7 @@ type Opportunity = {
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'projects' | 'social' | 'email' | 'privacy' | 'orders' | 'onboarding' | 'legacy'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'social' | 'email' | 'privacy' | 'orders' | 'onboarding' | 'legacy' | 'jobs'>('projects');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   
@@ -913,7 +914,7 @@ export default function DashboardPage() {
 
         {/* Sub-Navigation Tabs */}
         <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-hide w-full -mx-3 sm:mx-0 px-3 sm:px-0">
-          {(['projects', 'social', 'email', 'privacy', 'orders', 'onboarding', 'legacy'] as const).map((tab) => (
+          {(['projects', 'social', 'email', 'privacy', 'orders', 'onboarding', 'legacy', 'jobs'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -1350,6 +1351,16 @@ export default function DashboardPage() {
               <p className="text-neutral-400 text-sm">Manage your Legacy+ creator subscriptions</p>
             </div>
             <LegacySubscriptions />
+          </div>
+        )}
+
+        {activeTab === 'jobs' && user && (
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+            <div className="mb-6">
+              <h2 className="text-xl sm:text-2xl font-semibold mb-2">Jobs</h2>
+              <p className="text-neutral-400 text-sm">Manage your job applications and opportunities</p>
+            </div>
+            <JobsTab userId={user.uid} isOwnProfile={true} />
           </div>
         )}
 
