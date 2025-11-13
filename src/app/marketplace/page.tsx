@@ -143,15 +143,19 @@ export default function MarketplacePage() {
           // Try to get creator info
           let creatorName = '';
           let creatorEmail = '';
-          let connectAccountId = '';
+          // Use connectAccountId from listing first, then fall back to user's account
+          let connectAccountId = data.connectAccountId || '';
           if (data.creatorId) {
             try {
               const userDoc = await getDoc(doc(db, 'users', data.creatorId));
               if (userDoc.exists()) {
                 const userData = userDoc.data();
-                creatorName = userData.displayName || '';
+                creatorName = userData.displayName || data.creatorName || '';
                 creatorEmail = userData.email || '';
-                connectAccountId = userData.connectAccountId || '';
+                // Only use user's connectAccountId if listing doesn't have one
+                if (!connectAccountId) {
+                  connectAccountId = userData.connectAccountId || '';
+                }
               }
             } catch (error) {
               console.error('Error fetching creator info:', error);
@@ -160,9 +164,9 @@ export default function MarketplacePage() {
           return {
             id: d.id,
             ...data,
-            creatorName,
+            creatorName: creatorName || data.creatorName || '',
             creatorEmail,
-            connectAccountId
+            connectAccountId: connectAccountId || data.connectAccountId || ''
           } as Listing;
         })
       );
