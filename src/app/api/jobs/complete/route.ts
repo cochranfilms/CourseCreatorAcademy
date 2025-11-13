@@ -55,8 +55,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify deposit payment was successful
-    if (!applicationData?.depositPaymentIntentId) {
-      return NextResponse.json({ error: 'Deposit payment not found' }, { status: 400 });
+    // Check for depositPaid flag, depositPaymentIntentId, or depositCheckoutSessionId
+    // This handles cases where payment was made via checkout session or direct payment intent
+    const hasDepositPayment = applicationData?.depositPaid || 
+                               applicationData?.depositPaymentIntentId || 
+                               applicationData?.depositCheckoutSessionId;
+    
+    if (!hasDepositPayment) {
+      return NextResponse.json({ 
+        error: 'Deposit payment not found. Please ensure the deposit payment has been completed before marking the job as complete.' 
+      }, { status: 400 });
     }
 
     // Update application status to 'completed'

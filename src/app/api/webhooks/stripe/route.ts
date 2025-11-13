@@ -97,13 +97,18 @@ export async function POST(req: NextRequest) {
         try {
           const applicationId = session.metadata?.applicationId;
           if (applicationId) {
+            const paymentIntentId = typeof session.payment_intent === 'string' 
+              ? session.payment_intent 
+              : session.payment_intent.id || session.payment_intent;
+            
             await adminDb.collection('jobApplications').doc(String(applicationId)).update({
               depositPaid: true,
               depositPaidAt: FieldValue.serverTimestamp(),
               depositCheckoutSessionId: session.id,
+              depositPaymentIntentId: String(paymentIntentId),
               updatedAt: FieldValue.serverTimestamp()
             });
-            console.log('Job deposit checkout completed:', applicationId);
+            console.log('Job deposit checkout completed:', applicationId, 'PaymentIntent:', paymentIntentId);
           }
         } catch (err) {
           console.error('Error processing job deposit checkout:', err);
@@ -599,13 +604,14 @@ export async function POST(req: NextRequest) {
             const applicationDoc = await adminDb.collection('jobApplications').doc(String(applicationId)).get();
             if (applicationDoc.exists) {
               const appData = applicationDoc.data();
-              // Mark deposit as paid
+              // Mark deposit as paid and store payment intent ID
               await adminDb.collection('jobApplications').doc(String(applicationId)).update({
                 depositPaid: true,
                 depositPaidAt: FieldValue.serverTimestamp(),
+                depositPaymentIntentId: pi.id,
                 updatedAt: FieldValue.serverTimestamp()
               });
-              console.log('Job deposit payment processed:', applicationId);
+              console.log('Job deposit payment processed:', applicationId, 'PaymentIntent:', pi.id);
             }
           }
         } catch (err) {

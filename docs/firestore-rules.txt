@@ -166,6 +166,8 @@ service cloud.firestore {
       }
       
       // Users can read applications where they are the applicant or poster
+      // This works for both single document reads and queries
+      // Firestore evaluates each document in a query against these rules
       allow read: if isAuthenticated() && (isApplicant() || isPoster());
       
       // Only authenticated users can create applications
