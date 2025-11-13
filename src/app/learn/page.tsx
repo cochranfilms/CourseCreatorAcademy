@@ -166,6 +166,21 @@ export default function LearnPage() {
     computeSaved();
   }, [user, courses]);
 
+  // Smooth-scroll to Creator Kits when requested (must be declared before any early returns)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const sp = new URLSearchParams(window.location.search || '');
+      const section = sp.get('section');
+      if (section === 'creator-kits') {
+        const el = document.getElementById('creator-kits');
+        if (el) {
+          setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+        }
+      }
+    } catch {}
+  }, []);
+
   if (loading) {
     return (
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -187,21 +202,6 @@ export default function LearnPage() {
 
   // Compute featured course for hero
   const featuredCourse = courses.find(c => c.featured) || courses[0];
-
-  // Smooth-scroll to Creator Kits when requested
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const sp = new URLSearchParams(window.location.search || '');
-      const section = sp.get('section');
-      if (section === 'creator-kits') {
-        const el = document.getElementById('creator-kits');
-        if (el) {
-          setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-        }
-      }
-    } catch {}
-  }, []);
 
   return (
     <>
