@@ -16,6 +16,7 @@ export function CreatorKitsScroller() {
   const [loading, setLoading] = useState(true);
   const [creators, setCreators] = useState<Creator[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(true);
 
   useEffect(() => {
@@ -48,27 +49,24 @@ export function CreatorKitsScroller() {
     load();
   }, []);
 
-  // Auto-scroll animation
+  // Auto-scroll animation (transform-based for reliability across browsers)
   useEffect(() => {
-    if (!isScrolling || creators.length === 0 || !scrollContainerRef.current) return;
+    if (!isScrolling || creators.length === 0 || !trackRef.current) return;
 
-    const container = scrollContainerRef.current;
+    const track = trackRef.current;
     const scrollSpeed = 0.5; // pixels per frame (slower for smoother scroll)
     let animationFrameId: number;
+    let offset = 0;
 
     const animate = () => {
-      if (!isScrolling || !container) return;
+      if (!isScrolling || !track) return;
       
-      const currentScroll = container.scrollLeft;
-      const itemWidth = 320 + 24; // card width (320px) + gap (24px)
+      const itemWidth = 320 + 24; // card width + gap
       const firstSetWidth = itemWidth * creators.length;
       
-      // If we've scrolled past the first set, reset to 0 (seamless loop)
-      if (currentScroll >= firstSetWidth) {
-        container.scrollLeft = currentScroll - firstSetWidth;
-      } else {
-        container.scrollLeft = currentScroll + scrollSpeed;
-      }
+      // If we've moved past the first set, loop back seamlessly
+      offset = (offset + scrollSpeed) % firstSetWidth;
+      track.style.transform = `translateX(-${offset}px)`;
       
       animationFrameId = requestAnimationFrame(animate);
     };
@@ -103,12 +101,13 @@ export function CreatorKitsScroller() {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         aria-label="Creator Kits carousel"
-        className="flex gap-6 overflow-x-auto scrollbar-hide pb-4 px-6"
+        className="overflow-hidden pb-4 px-6"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
         }}
       >
+        <div ref={trackRef} className="flex gap-6 will-change-transform">
         {creators.map((creator) => (
           <Link
             key={creator.id}
@@ -214,6 +213,7 @@ export function CreatorKitsScroller() {
             </div>
           </Link>
         ))}
+        </div>
       </div>
 
       <style jsx>{`
