@@ -91,16 +91,19 @@ export function CreatorKitsScroller() {
 
   return (
     <section className="my-16">
-      <div className="mb-6">
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Creator Kits</h2>
-        <p className="text-neutral-400">Discover exclusive content from top creators</p>
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="mb-6 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Creator Kits</h2>
+          <p className="text-neutral-400">Discover exclusive content from top creators</p>
+        </div>
       </div>
-      
+
       <div
         ref={scrollContainerRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="flex gap-6 overflow-x-auto scrollbar-hide pb-4"
+        aria-label="Creator Kits carousel"
+        className="flex gap-6 overflow-x-auto scrollbar-hide pb-4 px-6"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
