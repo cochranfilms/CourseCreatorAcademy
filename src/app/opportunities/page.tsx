@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { collection, onSnapshot, orderBy, query, addDoc, serverTimestamp, where, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth, firebaseReady } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { JobApplicationModal } from '@/components/JobApplicationModal';
 
 type Job = { 
   id: string; 
@@ -14,6 +15,7 @@ type Job = {
   description?: string;
   posted?: any;
   posterId: string;
+  amount?: number; // Total job amount in cents
 };
 
 const jobTypes = ['All Jobs', 'Full Time', 'Part Time', 'Contract', 'Freelance', 'Internship'];
@@ -27,6 +29,8 @@ export default function OpportunitiesPage() {
   const [showPostForm, setShowPostForm] = useState(false);
   const [showManageModal, setShowManageModal] = useState(false);
   const [myJobs, setMyJobs] = useState<Job[]>([]);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   
   // Form state
   const [title, setTitle] = useState('');
@@ -35,6 +39,7 @@ export default function OpportunitiesPage() {
   const [type, setType] = useState('Full Time');
   const [applyUrl, setApplyUrl] = useState('');
   const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
 
   // Fetch all jobs
   useEffect(() => {
@@ -112,8 +117,8 @@ export default function OpportunitiesPage() {
       alert('Please sign in to post an opportunity.');
       return;
     }
-    if (!title || !company || !applyUrl) {
-      alert('Please fill in all required fields including the application URL.');
+    if (!title || !company) {
+      alert('Please fill in all required fields.');
       return;
     }
     if (!firebaseReady || !db) {
@@ -122,16 +127,30 @@ export default function OpportunitiesPage() {
     }
 
     try {
-      await addDoc(collection(db, 'opportunities'), {
+      const jobData: any = {
         title,
         company,
         location: location || 'Remote',
         type,
-        applyUrl,
         description: description || '',
         posted: serverTimestamp(),
         posterId: user.uid
-      });
+      };
+
+      // Add applyUrl if provided (for backward compatibility)
+      if (applyUrl) {
+        jobData.applyUrl = applyUrl;
+      }
+
+      // Add amount if provided (in cents)
+      if (amount) {
+        const amountNum = parseFloat(amount);
+        if (!isNaN(amountNum) && amountNum > 0) {
+          jobData.amount = Math.round(amountNum * 100); // Convert to cents
+        }
+      }
+
+      await addDoc(collection(db, 'opportunities'), jobData);
       // Reset form
       setTitle('');
       setCompany('');
@@ -139,11 +158,21 @@ export default function OpportunitiesPage() {
       setType('Full Time');
       setApplyUrl('');
       setDescription('');
+      setAmount('');
       setShowPostForm(false);
     } catch (error) {
       console.error('Error posting job:', error);
       alert('Failed to post job. Please try again.');
     }
+  };
+
+  const handleApplyClick = (job: Job) => {
+    if (!user) {
+      alert('Please sign in to apply.');
+      return;
+    }
+    setSelectedJob(job);
+    setShowApplicationModal(true);
   };
 
   const handleDeleteJob = async (jobId: string) => {
@@ -293,18 +322,35 @@ export default function OpportunitiesPage() {
                 </select>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2 text-neutral-300">
-                Application URL *
-              </label>
-              <input
-                type="url"
-                value={applyUrl}
-                onChange={(e) => setApplyUrl(e.target.value)}
-                placeholder="https://yourcompany.com/apply or https://apply.workable.com/j/..."
-                className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
-              />
-              <p className="mt-1 text-xs text-neutral-500">Link to your application form or job posting</p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-neutral-300">
+                  Total Job Amount (USD)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="e.g., 5000.00"
+                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                />
+                <p className="mt-1 text-xs text-neutral-500">Total compensation for this job</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-neutral-300">
+                  External Application URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={applyUrl}
+                  onChange={(e) => setApplyUrl(e.target.value)}
+                  placeholder="https://yourcompany.com/apply"
+                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                />
+                <p className="mt-1 text-xs text-neutral-500">Leave blank to use inline application</p>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2 text-neutral-300">
@@ -440,11 +486,16 @@ export default function OpportunitiesPage() {
                     </a>
                   ) : (
                     <button
-                      disabled
-                      className="px-6 py-2 bg-neutral-800 text-neutral-500 border border-neutral-700 font-medium cursor-not-allowed whitespace-nowrap"
+                      onClick={() => handleApplyClick(job)}
+                      className="px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all whitespace-nowrap"
                     >
                       Apply Now
                     </button>
+                  )}
+                  {job.amount && (
+                    <span className="text-sm text-neutral-400">
+                      ${(job.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
                   )}
                 </div>
               </div>
@@ -452,6 +503,23 @@ export default function OpportunitiesPage() {
           ))
         )}
       </div>
+
+      {/* Application Modal */}
+      {showApplicationModal && selectedJob && (
+        <JobApplicationModal
+          isOpen={showApplicationModal}
+          onClose={() => {
+            setShowApplicationModal(false);
+            setSelectedJob(null);
+          }}
+          opportunityId={selectedJob.id}
+          opportunityTitle={selectedJob.title}
+          opportunityCompany={selectedJob.company}
+          onSuccess={() => {
+            // Could show a success message here
+          }}
+        />
+      )}
     </main>
   );
 }

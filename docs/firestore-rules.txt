@@ -156,6 +156,50 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && resource.data.posterId == request.auth.uid;
     }
     
+    // Job Applications collection
+    match /jobApplications/{applicationId} {
+      function isApplicant() {
+        return isAuthenticated() && request.auth.uid == resource.data.applicantId;
+      }
+      function isPoster() {
+        return isAuthenticated() && request.auth.uid == resource.data.posterId;
+      }
+      
+      // Users can read applications where they are the applicant or poster
+      allow read: if isAuthenticated() && (isApplicant() || isPoster());
+      
+      // Only authenticated users can create applications
+      // Applicant ID must match the authenticated user
+      // Cannot apply to own opportunity
+      allow create: if isAuthenticated()
+        && request.resource.data.applicantId == request.auth.uid
+        && request.resource.data.keys().hasAll(['opportunityId', 'applicantId', 'posterId', 'name', 'email', 'coverLetter', 'status', 'createdAt'])
+        && request.resource.data.status == 'pending';
+      
+      // Updates:
+      // - Poster can hire (status: pending -> hired)
+      // - Poster can reject (status: pending -> rejected)
+      // - Applicant can mark complete (status: hired -> completed)
+      // - Server can update payment fields (via admin)
+      allow update: if isAuthenticated() && (
+        // Poster can hire or reject
+        (isPoster() && 
+          resource.data.status == 'pending' &&
+          request.resource.data.status in ['hired', 'rejected'] &&
+          request.resource.data.applicantId == resource.data.applicantId &&
+          request.resource.data.posterId == resource.data.posterId) ||
+        // Applicant can mark complete
+        (isApplicant() &&
+          resource.data.status == 'hired' &&
+          request.resource.data.status == 'completed' &&
+          request.resource.data.applicantId == resource.data.applicantId &&
+          request.resource.data.posterId == resource.data.posterId)
+      );
+      
+      // Deletion not allowed (for audit trail)
+      allow delete: if false;
+    }
+    
     // Projects collection
     match /projects/{projectId} {
       // Anyone authenticated can read projects

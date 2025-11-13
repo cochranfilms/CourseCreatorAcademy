@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendEmailJS } from '@/lib/email';
+import { computeApplicationFeeAmount } from '@/lib/fees';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
 
   switch (event.type) {
     case 'checkout.session.completed': {
-      const session = event.data.object;
+      const session = event.data.object as any;
       const isSubscription = (session.mode === 'subscription') || Boolean(session.subscription);
       console.log('checkout.session.completed', {
         isConnectEvent,
@@ -90,6 +91,41 @@ export async function POST(req: NextRequest) {
         subscription: session.subscription,
         metadata: session.metadata
       });
+
+      // Handle job deposit checkout completion
+      if (session.metadata?.type === 'job_deposit' && adminDb && session.payment_intent) {
+        try {
+          const applicationId = session.metadata?.applicationId;
+          if (applicationId) {
+            await adminDb.collection('jobApplications').doc(String(applicationId)).update({
+              depositPaid: true,
+              depositPaidAt: FieldValue.serverTimestamp(),
+              depositCheckoutSessionId: session.id,
+              updatedAt: FieldValue.serverTimestamp()
+            });
+            console.log('Job deposit checkout completed:', applicationId);
+          }
+        } catch (err) {
+          console.error('Error processing job deposit checkout:', err);
+        }
+      }
+
+      // Handle job final payment checkout completion
+      if (session.metadata?.type === 'job_final_payment' && adminDb && session.payment_intent) {
+        try {
+          const applicationId = session.metadata?.applicationId;
+          if (applicationId) {
+            await adminDb.collection('jobApplications').doc(String(applicationId)).update({
+              finalPaymentCheckoutSessionId: session.id,
+              updatedAt: FieldValue.serverTimestamp()
+            });
+            console.log('Job final payment checkout completed:', applicationId);
+            // The actual transfer will be handled by payment_intent.succeeded
+          }
+        } catch (err) {
+          console.error('Error processing job final payment checkout:', err);
+        }
+      }
       try {
         if (isSubscription && adminDb) {
           // Legacy+ subscription flow (created on platform account)
@@ -544,15 +580,129 @@ export async function POST(req: NextRequest) {
       break;
     }
     case 'payment_intent.succeeded': {
-      const pi = event.data.object;
+      const pi = event.data.object as any;
       console.log('payment_intent.succeeded', {
         isConnectEvent,
         account: event.account,
         payment_intent: pi.id,
         amount: pi.amount,
         currency: pi.currency,
-        application_fee_amount: pi.application_fee_amount
+        application_fee_amount: pi.application_fee_amount,
+        metadata: pi.metadata
       });
+
+      // Handle job deposit payments
+      if (pi.metadata?.type === 'job_deposit' && adminDb) {
+        try {
+          const applicationId = pi.metadata?.applicationId;
+          if (applicationId) {
+            const applicationDoc = await adminDb.collection('jobApplications').doc(String(applicationId)).get();
+            if (applicationDoc.exists) {
+              const appData = applicationDoc.data();
+              // Mark deposit as paid
+              await adminDb.collection('jobApplications').doc(String(applicationId)).update({
+                depositPaid: true,
+                depositPaidAt: FieldValue.serverTimestamp(),
+                updatedAt: FieldValue.serverTimestamp()
+              });
+              console.log('Job deposit payment processed:', applicationId);
+            }
+          }
+        } catch (err) {
+          console.error('Error processing job deposit payment:', err);
+        }
+      }
+
+      // Handle job final payments
+      if (pi.metadata?.type === 'job_final_payment' && adminDb) {
+        try {
+          const applicationId = pi.metadata?.applicationId;
+          if (applicationId) {
+            const applicationDoc = await adminDb.collection('jobApplications').doc(String(applicationId)).get();
+            if (!applicationDoc.exists) {
+              console.error('Application not found for final payment:', applicationId);
+              break;
+            }
+
+            const appData = applicationDoc.data();
+            const applicantConnectAccountId = appData?.applicantConnectAccountId || pi.metadata?.applicantConnectAccountId;
+            const depositAmount = appData?.depositAmount || 0;
+            const depositPlatformFee = appData?.platformFee || 0;
+            const remainingAmount = pi.amount || 0;
+            const remainingPlatformFee = computeApplicationFeeAmount(remainingAmount);
+            
+            // Calculate amounts to transfer
+            // Deposit transfer: depositAmount - depositPlatformFee (already held in platform account)
+            const depositTransferAmount = depositAmount - depositPlatformFee;
+            // Remaining transfer: remainingAmount - remainingPlatformFee
+            const remainingTransferAmount = remainingAmount - remainingPlatformFee;
+            const totalTransferAmount = depositTransferAmount + remainingTransferAmount;
+
+            if (!applicantConnectAccountId) {
+              console.error('Applicant Connect account ID not found for final payment:', applicationId);
+              break;
+            }
+
+            // Get the charge ID for the final payment to use as source_transaction
+            const charges = await stripe.paymentIntents.retrieve(pi.id, { expand: ['latest_charge'] });
+            const latestCharge = (charges as any).latest_charge;
+            const chargeId = typeof latestCharge === 'string' ? latestCharge : latestCharge?.id;
+
+            // Transfer deposit (held in escrow) to applicant
+            if (depositTransferAmount > 0) {
+              await stripe.transfers.create({
+                amount: depositTransferAmount,
+                currency: 'usd',
+                destination: String(applicantConnectAccountId),
+                ...(chargeId ? { source_transaction: String(chargeId) } : {}),
+                metadata: {
+                  type: 'job_payment_deposit',
+                  applicationId: String(applicationId),
+                  opportunityId: String(appData?.opportunityId || ''),
+                  posterId: String(appData?.posterId || ''),
+                  applicantId: String(appData?.applicantId || '')
+                }
+              });
+            }
+
+            // Transfer remaining amount to applicant
+            if (remainingTransferAmount > 0) {
+              await stripe.transfers.create({
+                amount: remainingTransferAmount,
+                currency: 'usd',
+                destination: String(applicantConnectAccountId),
+                ...(chargeId ? { source_transaction: String(chargeId) } : {}),
+                metadata: {
+                  type: 'job_payment_remaining',
+                  applicationId: String(applicationId),
+                  opportunityId: String(appData?.opportunityId || ''),
+                  posterId: String(appData?.posterId || ''),
+                  applicantId: String(appData?.applicantId || '')
+                }
+              });
+            }
+
+            // Update application status
+            await adminDb.collection('jobApplications').doc(String(applicationId)).update({
+              status: 'paid',
+              finalPaymentPaid: true,
+              finalPaymentPaidAt: FieldValue.serverTimestamp(),
+              totalTransferAmount,
+              updatedAt: FieldValue.serverTimestamp()
+            });
+
+            console.log('Job final payment processed and transferred:', {
+              applicationId,
+              totalTransferAmount,
+              depositTransferAmount,
+              remainingTransferAmount
+            });
+          }
+        } catch (err) {
+          console.error('Error processing job final payment:', err);
+        }
+      }
+
       break;
     }
     case 'payment_intent.payment_failed': {
