@@ -9,6 +9,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Messages } from '@/components/Messages';
 import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
+import { JobApplicationModal } from '@/components/JobApplicationModal';
 
 type UserProfile = {
   displayName?: string;
@@ -55,6 +56,8 @@ type Opportunity = {
   location?: string;
   type?: string;
   posted?: any;
+  posterId?: string;
+  amount?: number; // Total job amount in cents
 };
 
 type Project = {
@@ -111,6 +114,9 @@ export default function ProfilePage() {
   const [memberSince, setMemberSince] = useState<Date | null>(null);
   const [hasLegacySub, setHasLegacySub] = useState(false);
   const [showLegacyModal, setShowLegacyModal] = useState(false);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
+  const [appliedOpportunityIds, setAppliedOpportunityIds] = useState<Set<string>>(new Set());
 
   // If this is a legacy creator, redirect to their public legacy kit page
   useEffect(() => {
@@ -249,7 +255,9 @@ export default function ProfilePage() {
               company: x.company,
               location: x.location,
               type: x.type,
-              posted: x.posted
+              posted: x.posted,
+              posterId: x.posterId,
+              amount: x.amount
             };
           });
           setOpportunities(oppData);
@@ -300,6 +308,30 @@ export default function ProfilePage() {
     };
     check();
     return () => { cancelled = true; };
+  }, [currentUser]);
+
+  // Fetch applied opportunities for current user
+  useEffect(() => {
+    if (!firebaseReady || !db || !currentUser) {
+      setAppliedOpportunityIds(new Set());
+      return;
+    }
+
+    const fetchAppliedOpportunities = async () => {
+      try {
+        const appliedQuery = query(
+          collection(db, 'jobApplications'),
+          where('applicantId', '==', currentUser.uid)
+        );
+        const appliedSnap = await getDocs(appliedQuery);
+        const appliedIds = new Set(appliedSnap.docs.map(doc => doc.data().opportunityId));
+        setAppliedOpportunityIds(appliedIds);
+      } catch (error) {
+        console.error('Error fetching applied opportunities:', error);
+      }
+    };
+
+    fetchAppliedOpportunities();
   }, [currentUser]);
 
   if (loading) {
@@ -658,18 +690,44 @@ export default function ProfilePage() {
         <div className="mb-6">
           <h2 className="text-xl font-bold text-white mb-4">Opportunities</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {opportunities.map((o) => (
-              <div key={o.id} className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 rounded-lg p-4">
-                <div className="text-sm text-neutral-500 mb-1">{o.company || 'Opportunity'}</div>
-                <div className="font-semibold text-white">{o.title}</div>
-                <div className="text-xs text-neutral-400 mt-1">
-                  {o.location || 'Remote'} {o.type ? `• ${o.type}` : ''}
+            {opportunities.map((o) => {
+              const isOwnOpportunity = currentUser && o.posterId === currentUser.uid;
+              const hasApplied = appliedOpportunityIds.has(o.id);
+              const canApply = currentUser && !isOwnOpportunity && !hasApplied;
+              
+              return (
+                <div key={o.id} className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 rounded-lg p-4 flex flex-col">
+                  <div className="flex-1">
+                    <div className="text-sm text-neutral-500 mb-1">{o.company || 'Opportunity'}</div>
+                    <div className="font-semibold text-white">{o.title}</div>
+                    <div className="text-xs text-neutral-400 mt-1">
+                      {o.location || 'Remote'} {o.type ? `• ${o.type}` : ''}
+                    </div>
+                    {o.posted && (
+                      <div className="text-xs text-neutral-500 mt-1">Posted {formatDate(o.posted)}</div>
+                    )}
+                  </div>
+                  {canApply && (
+                    <div className="mt-4 pt-4 border-t border-neutral-800">
+                      <button
+                        onClick={() => {
+                          setSelectedOpportunity(o);
+                          setShowApplicationModal(true);
+                        }}
+                        className="w-full px-4 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all text-sm"
+                      >
+                        Apply Now
+                      </button>
+                      {o.amount && (
+                        <div className="text-xs text-neutral-400 mt-2 text-center">
+                          ${(o.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {o.posted && (
-                  <div className="text-xs text-neutral-500 mt-1">Posted {formatDate(o.posted)}</div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -747,6 +805,33 @@ export default function ProfilePage() {
       {/* Legacy+ creator selection modal (subscribe / add another) */}
       {showLegacyModal && (
         <LegacyUpgradeModal isOpen={showLegacyModal} onClose={() => setShowLegacyModal(false)} />
+      )}
+
+      {/* Application Modal */}
+      {showApplicationModal && selectedOpportunity && (
+        <JobApplicationModal
+          isOpen={showApplicationModal}
+          onClose={() => {
+            setShowApplicationModal(false);
+            setSelectedOpportunity(null);
+          }}
+          opportunityId={selectedOpportunity.id}
+          opportunityTitle={selectedOpportunity.title}
+          opportunityCompany={selectedOpportunity.company}
+          onSuccess={() => {
+            // Refresh applied opportunities
+            if (currentUser && firebaseReady && db) {
+              const appliedQuery = query(
+                collection(db, 'jobApplications'),
+                where('applicantId', '==', currentUser.uid)
+              );
+              getDocs(appliedQuery).then((appliedSnap) => {
+                const appliedIds = new Set(appliedSnap.docs.map(doc => doc.data().opportunityId));
+                setAppliedOpportunityIds(appliedIds);
+              });
+            }
+          }}
+        />
       )}
     </main>
   );

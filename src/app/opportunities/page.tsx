@@ -474,20 +474,25 @@ export default function OpportunitiesPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end gap-2">
                   {job.applyUrl ? (
                     <a
                       href={job.applyUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all whitespace-nowrap"
+                      className={`px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all whitespace-nowrap ${
+                        user && job.posterId === user.uid ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
+                      }`}
                     >
                       Apply Now
                     </a>
                   ) : (
                     <button
                       onClick={() => handleApplyClick(job)}
-                      className="px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all whitespace-nowrap"
+                      disabled={user && job.posterId === user.uid}
+                      className={`px-6 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all whitespace-nowrap ${
+                        user && job.posterId === user.uid ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     >
                       Apply Now
                     </button>
