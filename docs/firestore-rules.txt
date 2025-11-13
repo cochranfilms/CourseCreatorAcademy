@@ -64,8 +64,9 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
-      // Restrict reads of private user docs to owner only
-      allow read: if isOwner(userId);
+      // Allow authenticated users to read profile docs so avatars/names can be shown across the app.
+      // Note: Keep sensitive data out of this document; store private data in subcollections.
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isOwner(userId);
       allow update: if isAuthenticated() && isOwner(userId);
       allow delete: if isAuthenticated() && isOwner(userId);
