@@ -161,8 +161,23 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
     const fetchApplicantProfiles = async () => {
       const profiles: Record<string, { photoURL?: string; displayName?: string }> = {};
       
-      // Only fetch profiles for applications where deposit is paid
-      const applicationsWithDepositPaid = applicationsReceived.filter(app => app.depositPaid);
+      // Check for deposit paid - check multiple indicators for robustness
+      const applicationsWithDepositPaid = applicationsReceived.filter(app => 
+        app.depositPaid || 
+        app.depositPaymentIntentId || 
+        app.depositCheckoutSessionId ||
+        (app.status !== 'pending' && app.status !== 'rejected') // If hired/completed/paid, deposit was likely paid
+      );
+      
+      console.log('JobsTab: Applications with deposit paid:', applicationsWithDepositPaid.length);
+      console.log('JobsTab: Applications received:', applicationsReceived.map(app => ({
+        id: app.id,
+        depositPaid: app.depositPaid,
+        depositPaymentIntentId: app.depositPaymentIntentId,
+        depositCheckoutSessionId: app.depositCheckoutSessionId,
+        status: app.status,
+        applicantId: app.applicantId
+      })));
       
       await Promise.all(
         applicationsWithDepositPaid.map(async (app) => {
@@ -174,6 +189,9 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
                 photoURL: userData.photoURL,
                 displayName: userData.displayName
               };
+              console.log('JobsTab: Fetched profile for applicant:', app.applicantId, profiles[app.applicantId]);
+            } else {
+              console.warn('JobsTab: User document not found for applicant:', app.applicantId);
             }
           } catch (error) {
             console.error(`Error fetching profile for applicant ${app.applicantId}:`, error);
@@ -181,6 +199,7 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
         })
       );
       
+      console.log('JobsTab: Final applicant profiles:', profiles);
       setApplicantProfiles(profiles);
     };
 
@@ -401,7 +420,12 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
             <div className="space-y-4">
               {applicationsReceived.map((app) => {
                 const applicantProfile = applicantProfiles[app.applicantId];
-                const showProfilePicture = app.depositPaid && applicantProfile;
+                // Check multiple indicators for deposit paid
+                const depositIsPaid = app.depositPaid || 
+                                      app.depositPaymentIntentId || 
+                                      app.depositCheckoutSessionId ||
+                                      (app.status !== 'pending' && app.status !== 'rejected');
+                const showProfilePicture = depositIsPaid && applicantProfile;
                 
                 return (
                 <div key={app.id} className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-6 rounded-lg">
