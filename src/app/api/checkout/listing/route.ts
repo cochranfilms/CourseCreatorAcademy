@@ -27,14 +27,18 @@ export async function POST(req: NextRequest) {
     const applicationFeeAmount = computeApplicationFeeAmount(Number(amount));
 
     // Verify the connected account can take payments before starting Checkout
+    // In test mode, allow restricted accounts to accept test payments
     try {
       const account = await stripe.accounts.retrieve(sellerAccountId);
       const chargesEnabled = (account as any).charges_enabled;
-      if (!chargesEnabled) {
+      const isTestMode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
+      
+      if (!chargesEnabled && !isTestMode) {
         return NextResponse.json({
           error: 'Seller is not ready to accept payments yet. Please try again later.'
         }, { status: 400 });
       }
+      // In test mode, allow restricted accounts (they can still accept test payments)
     } catch (e: any) {
       return NextResponse.json({ error: e?.message || 'Failed to verify seller account' }, { status: 400 });
     }
