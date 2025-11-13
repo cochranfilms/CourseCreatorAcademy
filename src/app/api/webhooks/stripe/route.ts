@@ -655,10 +655,23 @@ export async function POST(req: NextRequest) {
               break;
             }
 
-            // Get the charge ID for the final payment to use as source_transaction
-            const charges = await stripe.paymentIntents.retrieve(pi.id, { expand: ['latest_charge'] });
-            const latestCharge = (charges as any).latest_charge;
-            const chargeId = typeof latestCharge === 'string' ? latestCharge : latestCharge?.id;
+            // Get the charge IDs for both the deposit and the final payment
+            // Use each respective charge as source_transaction for its transfer
+            const finalPi = await stripe.paymentIntents.retrieve(pi.id, { expand: ['latest_charge'] });
+            const finalLatestCharge = (finalPi as any).latest_charge;
+            const finalChargeId = typeof finalLatestCharge === 'string' ? finalLatestCharge : finalLatestCharge?.id;
+
+            let depositChargeId: string | null = null;
+            const depositPiId = appData?.depositPaymentIntentId;
+            if (depositPiId) {
+              try {
+                const depositPi = await stripe.paymentIntents.retrieve(String(depositPiId), { expand: ['latest_charge'] });
+                const depositLatestCharge = (depositPi as any).latest_charge;
+                depositChargeId = typeof depositLatestCharge === 'string' ? depositLatestCharge : depositLatestCharge?.id || null;
+              } catch (err) {
+                console.warn('Could not retrieve deposit PaymentIntent or charge for application', applicationId, err);
+              }
+            }
 
             // Transfer deposit (held in escrow) to applicant
             if (depositTransferAmount > 0) {
@@ -666,7 +679,8 @@ export async function POST(req: NextRequest) {
                 amount: depositTransferAmount,
                 currency: 'usd',
                 destination: String(applicantConnectAccountId),
-                ...(chargeId ? { source_transaction: String(chargeId) } : {}),
+                // Prefer linking to the original deposit charge; if not available, omit source_transaction
+                ...(depositChargeId ? { source_transaction: String(depositChargeId) } : {}),
                 metadata: {
                   type: 'job_payment_deposit',
                   applicationId: String(applicationId),
@@ -683,7 +697,7 @@ export async function POST(req: NextRequest) {
                 amount: remainingTransferAmount,
                 currency: 'usd',
                 destination: String(applicantConnectAccountId),
-                ...(chargeId ? { source_transaction: String(chargeId) } : {}),
+                ...(finalChargeId ? { source_transaction: String(finalChargeId) } : {}),
                 metadata: {
                   type: 'job_payment_remaining',
                   applicationId: String(applicationId),
