@@ -9,7 +9,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Messages } from '@/components/Messages';
 import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
-import { JobsTab } from '@/components/JobsTab';
 
 type UserProfile = {
   displayName?: string;
@@ -733,14 +732,6 @@ export default function ProfilePage() {
           </svg>
           <h3 className="text-lg font-semibold text-white mb-2">No Marketplace Listings</h3>
           <p className="text-neutral-400">This creator hasn't posted any marketplace listings yet.</p>
-        </div>
-      )}
-
-      {/* Jobs Tab - Only visible when viewing own profile */}
-      {currentUser && currentUser.uid === userId && (
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">Jobs</h2>
-          <JobsTab userId={userId} isOwnProfile={true} />
         </div>
       )}
 
