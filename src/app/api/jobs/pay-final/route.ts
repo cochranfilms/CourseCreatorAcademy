@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { stripe } from '@/lib/stripe';
-import { computeApplicationFeeAmount } from '@/lib/fees';
 import { FieldValue } from 'firebase-admin/firestore';
 
 async function getUserFromAuthHeader(req: NextRequest): Promise<string | null> {
@@ -89,12 +88,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Applicant Connect account not found' }, { status: 400 });
     }
 
-    // Calculate platform fee on remaining amount (3%)
-    const platformFeeOnRemaining = computeApplicationFeeAmount(remainingAmount);
-    const totalPlatformFee = (applicationData?.platformFee || 0) + platformFeeOnRemaining;
+    // No platform fee on the remaining amount (fee only on deposit)
+    const platformFeeOnRemaining = 0;
+    const totalPlatformFee = (applicationData?.platformFee || 0);
     
-    // Amount to transfer to applicant (remaining - platform fee)
-    const transferAmount = remainingAmount - platformFeeOnRemaining;
+    // Amount to transfer to applicant is the full remaining amount
+    const transferAmount = remainingAmount;
 
     // Update application with final payment info
     // Payment will be handled via checkout session in separate endpoint

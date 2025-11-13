@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { stripe } from '@/lib/stripe';
-import { computeApplicationFeeAmount } from '@/lib/fees';
 import { FieldValue } from 'firebase-admin/firestore';
 
 async function getUserFromAuthHeader(req: NextRequest): Promise<string | null> {
@@ -69,13 +68,13 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
     
-    // Calculate platform fee on remaining amount (3%)
-    const platformFeeOnRemaining = computeApplicationFeeAmount(remainingAmount);
+    // No platform fee on the remaining amount (only charge on deposit)
+    const platformFeeOnRemaining = 0;
     const existingPlatformFee = applicationData?.platformFee || 0;
-    const totalPlatformFee = existingPlatformFee + platformFeeOnRemaining;
+    const totalPlatformFee = existingPlatformFee; // unchanged
     
-    // Amount to transfer to applicant (remaining - platform fee)
-    const transferAmount = remainingAmount - platformFeeOnRemaining;
+    // Amount to transfer to applicant is the full remaining amount
+    const transferAmount = remainingAmount;
     
     // Update application with calculated amounts if not already set
     if (!applicationData?.remainingAmount || applicationData?.remainingAmount === 0) {
@@ -133,7 +132,7 @@ export async function POST(req: NextRequest) {
           applicantConnectAccountId: applicationData?.applicantConnectAccountId || '',
           totalAmount: String(totalAmount),
           remainingAmount: String(remainingAmount),
-          platformFee: String(platformFeeOnRemaining),
+          platformFee: String(0),
           depositAmount: String(depositAmount)
         }
       },

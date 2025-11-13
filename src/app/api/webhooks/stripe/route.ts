@@ -641,7 +641,8 @@ export async function POST(req: NextRequest) {
             const depositPlatformFee = appData?.platformFee || 0;
             // Use remainingAmount from metadata if available, otherwise from appData, otherwise from payment intent
             const remainingAmount = parseInt(pi.metadata?.remainingAmount || '0') || appData?.remainingAmount || pi.amount || 0;
-            const remainingPlatformFee = parseInt(pi.metadata?.platformFee || '0') || computeApplicationFeeAmount(remainingAmount);
+            // No platform fee taken on final payment (fee only on deposit)
+            const remainingPlatformFee = 0;
             
             // Calculate amounts to transfer
             // Deposit transfer: depositAmount - depositPlatformFee (already held in platform account)
