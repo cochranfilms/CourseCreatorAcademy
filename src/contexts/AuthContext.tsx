@@ -110,45 +110,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user) {
         await ensureUserProfile(user);
         // Attempt to auto-claim any guest purchases made with this email
+        // Wrap in try-catch and handle errors gracefully to prevent app crashes
         try {
           if (firebaseReady && db && user.email) {
-            const claimsQ = query(collection(db, 'pendingMemberships'), where('email', '==', user.email), where('claimed', '==', false));
-            const snap = await getDocs(claimsQ);
-            if (!snap.empty) {
-              const batch = writeBatch(db);
-              const userRef = doc(db, 'users', user.uid);
-              // If multiple claims, apply the latest plan; record all as claimed
-              let latestPlan: string | null = null;
-              let latestSub: string | null = null;
-              snap.docs.forEach((d) => {
-                const data = d.data() as any;
-                latestPlan = data?.planType || latestPlan;
-                latestSub = data?.subscriptionId || latestSub;
-                batch.update(doc(db, 'pendingMemberships', d.id), {
-                  claimed: true,
-                  claimedBy: user.uid,
-                  claimedAt: new Date()
+            // Normalize email to lowercase for comparison (matching Firestore rules)
+            const normalizedEmail = user.email.toLowerCase().trim();
+            const claimsQ = query(
+              collection(db, 'pendingMemberships'), 
+              where('email', '==', normalizedEmail), 
+              where('claimed', '==', false)
+            );
+            
+            try {
+              const snap = await getDocs(claimsQ);
+              if (!snap.empty) {
+                const batch = writeBatch(db);
+                const userRef = doc(db, 'users', user.uid);
+                // If multiple claims, apply the latest plan; record all as claimed
+                let latestPlan: string | null = null;
+                let latestSub: string | null = null;
+                
+                // Filter docs to only process those we have permission to update
+                const processableDocs = snap.docs.filter((d) => {
+                  const data = d.data();
+                  // Verify email matches (case-insensitive) before processing
+                  const docEmail = (data.email || '').toLowerCase().trim();
+                  return docEmail === normalizedEmail;
                 });
-              });
-              if (latestPlan || latestSub) {
-                batch.set(userRef, {
-                  membershipActive: true,
-                  ...(latestPlan ? { membershipPlan: latestPlan } : {}),
-                  ...(latestSub ? { membershipSubscriptionId: latestSub } : {}),
-                  updatedAt: new Date()
-                }, { merge: true });
+                
+                if (processableDocs.length > 0) {
+                  processableDocs.forEach((d) => {
+                    const data = d.data() as any;
+                    latestPlan = data?.planType || latestPlan;
+                    latestSub = data?.subscriptionId || latestSub;
+                    batch.update(doc(db, 'pendingMemberships', d.id), {
+                      claimed: true,
+                      claimedBy: user.uid,
+                      claimedAt: new Date()
+                    });
+                  });
+                  
+                  if (latestPlan || latestSub) {
+                    batch.set(userRef, {
+                      membershipActive: true,
+                      ...(latestPlan ? { membershipPlan: latestPlan } : {}),
+                      ...(latestSub ? { membershipSubscriptionId: latestSub } : {}),
+                      updatedAt: new Date()
+                    }, { merge: true });
+                  }
+                  
+                  try {
+                    await batch.commit();
+                  } catch (batchError: any) {
+                    // Permission errors on batch commit are non-fatal
+                    if (batchError?.code !== 'permission-denied') {
+                      console.error('Failed to commit membership claim batch', batchError);
+                    }
+                  }
+                }
               }
-              await batch.commit();
+            } catch (queryError: any) {
+              // Permission errors on query are non-fatal - user may not have any pending memberships
+              if (queryError?.code !== 'permission-denied') {
+                console.error('Failed to query pending memberships', queryError);
+              }
             }
           }
-        } catch (e) {
-          console.error('Failed to claim pending membership for user', e);
+        } catch (e: any) {
+          // Catch-all error handler - ensure errors don't crash the app
+          // Only log non-permission errors to avoid noise
+          if (e?.code !== 'permission-denied') {
+            console.error('Failed to claim pending membership for user', e);
+          }
         }
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [firebaseReady, auth]);
 
   const signIn = async (email: string, password: string) => {
     if (!auth) throw new Error('Firebase Auth not initialized');
