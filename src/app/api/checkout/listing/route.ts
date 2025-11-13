@@ -31,7 +31,25 @@ export async function POST(req: NextRequest) {
     try {
       const account = await stripe.accounts.retrieve(sellerAccountId);
       const chargesEnabled = (account as any).charges_enabled;
+      const capabilities = (account as any).capabilities || {};
+      const transfersStatus = capabilities.transfers;
       const isTestMode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
+      
+      // Check if transfers capability is active (required for transfer_data)
+      if (transfersStatus !== 'active') {
+        if (isTestMode) {
+          // In test mode, provide helpful error message
+          return NextResponse.json({
+            error: 'Seller account needs to complete Stripe Connect onboarding. The transfers capability must be enabled. Please complete onboarding through the Stripe dashboard or contact support.',
+            code: 'TRANSFERS_NOT_ENABLED',
+            accountId: sellerAccountId
+          }, { status: 400 });
+        } else {
+          return NextResponse.json({
+            error: 'Seller is not ready to accept payments yet. Please complete Stripe Connect onboarding.'
+          }, { status: 400 });
+        }
+      }
       
       if (!chargesEnabled && !isTestMode) {
         return NextResponse.json({
@@ -40,6 +58,14 @@ export async function POST(req: NextRequest) {
       }
       // In test mode, allow restricted accounts (they can still accept test payments)
     } catch (e: any) {
+      // Check if this is the transfers capability error
+      if (e?.message?.includes('transfers') || e?.message?.includes('legacy_payments')) {
+        return NextResponse.json({
+          error: 'Seller account needs to complete Stripe Connect onboarding. The transfers capability must be enabled.',
+          code: 'TRANSFERS_NOT_ENABLED',
+          details: e.message
+        }, { status: 400 });
+      }
       return NextResponse.json({ error: e?.message || 'Failed to verify seller account' }, { status: 400 });
     }
 

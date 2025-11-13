@@ -49,7 +49,8 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
   const [applicantProfiles, setApplicantProfiles] = useState<Record<string, { photoURL?: string; displayName?: string }>>({});
   const [showMessagesModal, setShowMessagesModal] = useState(false);
-  const [selectedApplicantId, setSelectedApplicantId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [posterProfiles, setPosterProfiles] = useState<Record<string, { photoURL?: string; displayName?: string }>>({});
 
   useEffect(() => {
     if (!firebaseReady || !db || !userId) {
@@ -162,15 +163,10 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
     const fetchApplicantProfiles = async () => {
       const profiles: Record<string, { photoURL?: string; displayName?: string }> = {};
       
-      // Check for deposit paid - check multiple indicators for robustness
-      const applicationsWithDepositPaid = applicationsReceived.filter(app => 
-        app.depositPaid || 
-        app.depositPaymentIntentId || 
-        app.depositCheckoutSessionId ||
-        (app.status !== 'pending' && app.status !== 'rejected') // If hired/completed/paid, deposit was likely paid
-      );
+      // Fetch profiles for all visible applications except rejected (keeps avatars after completion/paid)
+      const applicationsToShow = applicationsReceived.filter(app => app.status !== 'rejected');
       
-      console.log('JobsTab: Applications with deposit paid:', applicationsWithDepositPaid.length);
+      console.log('JobsTab: Applications to show avatars for (received):', applicationsToShow.length);
       console.log('JobsTab: Applications received:', applicationsReceived.map(app => ({
         id: app.id,
         depositPaid: app.depositPaid,
@@ -181,7 +177,7 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
       })));
       
       await Promise.all(
-        applicationsWithDepositPaid.map(async (app) => {
+        applicationsToShow.map(async (app) => {
           try {
             const userDoc = await getDoc(doc(db, 'users', app.applicantId));
             if (userDoc.exists()) {
@@ -206,6 +202,43 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
 
     fetchApplicantProfiles();
   }, [applicationsReceived]);
+
+  // Fetch poster profiles for applications the user sent (for hired/completed/paid)
+  useEffect(() => {
+    if (!firebaseReady || !db || applicationsSent.length === 0) return;
+
+    const fetchPosterProfiles = async () => {
+      const profiles: Record<string, { photoURL?: string; displayName?: string }> = {};
+
+      // Only show once hired or later to satisfy requirement
+      const applicationsNeedingPoster = applicationsSent.filter(
+        (app) => app.status === 'hired' || app.status === 'completed' || app.status === 'paid'
+      );
+
+      await Promise.all(
+        applicationsNeedingPoster.map(async (app) => {
+          try {
+            // Avoid duplicate fetches
+            if (profiles[app.posterId]) return;
+            const userDoc = await getDoc(doc(db, 'users', app.posterId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              profiles[app.posterId] = {
+                photoURL: userData.photoURL,
+                displayName: userData.displayName
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching profile for poster ${app.posterId}:`, error);
+          }
+        })
+      );
+
+      setPosterProfiles((prev) => ({ ...prev, ...profiles }));
+    };
+
+    fetchPosterProfiles();
+  }, [applicationsSent]);
 
   const handleHire = async (applicationId: string) => {
     if (!user || !auth?.currentUser) {
@@ -373,38 +406,66 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            {applicationsSent.map((app) => (
-              <div key={app.id} className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-6 rounded-lg">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-white mb-1">{app.opportunityTitle}</h3>
-                    <p className="text-sm text-neutral-400">{app.opportunityCompany || 'Company'}</p>
-                    {app.createdAt && (
-                      <p className="text-xs text-neutral-500 mt-1">Applied {formatDate(app.createdAt)}</p>
-                    )}
+            {applicationsSent.map((app) => {
+              const posterProfile = posterProfiles[app.posterId];
+              const showPosterAvatar = (app.status === 'hired' || app.status === 'completed' || app.status === 'paid') && posterProfile;
+              return (
+                <div key={app.id} className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-6 rounded-lg">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1 flex items-start gap-3">
+                      {showPosterAvatar && (
+                        <button
+                          onClick={() => {
+                            setSelectedUserId(app.posterId);
+                            setShowMessagesModal(true);
+                          }}
+                          className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden border-2 border-ccaBlue hover:border-ccaBlue/70 transition cursor-pointer"
+                          title={`Message ${posterProfile.displayName || 'Job Poster'}`}
+                        >
+                          {posterProfile.photoURL ? (
+                            <img
+                              src={posterProfile.photoURL}
+                              alt={posterProfile.displayName || 'Job Poster'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-ccaBlue flex items-center justify-center text-white font-semibold">
+                              {(posterProfile.displayName || 'P').charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </button>
+                      )}
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg text-white mb-1">{app.opportunityTitle}</h3>
+                        <p className="text-sm text-neutral-400">{app.opportunityCompany || 'Company'}</p>
+                        {app.createdAt && (
+                          <p className="text-xs text-neutral-500 mt-1">Applied {formatDate(app.createdAt)}</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadge(app.status)}`}>
+                      {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                    </span>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadge(app.status)}`}>
-                    {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                  </span>
+                  {app.status === 'hired' && (
+                    <div className="mt-4 pt-4 border-t border-neutral-800">
+                      <button
+                        onClick={() => handleMarkComplete(app.id)}
+                        disabled={processingComplete === app.id}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded transition disabled:opacity-50"
+                      >
+                        {processingComplete === app.id ? 'Processing...' : 'Mark as Complete'}
+                      </button>
+                    </div>
+                  )}
+                  {app.totalAmount && (
+                    <p className="text-sm text-neutral-400 mt-2">
+                      Total Amount: ${((app.totalAmount || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  )}
                 </div>
-                {app.status === 'hired' && (
-                  <div className="mt-4 pt-4 border-t border-neutral-800">
-                    <button
-                      onClick={() => handleMarkComplete(app.id)}
-                      disabled={processingComplete === app.id}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded transition disabled:opacity-50"
-                    >
-                      {processingComplete === app.id ? 'Processing...' : 'Mark as Complete'}
-                    </button>
-                  </div>
-                )}
-                {app.totalAmount && (
-                  <p className="text-sm text-neutral-400 mt-2">
-                    Total Amount: ${((app.totalAmount || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -426,7 +487,8 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
                                       app.depositPaymentIntentId || 
                                       app.depositCheckoutSessionId ||
                                       (app.status !== 'pending' && app.status !== 'rejected');
-                const showProfilePicture = depositIsPaid && applicantProfile;
+                // Keep avatar visible after completion/paid: hide only for rejected
+                const showProfilePicture = app.status !== 'rejected' && applicantProfile;
                 
                 return (
                 <div key={app.id} className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-6 rounded-lg">
@@ -435,7 +497,7 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
                       {showProfilePicture && (
                         <button
                           onClick={() => {
-                            setSelectedApplicantId(app.applicantId);
+                            setSelectedUserId(app.applicantId);
                             setShowMessagesModal(true);
                           }}
                           className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden border-2 border-ccaBlue hover:border-ccaBlue/70 transition cursor-pointer"
@@ -549,14 +611,14 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
       )}
 
       {/* Messages Modal */}
-      {showMessagesModal && selectedApplicantId && (
+      {showMessagesModal && selectedUserId && (
         <Messages
           isOpen={showMessagesModal}
           onClose={() => {
             setShowMessagesModal(false);
-            setSelectedApplicantId(null);
+            setSelectedUserId(null);
           }}
-          initialRecipientUserId={selectedApplicantId}
+          initialRecipientUserId={selectedUserId}
         />
       )}
     </div>
