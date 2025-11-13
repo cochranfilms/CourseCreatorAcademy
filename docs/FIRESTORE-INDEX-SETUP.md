@@ -2,7 +2,7 @@
 
 ## Required Composite Indexes
 
-Your application requires two composite indexes for optimal performance. The code includes fallbacks if indexes don't exist, but creating them will improve performance.
+Your application requires composite indexes for optimal performance. The code includes fallbacks if indexes don't exist, but creating them will improve performance.
 
 ### 1. Opportunities Index
 
@@ -37,6 +37,44 @@ Click this link when you see the error in console:
 https://console.firebase.google.com/v1/r/project/course-creator-academy-866d6/firestore/indexes?create_composite=Cl1wcm9qZWN0cy9jb3Vyc2UtY3JlYXRvci1hY2FkZW15LTg2NmQ2L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9saXN0aW5ncy9pbmRleGVzL18QARoNCgljcmVhdG9ySWQQARoNCgljcmVhdGVkQXQQAhoMCghfX25hbWVfXxAC
 ```
 
+### 3. Job Applications - Applications Sent Index
+
+**Collection:** `jobApplications`  
+**Fields:**
+- `applicantId` (Ascending)
+- `createdAt` (Descending)
+
+**Used by:**
+- Jobs Tab - "Applications Sent" section
+
+**Create Index:**
+1. Go to [Firebase Console → Firestore → Indexes](https://console.firebase.google.com/project/course-creator-academy-866d6/firestore/indexes)
+2. Click "Create Index"
+3. Collection ID: `jobApplications`
+4. Add fields:
+   - Field: `applicantId`, Order: Ascending
+   - Field: `createdAt`, Order: Descending
+5. Click "Create"
+
+### 4. Job Applications - Applications Received Index
+
+**Collection:** `jobApplications`  
+**Fields:**
+- `posterId` (Ascending)
+- `createdAt` (Descending)
+
+**Used by:**
+- Jobs Tab - "Applications Received" section
+
+**Create Index:**
+1. Go to [Firebase Console → Firestore → Indexes](https://console.firebase.google.com/project/course-creator-academy-866d6/firestore/indexes)
+2. Click "Create Index"
+3. Collection ID: `jobApplications`
+4. Add fields:
+   - Field: `posterId`, Order: Ascending
+   - Field: `createdAt`, Order: Descending
+5. Click "Create"
+
 ## How to Create Indexes
 
 ### Method 1: Via Error Links (Easiest)
@@ -50,17 +88,8 @@ https://console.firebase.google.com/v1/r/project/course-creator-academy-866d6/fi
 
 1. Go to Firebase Console → Firestore Database → Indexes
 2. Click "Create Index"
-3. For Opportunities:
-   - Collection ID: `opportunities`
-   - Add fields:
-     - Field: `posterId`, Order: Ascending
-     - Field: `posted`, Order: Descending
-4. For Listings:
-   - Collection ID: `listings`
-   - Add fields:
-     - Field: `creatorId`, Order: Ascending
-     - Field: `createdAt`, Order: Descending
-5. Click "Create"
+3. Follow the instructions above for each index
+4. Click "Create"
 
 ## Fallback Behavior
 
@@ -91,5 +120,3 @@ The code includes error handling that:
 - After creating an index, check Firebase Console → Firestore → Indexes
 - Status will show "Building" → "Enabled" when ready
 - Usually takes 1-2 minutes
-
-

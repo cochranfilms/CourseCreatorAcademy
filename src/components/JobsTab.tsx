@@ -50,6 +50,8 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
       return;
     }
 
+    console.log('JobsTab: Fetching applications for userId:', userId);
+
     // Fetch applications sent (where user is applicant)
     const sentQuery = query(
       collection(db, 'jobApplications'),
@@ -60,15 +62,38 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
     const sentUnsub = onSnapshot(
       sentQuery,
       (snap) => {
+        console.log('JobsTab: Applications sent query success, count:', snap.docs.length);
         const apps = snap.docs.map((d) => ({
           id: d.id,
           ...(d.data() as any)
         })) as JobApplication[];
+        console.log('JobsTab: Applications sent data:', apps);
         setApplicationsSent(apps);
+        setLoading(false);
       },
       (error) => {
         console.error('Error fetching applications sent:', error);
-        setApplicationsSent([]);
+        // Fallback without orderBy if index doesn't exist
+        const fallbackQuery = query(
+          collection(db, 'jobApplications'),
+          where('applicantId', '==', userId)
+        );
+        onSnapshot(fallbackQuery, (snap) => {
+          console.log('JobsTab: Applications sent fallback query success, count:', snap.docs.length);
+          const apps = snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as any)
+          })) as JobApplication[];
+          console.log('JobsTab: Applications sent fallback data:', apps);
+          // Sort client-side by createdAt
+          const sortedApps = apps.sort((a, b) => {
+            const aTime = a.createdAt?.toDate?.() || a.createdAt || 0;
+            const bTime = b.createdAt?.toDate?.() || b.createdAt || 0;
+            return bTime - aTime;
+          });
+          setApplicationsSent(sortedApps);
+          setLoading(false);
+        });
       }
     );
 
@@ -82,19 +107,40 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
     const receivedUnsub = onSnapshot(
       receivedQuery,
       (snap) => {
+        console.log('JobsTab: Applications received query success, count:', snap.docs.length);
         const apps = snap.docs.map((d) => ({
           id: d.id,
           ...(d.data() as any)
         })) as JobApplication[];
+        console.log('JobsTab: Applications received data:', apps);
         setApplicationsReceived(apps);
+        setLoading(false);
       },
       (error) => {
         console.error('Error fetching applications received:', error);
-        setApplicationsReceived([]);
+        // Fallback without orderBy if index doesn't exist
+        const fallbackQuery = query(
+          collection(db, 'jobApplications'),
+          where('posterId', '==', userId)
+        );
+        onSnapshot(fallbackQuery, (snap) => {
+          console.log('JobsTab: Applications received fallback query success, count:', snap.docs.length);
+          const apps = snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as any)
+          })) as JobApplication[];
+          console.log('JobsTab: Applications received fallback data:', apps);
+          // Sort client-side by createdAt
+          const sortedApps = apps.sort((a, b) => {
+            const aTime = a.createdAt?.toDate?.() || a.createdAt || 0;
+            const bTime = b.createdAt?.toDate?.() || b.createdAt || 0;
+            return bTime - aTime;
+          });
+          setApplicationsReceived(sortedApps);
+          setLoading(false);
+        });
       }
     );
-
-    setLoading(false);
 
     return () => {
       sentUnsub();
