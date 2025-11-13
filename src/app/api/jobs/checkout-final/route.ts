@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { stripe } from '@/lib/stripe';
+import { computeApplicationFeeAmount } from '@/lib/fees';
+import { FieldValue } from 'firebase-admin/firestore';
 
 async function getUserFromAuthHeader(req: NextRequest): Promise<string | null> {
   const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
@@ -50,7 +52,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Final payment already paid' }, { status: 400 });
     }
 
-    const remainingAmount = applicationData?.remainingAmount || 0;
+    // Calculate remaining amount if not already set
+    // remainingAmount = totalAmount - depositAmount (75% of total)
+    const totalAmount = applicationData?.totalAmount || 0;
+    const depositAmount = applicationData?.depositAmount || 0;
+    let remainingAmount = applicationData?.remainingAmount;
+    
+    // If remainingAmount is not set or is 0, calculate it
+    if (!remainingAmount || remainingAmount === 0) {
+      remainingAmount = totalAmount - depositAmount;
+    }
+    
+    if (remainingAmount <= 0) {
+      return NextResponse.json({ 
+        error: `Invalid payment amount. Total: $${(totalAmount / 100).toFixed(2)}, Deposit: $${(depositAmount / 100).toFixed(2)}, Remaining: $${(remainingAmount / 100).toFixed(2)}` 
+      }, { status: 400 });
+    }
+    
+    // Calculate platform fee on remaining amount (3%)
+    const platformFeeOnRemaining = computeApplicationFeeAmount(remainingAmount);
+    const existingPlatformFee = applicationData?.platformFee || 0;
+    const totalPlatformFee = existingPlatformFee + platformFeeOnRemaining;
+    
+    // Amount to transfer to applicant (remaining - platform fee)
+    const transferAmount = remainingAmount - platformFeeOnRemaining;
+    
+    // Update application with calculated amounts if not already set
+    if (!applicationData?.remainingAmount || applicationData?.remainingAmount === 0) {
+      await adminDb.collection('jobApplications').doc(applicationId).update({
+        remainingAmount,
+        platformFeeOnRemaining,
+        totalPlatformFee,
+        transferAmount,
+        updatedAt: FieldValue.serverTimestamp()
+      });
+    }
+    
     const opportunityTitle = applicationData?.opportunityTitle || 'Job Opportunity';
 
     // Get or create customer
@@ -94,9 +131,10 @@ export async function POST(req: NextRequest) {
           posterId: userId,
           applicantId: applicationData?.applicantId || '',
           applicantConnectAccountId: applicationData?.applicantConnectAccountId || '',
-          totalAmount: String(applicationData?.totalAmount || 0),
+          totalAmount: String(totalAmount),
           remainingAmount: String(remainingAmount),
-          platformFee: String(applicationData?.platformFeeOnRemaining || 0)
+          platformFee: String(platformFeeOnRemaining),
+          depositAmount: String(depositAmount)
         }
       },
       success_url: `${origin}/profile/${userId}?payment=success&type=final`,

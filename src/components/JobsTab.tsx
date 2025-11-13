@@ -28,6 +28,7 @@ type JobApplication = {
   totalAmount?: number;
   depositPaymentIntentId?: string;
   finalPaymentIntentId?: string;
+  finalPaymentPaid?: boolean;
 };
 
 type JobsTabProps = {
@@ -412,7 +413,7 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
                         {processingHire === app.id ? 'Processing...' : 'Hire'}
                       </button>
                     )}
-                    {app.status === 'completed' && !app.finalPaymentIntentId && (
+                    {app.status === 'completed' && !app.finalPaymentPaid && (
                       <button
                         onClick={() => handlePayFinal(app.id)}
                         disabled={processingPayment === app.id}
@@ -421,7 +422,7 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
                         {processingPayment === app.id ? 'Processing...' : 'Pay Final Amount'}
                       </button>
                     )}
-                    {app.status === 'paid' && (
+                    {(app.status === 'paid' || app.finalPaymentPaid) && (
                       <span className="px-4 py-2 bg-green-500/10 text-green-400 border border-green-500/30 rounded text-sm">
                         Payment Complete
                       </span>

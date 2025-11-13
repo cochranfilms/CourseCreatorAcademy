@@ -120,12 +120,17 @@ export async function POST(req: NextRequest) {
         try {
           const applicationId = session.metadata?.applicationId;
           if (applicationId) {
+            const paymentIntentId = typeof session.payment_intent === 'string' 
+              ? session.payment_intent 
+              : session.payment_intent.id || session.payment_intent;
+            
             await adminDb.collection('jobApplications').doc(String(applicationId)).update({
               finalPaymentCheckoutSessionId: session.id,
+              finalPaymentIntentId: String(paymentIntentId),
               updatedAt: FieldValue.serverTimestamp()
             });
-            console.log('Job final payment checkout completed:', applicationId);
-            // The actual transfer will be handled by payment_intent.succeeded
+            console.log('Job final payment checkout completed:', applicationId, 'PaymentIntent:', paymentIntentId);
+            // Note: finalPaymentPaid and transfers will be handled by payment_intent.succeeded webhook
           }
         } catch (err) {
           console.error('Error processing job final payment checkout:', err);
@@ -632,10 +637,11 @@ export async function POST(req: NextRequest) {
 
             const appData = applicationDoc.data();
             const applicantConnectAccountId = appData?.applicantConnectAccountId || pi.metadata?.applicantConnectAccountId;
-            const depositAmount = appData?.depositAmount || 0;
+            const depositAmount = appData?.depositAmount || parseInt(pi.metadata?.depositAmount || '0');
             const depositPlatformFee = appData?.platformFee || 0;
-            const remainingAmount = pi.amount || 0;
-            const remainingPlatformFee = computeApplicationFeeAmount(remainingAmount);
+            // Use remainingAmount from metadata if available, otherwise from appData, otherwise from payment intent
+            const remainingAmount = parseInt(pi.metadata?.remainingAmount || '0') || appData?.remainingAmount || pi.amount || 0;
+            const remainingPlatformFee = parseInt(pi.metadata?.platformFee || '0') || computeApplicationFeeAmount(remainingAmount);
             
             // Calculate amounts to transfer
             // Deposit transfer: depositAmount - depositPlatformFee (already held in platform account)
