@@ -10,6 +10,7 @@ import { isSaved, toggleSaved, getCourseProgress } from '@/lib/userData';
 import CourseViewerModal from '@/components/CourseViewerModal';
 import dynamic from 'next/dynamic';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { Card } from '@/components/ui/Card';
 const CreatorKitsScroller = dynamic(
   () => import('@/components/CreatorKitsScroller').then(m => m.CreatorKitsScroller),
   { ssr: false, loading: () => null }
@@ -188,13 +189,13 @@ export default function LearnPage() {
         <h1 className="text-3xl md:text-4xl font-bold">All Courses</h1>
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="rounded-2xl overflow-hidden border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 animate-pulse">
+            <Card key={i} className="bg-gradient-to-b from-neutral-900 to-neutral-950 animate-pulse">
               <div className="h-40 bg-neutral-800" />
               <div className="p-4">
                 <div className="h-5 bg-neutral-800 rounded w-3/4 mb-2"></div>
                 <div className="h-4 bg-neutral-800 rounded w-1/2"></div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       </main>
@@ -276,11 +277,11 @@ export default function LearnPage() {
         ) : (
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => (
-              <div
-                key={course.id}
-                className="rounded-2xl overflow-hidden border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 hover:border-ccaBlue transition group relative cursor-pointer"
-                onClick={() => openViewerForCourse(course)}
-              >
+            <Card
+              key={course.id}
+              className="bg-gradient-to-b from-neutral-900 to-neutral-950 hover:border-ccaBlue transition group relative cursor-pointer"
+              onClick={() => openViewerForCourse(course)}
+            >
                   <div className="relative h-40 bg-neutral-800 group-hover:bg-neutral-700 transition">
                     {course.thumbnailPlaybackId ? (
                       <Image
@@ -306,7 +307,7 @@ export default function LearnPage() {
                         </svg>
                       </div>
                     )}
-                  </div>
+              </div>
                   <div className="p-4">
                     <div className="text-lg font-semibold mb-1">{course.title}</div>
                     <div className="text-sm text-neutral-400">
@@ -331,7 +332,7 @@ export default function LearnPage() {
                         </div>
                       </div>
                     )}
-                  </div>
+              </div>
                 {user && (
                   <button
                     onClick={async (e) => {
@@ -350,9 +351,9 @@ export default function LearnPage() {
                     <svg className={`w-5 h-5 ${savedCourses[course.id] ? 'fill-current' : ''}`} viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1 4.13 2.44C11.09 5 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
-                  </button>
+                </button>
                 )}
-              </div>
+            </Card>
           ))}
         </div>
         )}

@@ -3,37 +3,26 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { stripe } from '@/lib/stripe';
 import { getUserIdFromAuthHeader } from '@/lib/api/auth';
 import { getOrCreateCustomer } from '@/lib/api/stripeCustomer';
+import { jsonError, jsonOk } from '@/lib/api/responses';
 
 export async function POST(req: NextRequest) {
   try {
-    if (!adminDb) {
-      return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
-    }
+    if (!adminDb) return jsonError('Server not configured', 500);
 
     const userId = await getUserIdFromAuthHeader(req);
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!userId) return jsonError('Unauthorized', 401);
 
     const { applicationId } = await req.json();
-    if (!applicationId) {
-      return NextResponse.json({ error: 'Missing applicationId' }, { status: 400 });
-    }
+    if (!applicationId) return jsonError('Missing applicationId', 400);
 
     // Get application to verify ownership and get payment details
     const applicationDoc = await adminDb.collection('jobApplications').doc(applicationId).get();
-    if (!applicationDoc.exists) {
-      return NextResponse.json({ error: 'Application not found' }, { status: 404 });
-    }
+    if (!applicationDoc.exists) return jsonError('Application not found', 404);
 
     const applicationData = applicationDoc.data();
-    if (applicationData?.posterId !== userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+    if (applicationData?.posterId !== userId) return jsonError('Unauthorized', 403);
 
-    if (applicationData?.depositPaid) {
-      return NextResponse.json({ error: 'Deposit already paid' }, { status: 400 });
-    }
+    if (applicationData?.depositPaid) return jsonError('Deposit already paid', 400);
 
     const depositAmount = applicationData?.depositAmount || 0;
     const opportunityTitle = applicationData?.opportunityTitle || 'Job Opportunity';
@@ -83,13 +72,10 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ url: session.url, sessionId: session.id });
+    return jsonOk({ url: session.url, sessionId: session.id });
   } catch (error: any) {
     console.error('Error creating deposit checkout:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create checkout session' },
-      { status: 500 }
-    );
+    return jsonError(error.message || 'Failed to create checkout session', 500);
   }
 }
 

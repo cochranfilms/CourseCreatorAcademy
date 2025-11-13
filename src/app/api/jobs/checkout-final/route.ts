@@ -4,41 +4,28 @@ import { stripe } from '@/lib/stripe';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getUserIdFromAuthHeader } from '@/lib/api/auth';
 import { getOrCreateCustomer } from '@/lib/api/stripeCustomer';
+import { jsonError, jsonOk } from '@/lib/api/responses';
 
 export async function POST(req: NextRequest) {
   try {
-    if (!adminDb) {
-      return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
-    }
+    if (!adminDb) return jsonError('Server not configured', 500);
 
     const userId = await getUserIdFromAuthHeader(req);
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!userId) return jsonError('Unauthorized', 401);
 
     const { applicationId } = await req.json();
-    if (!applicationId) {
-      return NextResponse.json({ error: 'Missing applicationId' }, { status: 400 });
-    }
+    if (!applicationId) return jsonError('Missing applicationId', 400);
 
     // Get application to verify ownership and get payment details
     const applicationDoc = await adminDb.collection('jobApplications').doc(applicationId).get();
-    if (!applicationDoc.exists) {
-      return NextResponse.json({ error: 'Application not found' }, { status: 404 });
-    }
+    if (!applicationDoc.exists) return jsonError('Application not found', 404);
 
     const applicationData = applicationDoc.data();
-    if (applicationData?.posterId !== userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+    if (applicationData?.posterId !== userId) return jsonError('Unauthorized', 403);
 
-    if (applicationData?.status !== 'completed') {
-      return NextResponse.json({ error: 'Job must be completed before final payment' }, { status: 400 });
-    }
+    if (applicationData?.status !== 'completed') return jsonError('Job must be completed before final payment', 400);
 
-    if (applicationData?.finalPaymentPaid) {
-      return NextResponse.json({ error: 'Final payment already paid' }, { status: 400 });
-    }
+    if (applicationData?.finalPaymentPaid) return jsonError('Final payment already paid', 400);
 
     // Calculate remaining amount if not already set
     // remainingAmount = totalAmount - depositAmount (75% of total)
@@ -52,9 +39,10 @@ export async function POST(req: NextRequest) {
     }
     
     if (remainingAmount <= 0) {
-      return NextResponse.json({ 
-        error: `Invalid payment amount. Total: $${(totalAmount / 100).toFixed(2)}, Deposit: $${(depositAmount / 100).toFixed(2)}, Remaining: $${(remainingAmount / 100).toFixed(2)}` 
-      }, { status: 400 });
+      return jsonError(
+        `Invalid payment amount. Total: $${(totalAmount / 100).toFixed(2)}, Deposit: $${(depositAmount / 100).toFixed(2)}, Remaining: $${(remainingAmount / 100).toFixed(2)}`,
+        400
+      );
     }
     
     // No platform fee on the remaining amount (only charge on deposit)
@@ -124,13 +112,10 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ url: session.url, sessionId: session.id });
+    return jsonOk({ url: session.url, sessionId: session.id });
   } catch (error: any) {
     console.error('Error creating final payment checkout:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create checkout session' },
-      { status: 500 }
-    );
+    return jsonError(error.message || 'Failed to create checkout session', 500);
   }
 }
 
