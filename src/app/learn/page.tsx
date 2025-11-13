@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isSaved, toggleSaved, getCourseProgress } from '@/lib/userData';
 import CourseViewerModal from '@/components/CourseViewerModal';
 import dynamic from 'next/dynamic';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 const CreatorKitsScroller = dynamic(
   () => import('@/components/CreatorKitsScroller').then(m => m.CreatorKitsScroller),
   { ssr: false, loading: () => null }
@@ -211,10 +212,7 @@ export default function LearnPage() {
       </section>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl md:text-4xl font-bold">Course Creator Academy</h1>
-          <div className="hidden sm:block text-neutral-400">Premium courses for filmmakers and creators</div>
-        </div>
+        <SectionHeader title="Course Creator Academy" subtitle="Premium courses for filmmakers and creators" />
 
         {/* Featured Video hero */}
         {featuredCourse && (

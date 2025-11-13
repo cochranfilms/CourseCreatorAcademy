@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 
 type Creator = {
   id: string;
@@ -90,10 +91,7 @@ export function CreatorKitsScroller() {
   return (
     <section className="my-16">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="mb-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Creator Kits</h2>
-          <p className="text-neutral-400">Discover exclusive content from top creators</p>
-        </div>
+        <SectionHeader title="Creator Kits" subtitle="Discover exclusive content from top creators" align="center" />
       </div>
 
       <div
