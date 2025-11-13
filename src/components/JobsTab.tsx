@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db, firebaseReady, auth } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { Messages } from '@/components/Messages';
 
 type JobApplication = {
   id: string;
@@ -29,6 +30,7 @@ type JobApplication = {
   depositPaymentIntentId?: string;
   finalPaymentIntentId?: string;
   finalPaymentPaid?: boolean;
+  depositPaid?: boolean;
 };
 
 type JobsTabProps = {
@@ -44,6 +46,9 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
   const [processingHire, setProcessingHire] = useState<string | null>(null);
   const [processingComplete, setProcessingComplete] = useState<string | null>(null);
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
+  const [applicantProfiles, setApplicantProfiles] = useState<Record<string, { photoURL?: string; displayName?: string }>>({});
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
+  const [selectedApplicantId, setSelectedApplicantId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!firebaseReady || !db || !userId) {
@@ -148,6 +153,39 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
       receivedUnsub();
     };
   }, [userId]);
+
+  // Fetch applicant profiles for applications where deposit is paid
+  useEffect(() => {
+    if (!firebaseReady || !db || applicationsReceived.length === 0) return;
+
+    const fetchApplicantProfiles = async () => {
+      const profiles: Record<string, { photoURL?: string; displayName?: string }> = {};
+      
+      // Only fetch profiles for applications where deposit is paid
+      const applicationsWithDepositPaid = applicationsReceived.filter(app => app.depositPaid);
+      
+      await Promise.all(
+        applicationsWithDepositPaid.map(async (app) => {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', app.applicantId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              profiles[app.applicantId] = {
+                photoURL: userData.photoURL,
+                displayName: userData.displayName
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching profile for applicant ${app.applicantId}:`, error);
+          }
+        })
+      );
+      
+      setApplicantProfiles(profiles);
+    };
+
+    fetchApplicantProfiles();
+  }, [applicationsReceived]);
 
   const handleHire = async (applicationId: string) => {
     if (!user || !auth?.currentUser) {
@@ -361,25 +399,53 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              {applicationsReceived.map((app) => (
+              {applicationsReceived.map((app) => {
+                const applicantProfile = applicantProfiles[app.applicantId];
+                const showProfilePicture = app.depositPaid && applicantProfile;
+                
+                return (
                 <div key={app.id} className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-6 rounded-lg">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-white mb-1">{app.opportunityTitle}</h3>
-                      <p className="text-sm text-neutral-400">{app.name} • {app.email}</p>
-                      {app.portfolioUrl && (
-                        <a
-                          href={app.portfolioUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-ccaBlue hover:underline mt-1 inline-block"
+                    <div className="flex-1 flex items-start gap-3">
+                      {showProfilePicture && (
+                        <button
+                          onClick={() => {
+                            setSelectedApplicantId(app.applicantId);
+                            setShowMessagesModal(true);
+                          }}
+                          className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden border-2 border-ccaBlue hover:border-ccaBlue/70 transition cursor-pointer"
+                          title={`Message ${applicantProfile.displayName || app.name}`}
                         >
-                          View Portfolio
-                        </a>
+                          {applicantProfile.photoURL ? (
+                            <img
+                              src={applicantProfile.photoURL}
+                              alt={applicantProfile.displayName || app.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-ccaBlue flex items-center justify-center text-white font-semibold">
+                              {(applicantProfile.displayName || app.name).charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </button>
                       )}
-                      {app.createdAt && (
-                        <p className="text-xs text-neutral-500 mt-1">Applied {formatDate(app.createdAt)}</p>
-                      )}
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg text-white mb-1">{app.opportunityTitle}</h3>
+                        <p className="text-sm text-neutral-400">{app.name} • {app.email}</p>
+                        {app.portfolioUrl && (
+                          <a
+                            href={app.portfolioUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-ccaBlue hover:underline mt-1 inline-block"
+                          >
+                            View Portfolio
+                          </a>
+                        )}
+                        {app.createdAt && (
+                          <p className="text-xs text-neutral-500 mt-1">Applied {formatDate(app.createdAt)}</p>
+                        )}
+                      </div>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadge(app.status)}`}>
                       {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
@@ -450,10 +516,23 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
+      )}
+
+      {/* Messages Modal */}
+      {showMessagesModal && selectedApplicantId && (
+        <Messages
+          isOpen={showMessagesModal}
+          onClose={() => {
+            setShowMessagesModal(false);
+            setSelectedApplicantId(null);
+          }}
+          initialRecipientUserId={selectedApplicantId}
+        />
       )}
     </div>
   );
