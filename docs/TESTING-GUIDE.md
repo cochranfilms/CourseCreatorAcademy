@@ -158,6 +158,7 @@ This will populate the Opportunities and Marketplace collections with realistic 
    - Company/Your Name
    - Location (or "Remote")
    - Job Type
+   - **Amount** (e.g., $1000 for a $1,000 job - this is the total payment amount)
    - Application URL (link to where people apply)
    - Description (optional)
 3. Click **"Post Opportunity"**
@@ -168,6 +169,84 @@ This will populate the Opportunities and Marketplace collections with realistic 
 - Do job listings display correctly?
 - Can you post a job successfully?
 - Can you delete your own job posts?
+
+---
+
+### 3a. Job Payment System (Escrow Deposit)
+
+**What it is:** A secure two-payment system for hiring creators. When you hire someone, you pay a 25% deposit upfront (with a 3% platform fee), and then pay the remaining 75% when the job is completed.
+
+**How the Payment System Works:**
+
+1. **Deposit Payment (25% of total):**
+   - When you hire an applicant, you pay 25% of the total job amount upfront
+   - A 3% platform fee is taken from the deposit amount
+   - Example: For a $1,000 job:
+     - Deposit: $250 (25%)
+     - Platform fee: $7.50 (3% of $250)
+     - Net to creator: $242.50
+
+2. **Final Payment (75% of total):**
+   - When the job is marked as complete, you pay the remaining 75%
+   - No platform fee is charged on the final payment
+   - Example: For a $1,000 job:
+     - Final payment: $750 (75%)
+     - Platform fee: $0
+     - Net to creator: $750
+
+**Total Platform Fee:** Only 3% of the deposit (not the full amount)
+
+**How to test the complete payment flow:**
+
+**As a Job Poster (Hiring Someone):**
+
+1. **Post a job opportunity** with an amount (e.g., $1,000)
+2. **Wait for applications** or have a test account apply
+3. **Go to your Dashboard** → **Jobs** tab
+4. **Click "Hire"** on an application
+   - You'll see a message that the applicant needs a Stripe Connect account
+   - Both you and the applicant need Stripe Connect accounts set up
+5. **After hiring**, you'll see a **"Pay Deposit"** button
+6. **Click "Pay Deposit"**:
+   - A Stripe checkout window will open
+   - Use test card: `4242 4242 4242 4242`
+   - Complete the payment
+   - You'll be redirected back to your dashboard
+7. **Once payment is complete**, the application status changes to "hired"
+8. **When the job is done**, the applicant marks it as "complete"
+9. **You'll see a "Pay Final Amount"** button
+10. **Click "Pay Final Amount"**:
+    - Another Stripe checkout window opens
+    - Use the same test card: `4242 4242 4242 4242`
+    - Complete the payment
+    - The job is now fully paid
+
+**As an Applicant (Being Hired):**
+
+1. **Apply to a job opportunity**
+2. **Set up your Stripe Connect account** (see "Stripe Connect Setup" below)
+3. **Wait for the poster to hire you**
+4. **Once hired**, you'll see the job status change to "hired"
+5. **After the poster pays the deposit**, you'll see payment information
+6. **Complete the work** and mark the job as "complete"
+7. **Wait for the poster to pay the final amount**
+8. **Once fully paid**, you'll see "Payment Complete" status
+
+**Important Notes:**
+- **Both parties need Stripe Connect accounts** to use the payment system
+- The deposit (25%) is held as escrow - it shows commitment from both parties
+- The platform fee (3%) is only charged on the deposit, not the full amount
+- Payments are processed through Stripe (test mode)
+- You can use fake test data for all Stripe Connect onboarding
+
+**What to check:**
+- Can you hire an applicant successfully?
+- Does the deposit payment checkout work?
+- Is the correct amount calculated (25% of total)?
+- Does the final payment checkout work?
+- Is the correct amount calculated (75% of total)?
+- Do payment statuses update correctly?
+- Can you see payment history?
 
 ---
 
@@ -200,7 +279,14 @@ This will populate the Opportunities and Marketplace collections with realistic 
 5. View your listings by clicking **"My Listings"**
 6. Edit or delete listings as needed
 
-**Stripe Connect Setup (Required to Sell):**
+**Stripe Connect Setup (Required to Sell Items AND Receive Job Payments):**
+
+**When do you need Stripe Connect?**
+- **Selling items** in the Marketplace
+- **Receiving payments** as a hired applicant (for jobs)
+- **Hiring applicants** (you need it to pay them)
+
+**How to set it up:**
 1. Go to your **Dashboard** → **Onboarding** tab
 2. Click **"Connect Stripe"** button
 3. You'll be redirected to Stripe's onboarding form
@@ -215,7 +301,9 @@ This will populate the Opportunities and Marketplace collections with realistic 
    - Any other required fields: Use fake information
 5. Complete all steps in the Stripe form
 6. You'll be redirected back to Creator Collective
-7. Your Stripe account is now connected and you can sell items!
+7. Your Stripe account is now connected!
+
+**Note:** You only need to do this once. After connecting, you can both sell items and receive job payments.
 
 **What to check:**
 - Can you browse listings easily?
@@ -284,8 +372,11 @@ This will populate the Opportunities and Marketplace collections with realistic 
 - View your purchase history
 - See order details and receipts
 
-**Onboarding Tab (for Creators Who Want to Sell):**
-- Connect your Stripe account to sell items in the marketplace
+**Onboarding Tab (for Creators Who Want to Sell or Receive Job Payments):**
+- Connect your Stripe account to:
+  - Sell items in the marketplace
+  - Receive payments when hired for jobs
+  - Hire applicants (you need it to pay them)
 - Click **"Connect Stripe"** to start the onboarding process
 - **Use fake test data** in Stripe's form:
   - Business information: Any fake business name
@@ -294,7 +385,10 @@ This will populate the Opportunities and Marketplace collections with realistic 
   - Bank account: Use test numbers `000123456789` (routing) and `000987654321` (account)
   - Address: Any fake address
 - Complete all required steps
-- Once connected, you can post marketplace listings and receive payments
+- Once connected, you can:
+  - Post marketplace listings
+  - Receive job payments when hired
+  - Hire applicants and pay them
 
 **What to check:**
 - Can you update your profile successfully?
@@ -338,6 +432,52 @@ This will populate the Opportunities and Marketplace collections with realistic 
 
 **No real money will be charged and no real personal information is required!**
 
+### Test Card Numbers
+
+For different payment scenarios, you can use these Stripe test cards:
+
+- **Successful payment:** `4242 4242 4242 4242`
+- **Declined payment:** `4000 0000 0000 0002`
+- **Requires authentication:** `4000 0025 0000 3155`
+- **Insufficient funds:** `4000 0000 0000 9995`
+
+Use any future expiry date (e.g., `12/25`), any 3-digit CVC (e.g., `123`), and any ZIP code (e.g., `12345`).
+
+### Testing with Multiple Accounts
+
+**Tip:** To test features that require two users (like messaging, job applications, or marketplace transactions), you can:
+
+1. **Use incognito/private browsing** to create a second account
+2. **Use a different browser** (e.g., Chrome for one account, Firefox for another)
+3. **Use different email addresses** (they don't need to be real)
+
+This lets you test interactions between users without needing another person.
+
+### Common Testing Scenarios
+
+**Testing Job Payments:**
+1. Create two accounts (poster and applicant)
+2. Both accounts need Stripe Connect set up
+3. Poster creates a job with an amount
+4. Applicant applies
+5. Poster hires applicant
+6. Poster pays deposit (25%)
+7. Applicant marks job as complete
+8. Poster pays final amount (75%)
+
+**Testing Marketplace:**
+1. Create two accounts (seller and buyer)
+2. Seller needs Stripe Connect set up
+3. Seller creates a listing
+4. Buyer purchases the item
+5. Check that payment flows correctly
+
+**Testing Messaging:**
+1. Create two accounts
+2. One user sends a message to the other
+3. Check that messages appear in real-time
+4. Test read receipts
+
 ---
 
 ## Things to Pay Attention To
@@ -348,26 +488,40 @@ As you test, please note:
    - Do pages load quickly?
    - Do videos start playing without long delays?
    - Are images loading properly?
+   - Do payment flows complete without hanging?
 
 2. **Ease of Use**
    - Is it clear how to use each feature?
    - Are buttons and links easy to find?
    - Is the navigation intuitive?
+   - Are error messages helpful and clear?
+   - Do payment amounts display correctly?
 
 3. **Visual Design**
    - Does everything look good?
    - Are there any broken layouts on your screen size?
    - Do colors and fonts look professional?
+   - Are payment amounts and fees clearly displayed?
 
 4. **Bugs & Errors**
    - Do you encounter any error messages?
    - Does anything break or stop working?
    - Are there any features that don't work as expected?
+   - Do payment calculations seem correct?
+   - Do status updates happen in real-time?
 
 5. **Mobile Experience** (if testing on phone/tablet)
    - Does everything work on mobile?
    - Is it easy to use on a smaller screen?
    - Are buttons and text readable?
+   - Can you complete payments on mobile?
+
+6. **Payment System**
+   - Are deposit amounts calculated correctly (25% of total)?
+   - Are final payment amounts calculated correctly (75% of total)?
+   - Is the platform fee only charged on the deposit (3%)?
+   - Do payment statuses update correctly after checkout?
+   - Can you see payment history?
 
 ---
 
