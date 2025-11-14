@@ -1,10 +1,12 @@
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 let adminApp: App | null = null;
 let adminAuth: any = null;
 let adminDb: any = null;
+let adminStorage: any = null;
 
 if (!getApps().length) {
   const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
@@ -42,6 +44,7 @@ if (!getApps().length) {
         });
         adminAuth = getAuth(adminApp);
         adminDb = getFirestore(adminApp);
+        adminStorage = getStorage(adminApp);
         
         // Test the connection immediately
         adminDb.settings({ ignoreUndefinedProperties: true });
@@ -76,8 +79,9 @@ if (!getApps().length) {
   adminApp = getApps()[0] as App;
   adminAuth = getAuth(adminApp);
   adminDb = getFirestore(adminApp);
+  adminStorage = getStorage(adminApp);
 }
 
-export { adminAuth, adminDb };
+export { adminAuth, adminDb, adminStorage };
 
 

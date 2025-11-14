@@ -97,6 +97,14 @@ service firebase.storage {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Assets - premium downloadable assets (LUTs, presets, SFX, templates, etc.)
+    // Downloads are handled via signed URLs from the API, but allow authenticated read for flexibility
+    match /assets/{allPaths=**} {
+      allow read: if request.auth != null;
+      // Admin-only writes (via Firebase Admin SDK)
+      allow write: if false;
+    }
+
     // Deny all other paths
     match /{allPaths=**} {
       allow read, write: if false;
