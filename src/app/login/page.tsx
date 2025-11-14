@@ -55,20 +55,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12 -mt-16">
+    <div className="min-h-screen flex items-center justify-center px-3 sm:px-4 md:px-6 py-8 sm:py-12 -mt-16 pt-safe pb-safe">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
-          <p className="text-neutral-400">Sign in to access your courses and marketplace</p>
+        <div className="text-center mb-6 sm:mb-8 px-2">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2 leading-tight">Welcome Back</h1>
+          <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">Sign in to access your courses and marketplace</p>
         </div>
 
-        <div className="bg-neutral-950 border border-neutral-800 p-8">
+        <div className="bg-neutral-950 border border-neutral-800 p-4 sm:p-6 md:p-8 rounded-lg">
           {/* Social Login Buttons */}
-          <div className="space-y-3 mb-6">
+          <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
             <button
               onClick={handleGoogleSignIn}
               disabled={loading || socialLoading !== null}
-              className="w-full flex items-center justify-center gap-3 bg-white text-neutral-900 py-3 font-semibold hover:bg-neutral-100 transition disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+              className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-white text-neutral-900 py-2.5 sm:py-3 font-semibold text-sm sm:text-base active:bg-neutral-100 hover:bg-neutral-100 transition disabled:opacity-50 disabled:cursor-not-allowed rounded-lg touch-manipulation"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -94,7 +94,7 @@ export default function LoginPage() {
             <button
               onClick={handleFacebookSignIn}
               disabled={loading || socialLoading !== null}
-              className="w-full flex items-center justify-center gap-3 bg-[#1877F2] text-white py-3 font-semibold hover:bg-[#166FE5] transition disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+              className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-[#1877F2] text-white py-2.5 sm:py-3 font-semibold text-sm sm:text-base active:bg-[#166FE5] hover:bg-[#166FE5] transition disabled:opacity-50 disabled:cursor-not-allowed rounded-lg touch-manipulation"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -162,7 +162,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || socialLoading !== null}
-              className="w-full bg-ccaBlue text-white py-3 font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-ccaBlue text-white py-2.5 sm:py-3 font-semibold text-sm sm:text-base active:opacity-80 hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed rounded-lg touch-manipulation"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>

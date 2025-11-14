@@ -290,6 +290,27 @@ service cloud.firestore {
       }
     }
     
+    // Feedback collection - test users can submit feedback
+    match /feedback/{feedbackId} {
+      // Users can read their own feedback submissions
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Authenticated users can create feedback submissions
+      // User ID must match the authenticated user
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll(['userId', 'feedback', 'createdAt', 'status'])
+        && request.resource.data.status == 'new';
+      
+      // Users can update their own feedback (e.g., to add more details)
+      allow update: if isAuthenticated()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+      
+      // Deletion not allowed (for audit trail)
+      allow delete: if false;
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

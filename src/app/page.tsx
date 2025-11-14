@@ -53,22 +53,22 @@ export default function Page() {
   return (
     <main className="min-h-screen w-full overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-24 w-full">
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 pt-12 sm:pt-16 pb-16 sm:pb-24 w-full pt-safe">
         <div className="relative z-10 text-center max-w-5xl mx-auto">
-          <div className="inline-block px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium mb-6">
+          <div className="inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6">
             Learn from Creators. Land Gigs. Save on Gear & Software.
           </div>
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold leading-[1.1] mb-6 tracking-tight text-white drop-shadow-2xl">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl font-extrabold leading-[1.1] mb-4 sm:mb-6 tracking-tight text-white drop-shadow-2xl px-2">
             YOUR CREATIVE<br />
             <span className="text-white">HOME BASE</span>
           </h1>
-          <p className="text-xl sm:text-2xl text-neutral-300 mb-8 max-w-3xl mx-auto">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-300 mb-6 sm:mb-8 max-w-3xl mx-auto px-3 leading-relaxed">
             Course Creator Academy is a creator-powered community hub where creators of all skill levels can learn, collaborate, grow their network, and stay creatively active.
           </p>
           
           {/* Video Player */}
-          <div className="mt-12 mb-8 w-full max-w-5xl mx-auto">
-            <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-neutral-800 bg-black shadow-2xl">
+          <div className="mt-8 sm:mt-12 mb-6 sm:mb-8 w-full max-w-5xl mx-auto px-2">
+            <div className="relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden border-2 border-neutral-800 bg-black shadow-2xl">
             <iframe
               className="w-full h-full"
               src="https://www.youtube.com/embed/3-msojt4yuk?start=9&rel=0&modestbranding=1"
@@ -81,35 +81,35 @@ export default function Page() {
           </div>
 
           {/* Testimonial Quote */}
-          <div className="mt-8 mb-6">
-            <p className="text-lg text-neutral-300 italic">"This platform LITERALLY pays for itself."</p>
-            <p className="text-sm text-neutral-500 mt-2">— Emily S, CCA Member</p>
+          <div className="mt-6 sm:mt-8 mb-4 sm:mb-6 px-3">
+            <p className="text-base sm:text-lg text-neutral-300 italic">"This platform LITERALLY pays for itself."</p>
+            <p className="text-xs sm:text-sm text-neutral-500 mt-2">— Emily S, CCA Member</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-10">
-            <button className="cta-button text-lg px-8 py-4" onClick={openPricing}>Sign Up Now</button>
-            <a className="px-8 py-4 rounded-lg border-2 border-neutral-700 hover:border-neutral-600 text-lg font-medium transition" href="#pricing">See Pricing</a>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mt-8 sm:mt-10 px-3">
+            <button className="cta-button text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto touch-manipulation" onClick={openPricing}>Sign Up Now</button>
+            <a className="px-6 sm:px-8 py-3 sm:py-4 rounded-lg border-2 border-neutral-700 active:border-neutral-600 hover:border-neutral-600 text-base sm:text-lg font-medium transition w-full sm:w-auto text-center touch-manipulation" href="#pricing">See Pricing</a>
           </div>
-          <div className="mt-6 text-sm text-neutral-400">14‑day refund policy • Instant access • Rated Excellent</div>
+          <div className="mt-4 sm:mt-6 text-xs sm:text-sm text-neutral-400 px-3">14‑day refund policy • Instant access • Rated Excellent</div>
         </div>
       </section>
 
       {/* Trust Bar removed per request */}
 
       {/* Platform Overview - Tabbed Section */}
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">
             EVERYTHING CREATORS NEED.<br />
             <span className="text-white">ALL IN ONE SLEEK PLATFORM.</span>
           </h2>
-          <p className="text-xl text-neutral-400 max-w-3xl mx-auto">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 max-w-3xl mx-auto leading-relaxed">
             Course Creator Academy 2.0 is a creator-powered community hub where creators of all skill levels can learn, collaborate, grow their network, and stay creative.
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap justify-center gap-4 mb-12 border-b border-neutral-800 pb-4">
+        <div className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 mb-8 sm:mb-10 md:mb-12 border-b border-neutral-800 pb-3 sm:pb-4 px-2 overflow-x-auto scrollbar-hide">
           {[
             { id: 'learn', label: 'Learning' },
             { id: 'community', label: 'Community' },
@@ -119,10 +119,10 @@ export default function Page() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              className={`px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-lg font-semibold text-sm sm:text-base transition-all touch-manipulation whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-gradient-to-r from-ccaBlue to-purple-500 text-white'
-                  : 'bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800'
+                  : 'bg-neutral-900 text-neutral-400 active:text-white hover:text-white active:bg-neutral-800 hover:bg-neutral-800'
               }`}
             >
               {tab.label}
@@ -131,27 +131,27 @@ export default function Page() {
         </div>
 
         {/* Tab Content */}
-        <div className="min-h-[400px]">
+        <div className="min-h-[300px] sm:min-h-[400px]">
           {activeTab === 'learn' && (
-            <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 md:p-12">
-              <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-4 sm:p-6 md:p-8 lg:p-12">
+              <div className="grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-12 items-center">
                 <div>
-                  <div className="text-xs text-ccaBlue font-semibold mb-4">FILM SCHOOL FOR ALL</div>
-                  <h3 className="text-3xl sm:text-4xl font-bold mb-4">Unlock 800+ Videos and Hundreds of Hours</h3>
-                  <p className="text-lg text-neutral-300 mb-6">
+                  <div className="text-xs text-ccaBlue font-semibold mb-3 sm:mb-4">FILM SCHOOL FOR ALL</div>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 leading-tight">Unlock 800+ Videos and Hundreds of Hours</h3>
+                  <p className="text-sm sm:text-base md:text-lg text-neutral-300 mb-4 sm:mb-6 leading-relaxed">
                     Expert-led training covering everything from filmmaking fundamentals to advanced techniques and business strategies. Discover professional-level skills across all categories.
                   </p>
-                  <button className="inline-flex items-center gap-2 text-ccaBlue font-semibold hover:gap-3 transition-all">
+                  <button className="inline-flex items-center gap-2 text-ccaBlue font-semibold active:gap-3 hover:gap-3 transition-all text-sm sm:text-base touch-manipulation">
                     Discover More
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                   {categories.slice(0, 6).map((cat) => (
-                    <div key={cat} className="aspect-video bg-neutral-900 rounded-xl border border-neutral-800 flex items-center justify-center p-4 hover:border-ccaBlue/50 transition">
-                      <span className="text-sm font-medium text-center">{cat}</span>
+                    <div key={cat} className="aspect-video bg-neutral-900 rounded-lg sm:rounded-xl border border-neutral-800 flex items-center justify-center p-2 sm:p-3 md:p-4 active:border-ccaBlue/50 hover:border-ccaBlue/50 transition touch-manipulation">
+                      <span className="text-xs sm:text-sm font-medium text-center">{cat}</span>
                     </div>
                   ))}
                 </div>
@@ -249,98 +249,98 @@ export default function Page() {
       </section>
 
       {/* Pricing Section - moved up above Creator Kits */}
-      <section id="pricing" className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 pb-safe w-full">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">
+      <section id="pricing" className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 pb-safe w-full">
+        <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">
             A SIMPLE PLAN THAT<br />
             <span className="text-white">UNLOCKS EVERYTHING</span>
           </h2>
-          <p className="text-xl text-neutral-400 max-w-3xl mx-auto">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 max-w-3xl mx-auto leading-relaxed">
             Join over 50,000 members who have been growing with us since 2017.
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8 items-stretch">
-          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 h-full flex flex-col">
-            <div className="text-neutral-400 text-sm font-semibold mb-2">MONTHLY MEMBERSHIP</div>
-            <div className="text-6xl font-extrabold mt-2">$37<span className="text-2xl font-semibold">/month</span></div>
-            <ul className="mt-6 text-neutral-300 space-y-3 flex-1">
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 items-stretch px-2">
+          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-5 sm:p-6 md:p-8 h-full flex flex-col">
+            <div className="text-neutral-400 text-xs sm:text-sm font-semibold mb-2">MONTHLY MEMBERSHIP</div>
+            <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold mt-2">$37<span className="text-lg sm:text-xl md:text-2xl font-semibold">/month</span></div>
+            <ul className="mt-4 sm:mt-6 text-neutral-300 space-y-2 sm:space-y-3 flex-1 text-sm sm:text-base">
+              <li className="flex items-center gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ccaBlue flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Stream all videos
               </li>
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <li className="flex items-center gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ccaBlue flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Access future content
               </li>
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <li className="flex items-center gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ccaBlue flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Community + downloads
               </li>
             </ul>
           <div className="flex-1" />
-          <button className="cta-button mt-8 w-full text-lg py-4" onClick={startMonthly}>Join Now</button>
+          <button className="cta-button mt-6 sm:mt-8 w-full text-base sm:text-lg py-3 sm:py-4 touch-manipulation" onClick={startMonthly}>Join Now</button>
           </div>
 
-          <div className="bg-gradient-to-br from-ccaBlue/20 via-purple-500/20 to-pink-500/20 rounded-2xl border-2 border-ccaBlue p-8 relative overflow-hidden h-full flex flex-col">
-            <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-ccaBlue text-white text-xs font-bold">POPULAR</div>
-            <div className="text-neutral-300 text-sm font-semibold mb-2">ALL‑ACCESS MEMBERSHIP</div>
-            <div className="text-6xl font-extrabold mt-2">$87<span className="text-2xl font-semibold">/month</span></div>
-            <div className="text-neutral-400 text-sm mt-2 mb-6">Site‑wide access to every Legacy+ creator</div>
-            <ul className="text-neutral-200 space-y-3 flex-1">
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-gradient-to-br from-ccaBlue/20 via-purple-500/20 to-pink-500/20 rounded-xl sm:rounded-2xl border-2 border-ccaBlue p-5 sm:p-6 md:p-8 relative overflow-hidden h-full flex flex-col">
+            <div className="absolute top-3 sm:top-4 right-3 sm:right-4 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-ccaBlue text-white text-[10px] sm:text-xs font-bold">POPULAR</div>
+            <div className="text-neutral-300 text-xs sm:text-sm font-semibold mb-2">ALL‑ACCESS MEMBERSHIP</div>
+            <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold mt-2">$87<span className="text-lg sm:text-xl md:text-2xl font-semibold">/month</span></div>
+            <div className="text-neutral-400 text-xs sm:text-sm mt-2 mb-4 sm:mb-6">Site‑wide access to every Legacy+ creator</div>
+            <ul className="text-neutral-200 space-y-2 sm:space-y-3 flex-1 text-sm sm:text-base">
+              <li className="flex items-start gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ccaBlue flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Complete access to all Legacy Creator profiles
               </li>
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <li className="flex items-start gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ccaBlue flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 All assets, job opportunities, and marketplace access
               </li>
-              <li className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <li className="flex items-start gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ccaBlue flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Includes everything in Monthly Membership
               </li>
             </ul>
-            <button className="cta-button mt-8 w-full text-lg py-4" onClick={startAllAccess}>Join All‑Access</button>
+            <button className="cta-button mt-6 sm:mt-8 w-full text-base sm:text-lg py-3 sm:py-4 touch-manipulation" onClick={startAllAccess}>Join All‑Access</button>
           </div>
         </div>
-        <div className="mt-8 text-center text-sm text-neutral-400">14‑day refund policy • 96% satisfaction rating • Instant access</div>
+        <div className="mt-6 sm:mt-8 text-center text-xs sm:text-sm text-neutral-400 px-3">14‑day refund policy • 96% satisfaction rating • Instant access</div>
       </section>
 
       {/* Creator Kits Section */}
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">
             BRINGING THE<br />
             <span className="text-white">A-CREW TO SET</span>
           </h2>
-          <p className="text-xl text-neutral-400 max-w-3xl mx-auto">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 max-w-3xl mx-auto leading-relaxed">
             Say hello to Creator Kits — exclusive content drops by the industry's top creators which you won't find anywhere else.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-8 sm:mb-10 md:mb-12 px-2">
           {[
             { title: 'EXCLUSIVE CONTENT', desc: 'Learn directly from top industry creators through exclusive content created specifically for this platform.', icon: '🎬' },
             { title: 'ASSETS', desc: 'Get access to the exact assets top creators use - including LUTs, presets, overlays, transitions, SFX, and plugins.', icon: '🎨' },
             { title: 'GEAR', desc: 'Explore the exact gear top creators rely on for their professional work - from photography to lighting setups.', icon: '📷' }
           ].map((kit) => (
-            <div key={kit.title} className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 hover:border-ccaBlue/50 transition">
-              <div className="text-4xl mb-4">{kit.icon}</div>
-              <h3 className="text-xl font-bold mb-3">{kit.title}</h3>
-              <p className="text-neutral-400">{kit.desc}</p>
+            <div key={kit.title} className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-5 sm:p-6 md:p-8 active:border-ccaBlue/50 hover:border-ccaBlue/50 transition touch-manipulation">
+              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">{kit.icon}</div>
+              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3">{kit.title}</h3>
+              <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">{kit.desc}</p>
             </div>
           ))}
         </div>
@@ -359,52 +359,52 @@ export default function Page() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">HEAR FROM OUR MEMBERS</h2>
-          <p className="text-xl text-neutral-400">We've helped hundreds of our members grow and turn filmmaking into their fulltime career.</p>
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">HEAR FROM OUR MEMBERS</h2>
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 leading-relaxed">We've helped hundreds of our members grow and turn filmmaking into their fulltime career.</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
+        <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 md:gap-6 mb-8 sm:mb-10 md:mb-12 px-2">
           {testimonials.map((testimonial, idx) => (
-            <div key={idx} className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8 hover:border-ccaBlue/50 transition">
+            <div key={idx} className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-5 sm:p-6 md:p-8 active:border-ccaBlue/50 hover:border-ccaBlue/50 transition touch-manipulation">
               {testimonial.revenue && (
-                <div className="text-3xl font-bold text-ccaBlue mb-4">{testimonial.revenue}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-ccaBlue mb-3 sm:mb-4">{testimonial.revenue}</div>
               )}
-              <p className="text-lg text-neutral-200 mb-4 italic">"{testimonial.quote}"</p>
+              <p className="text-base sm:text-lg text-neutral-200 mb-3 sm:mb-4 italic leading-relaxed">"{testimonial.quote}"</p>
               <div>
-                <div className="font-semibold text-white">{testimonial.author}</div>
-                <div className="text-sm text-neutral-400">{testimonial.role}</div>
+                <div className="font-semibold text-white text-sm sm:text-base">{testimonial.author}</div>
+                <div className="text-xs sm:text-sm text-neutral-400">{testimonial.role}</div>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 text-center">
-          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8">
-            <div className="text-4xl font-bold text-ccaBlue mb-2">$150K</div>
-            <div className="text-neutral-400">Biggest Deal Closed By Members in 2024</div>
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 text-center px-2">
+          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-5 sm:p-6 md:p-8">
+            <div className="text-3xl sm:text-4xl font-bold text-ccaBlue mb-2">$150K</div>
+            <div className="text-xs sm:text-sm text-neutral-400">Biggest Deal Closed By Members in 2024</div>
           </div>
-          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8">
-            <div className="text-4xl font-bold text-ccaBlue mb-2">$2.3M</div>
-            <div className="text-neutral-400">Total Deal Closed By Members in 2024</div>
+          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-5 sm:p-6 md:p-8">
+            <div className="text-3xl sm:text-4xl font-bold text-ccaBlue mb-2">$2.3M</div>
+            <div className="text-xs sm:text-sm text-neutral-400">Total Deal Closed By Members in 2024</div>
           </div>
-          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-8">
-            <div className="text-4xl font-bold text-ccaBlue mb-2">&lt;1 YEAR</div>
-            <div className="text-neutral-400">Time it took 46% of the community to 10X ROI</div>
+          <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-5 sm:p-6 md:p-8 sm:col-span-2 md:col-span-1">
+            <div className="text-3xl sm:text-4xl font-bold text-ccaBlue mb-2">&lt;1 YEAR</div>
+            <div className="text-xs sm:text-sm text-neutral-400">Time it took 46% of the community to 10X ROI</div>
           </div>
         </div>
       </section>
 
       {/* What's Inside Section */}
-      <section id="curriculum" className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">WHAT'S INSIDE</h2>
-          <p className="text-xl text-neutral-400">A complete curriculum for creators.</p>
+      <section id="curriculum" className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <div className="text-center mb-6 sm:mb-8 md:mb-12 px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">WHAT'S INSIDE</h2>
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 leading-relaxed">A complete curriculum for creators.</p>
         </div>
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 px-2">
           {categories.map((c) => (
-            <div key={c} className="px-6 py-4 rounded-xl border border-neutral-800 bg-gradient-to-br from-neutral-950 to-neutral-900 text-sm font-medium hover:border-ccaBlue/50 hover:bg-neutral-900 transition">
+            <div key={c} className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-neutral-800 bg-gradient-to-br from-neutral-950 to-neutral-900 text-xs sm:text-sm font-medium active:border-ccaBlue/50 hover:border-ccaBlue/50 active:bg-neutral-900 hover:bg-neutral-900 transition touch-manipulation text-center">
               {c}
             </div>
           ))}
@@ -414,18 +414,18 @@ export default function Page() {
       {/* Pricing Section moved above */}
 
       {/* Included Perks */}
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">INCLUDED BONUS PERKS</h2>
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <div className="text-center mb-6 sm:mb-8 md:mb-12 px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">INCLUDED BONUS PERKS</h2>
         </div>
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 px-2">
           {perks.map((p) => (
-            <div key={p} className="rounded-2xl border border-neutral-800 bg-gradient-to-br from-neutral-950 to-neutral-900 p-6 text-neutral-200 hover:border-ccaBlue/50 transition">
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-ccaBlue flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div key={p} className="rounded-xl sm:rounded-2xl border border-neutral-800 bg-gradient-to-br from-neutral-950 to-neutral-900 p-4 sm:p-5 md:p-6 text-neutral-200 active:border-ccaBlue/50 hover:border-ccaBlue/50 transition touch-manipulation">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ccaBlue flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="font-medium">{p}</span>
+                <span className="font-medium text-sm sm:text-base">{p}</span>
               </div>
             </div>
           ))}
@@ -433,9 +433,9 @@ export default function Page() {
       </section>
 
       {/* FAQ Section */}
-      <section className="relative max-w-4xl mx-auto px-4 sm:px-6 py-24 w-full">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 text-white drop-shadow-lg">FREQUENTLY ASKED QUESTIONS</h2>
+      <section className="relative max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <div className="text-center mb-6 sm:mb-8 md:mb-12 px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">FREQUENTLY ASKED QUESTIONS</h2>
         </div>
         <div>
           <FAQ items={[
@@ -449,16 +449,16 @@ export default function Page() {
       </section>
 
       {/* Final CTA */}
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
-        <div className="bg-white/10 backdrop-blur-sm rounded-3xl border-2 border-white/20 p-12 md:p-16 text-center">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-6 text-white">
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl sm:rounded-3xl border-2 border-white/20 p-6 sm:p-8 md:p-12 lg:p-16 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-4 sm:mb-6 text-white leading-tight">
             ACCESS YOUR<br />
             <span className="text-white">CREATIVE HOMEBASE</span>
           </h2>
-          <p className="text-xl text-neutral-300 mb-8 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-300 mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
             Learn from your favorite creators, save on the tools you already use, and supercharge your network so you can keep creating.
           </p>
-          <button className="cta-button text-lg px-10 py-5" onClick={openPricing}>Sign Up Now</button>
+          <button className="cta-button text-base sm:text-lg px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 touch-manipulation" onClick={openPricing}>Sign Up Now</button>
         </div>
       </section>
 

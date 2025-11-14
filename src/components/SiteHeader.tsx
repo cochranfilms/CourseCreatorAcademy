@@ -210,14 +210,14 @@ export function SiteHeader() {
   return (
     <>
       {/* Top Menu Bar with Profile */}
-      <div className="sticky top-0 z-[60] bg-neutral-950/90 backdrop-blur-sm border-b border-neutral-800 w-full overflow-x-hidden overflow-y-visible">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 w-full relative">
-        <div className="flex items-center gap-3">
+      <div className="sticky top-0 z-[60] bg-neutral-950/90 backdrop-blur-sm border-b border-neutral-800 w-full overflow-x-hidden overflow-y-visible pt-safe">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 w-full relative">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <Link href="/" className="flex-shrink-0">
           {pathname?.startsWith('/learn') ? (
-            <Image src="/logo-cca.png" alt="Course Creator Academy" width={180} height={48} />
+            <Image src="/logo-cca.png" alt="Course Creator Academy" width={140} height={38} className="sm:w-[180px] sm:h-[48px]" />
           ) : (
-            <Image src="/CC-Logo-White.png" alt="Creator Collective" width={200} height={56} />
+            <Image src="/CC-Logo-White.png" alt="Creator Collective" width={160} height={45} className="sm:w-[200px] sm:h-[56px]" />
           )}
         </Link>
           
@@ -226,7 +226,7 @@ export function SiteHeader() {
             <button
               data-mobile-menu-button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-white p-2 hover:bg-neutral-800 rounded-lg transition"
+              className="md:hidden text-white p-2.5 hover:bg-neutral-800 active:bg-neutral-700 rounded-lg transition touch-manipulation"
               aria-label="Toggle menu"
             >
               <svg
@@ -260,11 +260,11 @@ export function SiteHeader() {
               {user ? (
                 <>
                   {/* Your Status label */}
-                  <span className="hidden md:inline text-sm text-neutral-400">Your Status:</span>
+                  <span className="hidden lg:inline text-sm text-neutral-400">Your Status:</span>
                   
                   {/* Upgrade / Status Button */}
                   {hasLegacySub ? (
-                    <span className="hidden md:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
+                    <span className="hidden lg:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
                       Legacy+
                     </span>
                   ) : (
@@ -273,17 +273,17 @@ export function SiteHeader() {
                     onClick={isLegacyCreator ? undefined : () => setShowLegacy(true)}
                     disabled={isLegacyCreator}
                     aria-disabled={isLegacyCreator}
-                    className="hidden md:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 disabled:hover:from-orange-500 disabled:hover:to-red-500 disabled:cursor-default transition font-medium text-sm rounded-lg whitespace-nowrap"
+                    className="hidden lg:flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white active:from-orange-600 active:to-red-600 hover:from-orange-600 hover:to-red-600 disabled:hover:from-orange-500 disabled:hover:to-red-500 disabled:cursor-default transition font-medium text-xs sm:text-sm rounded-lg whitespace-nowrap touch-manipulation"
                   >
                     {isLegacyCreator ? 'Legacy+ Creator' : 'Upgrade to Legacy+'}
                   </button>
                   )}
 
                   {/* Icons */}
-                  <div className="hidden md:flex items-center gap-3">
+                  <div className="hidden sm:flex items-center gap-2 md:gap-3">
                     <button 
                       onClick={() => setShowSearch(true)}
-                      className="text-neutral-400 hover:text-white transition"
+                      className="text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
                       aria-label="Search"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -294,7 +294,7 @@ export function SiteHeader() {
                       href="https://www.facebook.com/coursecreatoracademyllc"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-neutral-400 hover:text-white transition"
+                      className="text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
                       aria-label="Visit our Facebook page"
                     >
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -303,7 +303,7 @@ export function SiteHeader() {
                     </a>
                     <button 
                       onClick={() => setShowSavedItems(true)}
-                      className="text-neutral-400 hover:text-white transition"
+                      className="text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
                       aria-label="Saved Items"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -312,14 +312,14 @@ export function SiteHeader() {
                     </button>
                     <button 
                       onClick={() => setShowMessages(true)}
-                      className="relative text-neutral-400 hover:text-white transition"
+                      className="relative text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
                       aria-label="Open messages"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                       {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
+                        <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center min-w-[16px] sm:min-w-[20px]">
                           {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                       )}
@@ -331,9 +331,9 @@ export function SiteHeader() {
                     <button
                       ref={buttonRef}
                       onClick={() => setShowDropdown(!showDropdown)}
-                      className="flex items-center gap-2 hover:opacity-80 transition"
+                      className="flex items-center gap-2 active:opacity-80 hover:opacity-80 transition touch-manipulation"
                     >
-                      <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-800 border-2 border-neutral-700 flex-shrink-0">
+                      <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-neutral-800 border-2 border-neutral-700 flex-shrink-0">
                         {photoURL ? (
                           <img
                             src={photoURL}
@@ -414,13 +414,13 @@ export function SiteHeader() {
                 <>
                   <Link
                     href="/login"
-                    className="px-3 sm:px-4 py-1.5 text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-800 border-2 border-transparent transition-all duration-200 whitespace-nowrap"
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium bg-neutral-900 text-white active:bg-neutral-800 hover:bg-neutral-800 border-2 border-transparent transition-all duration-200 whitespace-nowrap rounded-lg touch-manipulation"
                   >
                     Sign In
                   </Link>
                   <button
                     onClick={() => setShowPricing(true)}
-                    className="px-3 sm:px-4 py-1.5 text-sm font-medium bg-ccaBlue text-white hover:bg-ccaBlue/90 border-2 border-ccaBlue transition-all duration-200 whitespace-nowrap"
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium bg-ccaBlue text-white active:bg-ccaBlue/80 hover:bg-ccaBlue/90 border-2 border-ccaBlue transition-all duration-200 whitespace-nowrap rounded-lg touch-manipulation"
                   >
                     Join Now
                   </button>
@@ -460,7 +460,7 @@ export function SiteHeader() {
           {/* Mobile Menu Drawer */}
           <div
             ref={mobileMenuRef}
-            className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-950 border-l border-red-800/30 shadow-2xl z-[110] md:hidden overflow-y-auto transform transition-transform duration-300 ease-in-out"
+            className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-950 border-l border-red-800/30 shadow-2xl z-[110] md:hidden overflow-y-auto transform transition-transform duration-300 ease-in-out pb-safe"
             style={{
               transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(100%)'
             }}
@@ -509,7 +509,7 @@ export function SiteHeader() {
               </div>
 
               {/* Mobile Navigation Links */}
-              <div className="flex-1 px-4 py-6 space-y-2">
+              <div className="flex-1 px-3 sm:px-4 py-4 sm:py-6 space-y-2">
                 {links.map((l) => {
                   const active = pathname === l.href;
                   return (
@@ -517,10 +517,10 @@ export function SiteHeader() {
                       key={l.href}
                       href={l.href as any}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`block px-4 py-3 rounded-lg font-semibold transition-all duration-300 ${
+                      className={`block px-4 py-3 rounded-lg font-semibold text-sm sm:text-base transition-all duration-300 touch-manipulation ${
                         active
                           ? 'bg-white text-black shadow-lg border-2 border-ccaBlue'
-                          : 'bg-neutral-900/50 text-white hover:bg-neutral-800 border-2 border-transparent'
+                          : 'bg-neutral-900/50 text-white active:bg-neutral-800 hover:bg-neutral-800 border-2 border-transparent'
                       }`}
                     >
                       {l.label}
@@ -530,13 +530,13 @@ export function SiteHeader() {
               </div>
 
               {/* Mobile Menu Footer */}
-              <div className="p-4 border-t border-red-800/30 space-y-2">
+              <div className="p-3 sm:p-4 border-t border-red-800/30 space-y-2">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
                     setShowMessages(true);
                   }}
-                  className="w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium flex items-center gap-2"
+                  className="w-full px-4 py-3 bg-neutral-900/50 text-white active:bg-neutral-800 hover:bg-neutral-800 rounded-lg transition text-left font-medium text-sm sm:text-base flex items-center gap-2 touch-manipulation"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -548,7 +548,7 @@ export function SiteHeader() {
                     setMobileMenuOpen(false);
                     setShowSavedItems(true);
                   }}
-                  className="w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium flex items-center gap-2"
+                  className="w-full px-4 py-3 bg-neutral-900/50 text-white active:bg-neutral-800 hover:bg-neutral-800 rounded-lg transition text-left font-medium text-sm sm:text-base flex items-center gap-2 touch-manipulation"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -560,13 +560,13 @@ export function SiteHeader() {
                     setMobileMenuOpen(false);
                     router.push(profileHref);
                   }}
-                  className="w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium"
+                  className="w-full px-4 py-3 bg-neutral-900/50 text-white active:bg-neutral-800 hover:bg-neutral-800 rounded-lg transition text-left font-medium text-sm sm:text-base touch-manipulation"
                 >
                   {profileLabel}
                 </button>
                 {isLegacyCreator && (
                   <>
-                    <Link href="/creator/onboarding" onClick={() => setMobileMenuOpen(false)} className="block w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium">Stripe Payouts</Link>
+                    <Link href="/creator/onboarding" onClick={() => setMobileMenuOpen(false)} className="block w-full px-4 py-3 bg-neutral-900/50 text-white active:bg-neutral-800 hover:bg-neutral-800 rounded-lg transition text-left font-medium text-sm sm:text-base touch-manipulation">Stripe Payouts</Link>
                   </>
                 )}
                 <button
@@ -576,7 +576,7 @@ export function SiteHeader() {
                   }}
                   disabled={isLegacyCreator}
                   aria-disabled={isLegacyCreator}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 rounded-lg transition font-medium"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white active:from-orange-600 active:to-red-600 hover:from-orange-600 hover:to-red-600 rounded-lg transition font-medium text-sm sm:text-base touch-manipulation disabled:opacity-50"
                 >
                   {isLegacyCreator ? 'Legacy+ Creator' : 'Upgrade to Legacy+'}
                 </button>
@@ -585,7 +585,7 @@ export function SiteHeader() {
                     setMobileMenuOpen(false);
                     setShowSupportChat(true);
                   }}
-                  className="w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium"
+                  className="w-full px-4 py-3 bg-neutral-900/50 text-white active:bg-neutral-800 hover:bg-neutral-800 rounded-lg transition text-left font-medium text-sm sm:text-base touch-manipulation"
                 >
                   Support
                 </button>
@@ -594,7 +594,7 @@ export function SiteHeader() {
                     setMobileMenuOpen(false);
                     handleLogout();
                   }}
-                  className="w-full px-4 py-3 bg-neutral-900/50 text-white hover:bg-neutral-800 rounded-lg transition text-left font-medium"
+                  className="w-full px-4 py-3 bg-neutral-900/50 text-white active:bg-neutral-800 hover:bg-neutral-800 rounded-lg transition text-left font-medium text-sm sm:text-base touch-manipulation"
                 >
                   Sign Out
                 </button>
