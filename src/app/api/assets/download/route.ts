@@ -33,9 +33,19 @@ export async function GET(req: NextRequest) {
     const bucket = adminStorage.bucket();
     const file = bucket.file(storagePath);
     
+    // Check if file exists
+    const [exists] = await file.exists();
+    if (!exists) {
+      return NextResponse.json({ error: 'File not found in storage' }, { status: 404 });
+    }
+    
+    // Generate signed URL (valid for 1 hour)
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+    
     const [signedUrl] = await file.getSignedUrl({
       action: 'read',
-      expires: Date.now() + 60 * 60 * 1000, // 1 hour
+      expires: expiresAt,
     });
 
     return NextResponse.json({ downloadUrl: signedUrl });

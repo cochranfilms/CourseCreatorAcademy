@@ -311,6 +311,15 @@ service cloud.firestore {
       allow delete: if false;
     }
     
+    // Assets collection - premium downloadable assets (LUTs, presets, SFX, templates, etc.)
+    match /assets/{assetId} {
+      // Allow authenticated users to read assets
+      allow read: if isAuthenticated();
+      
+      // Writes are performed by server/admin only (via Firebase Admin SDK)
+      allow write: if false;
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

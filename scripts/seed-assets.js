@@ -48,7 +48,6 @@ const sampleAssets = [
     description: 'Professional color grading LUTs for a clean, minimal aesthetic',
     storagePath: 'assets/luts/sleektone-minimal-luts.zip',
     fileType: 'zip',
-    thumbnailUrl: 'https://via.placeholder.com/400x300/1a1a1a/ffffff?text=Sleektone+LUTs',
   },
   {
     title: 'Cinematic Color Pack',
@@ -56,7 +55,6 @@ const sampleAssets = [
     description: 'A collection of cinematic color grading presets for video editing',
     storagePath: 'assets/luts/cinematic-color-pack.zip',
     fileType: 'zip',
-    thumbnailUrl: 'https://via.placeholder.com/400x300/1a1a1a/ffffff?text=Cinematic+Color',
   },
   
   // Overlays & Transitions (2 assets)
@@ -66,7 +64,6 @@ const sampleAssets = [
     description: 'Professional lens flares and light leaks for cinematic effects',
     storagePath: 'assets/overlays/cinematic-flares-vol1.zip',
     fileType: 'zip',
-    thumbnailUrl: 'https://via.placeholder.com/400x300/1a1a1a/ffffff?text=Cinematic+Flares',
   },
   {
     title: 'Smooth Transitions Pack',
@@ -74,7 +71,6 @@ const sampleAssets = [
     description: 'Smooth, professional transition effects for video editing',
     storagePath: 'assets/overlays/smooth-transitions.zip',
     fileType: 'zip',
-    thumbnailUrl: 'https://via.placeholder.com/400x300/1a1a1a/ffffff?text=Transitions',
   },
   
   // SFX & Plugins (2 assets)
@@ -84,7 +80,6 @@ const sampleAssets = [
     description: 'High-quality sound effects for flash and pop transitions',
     storagePath: 'assets/sfx/flash-pop-sfx.zip',
     fileType: 'zip',
-    thumbnailUrl: 'https://via.placeholder.com/400x300/1a1a1a/ffffff?text=Flash+Pop+SFX',
   },
   {
     title: 'Ambient Sound Library',
@@ -92,7 +87,6 @@ const sampleAssets = [
     description: 'A comprehensive library of ambient sounds and background audio',
     storagePath: 'assets/sfx/ambient-sound-library.zip',
     fileType: 'zip',
-    thumbnailUrl: 'https://via.placeholder.com/400x300/1a1a1a/ffffff?text=Ambient+SFX',
   },
   
   // Templates (2 assets)
@@ -102,7 +96,6 @@ const sampleAssets = [
     description: 'Professional title animations and lower thirds for After Effects',
     storagePath: 'assets/templates/ae-title-pack.zip',
     fileType: 'zip',
-    thumbnailUrl: 'https://via.placeholder.com/400x300/1a1a1a/ffffff?text=AE+Titles',
   },
   {
     title: 'Premiere Pro Editing Template',
@@ -110,7 +103,6 @@ const sampleAssets = [
     description: 'Ready-to-use editing template with transitions and effects',
     storagePath: 'assets/templates/premiere-template.zip',
     fileType: 'zip',
-    thumbnailUrl: 'https://via.placeholder.com/400x300/1a1a1a/ffffff?text=Premiere+Template',
   },
 ];
 
