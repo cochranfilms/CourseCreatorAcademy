@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 
 // Simple OK/ERROR helpers
 export function jsonOk<T>(data: T, init?: number | ResponseInit) {
-  return NextResponse.json(data, init);
+  const responseInit: ResponseInit | undefined = typeof init === 'number' ? { status: init } : init;
+  return NextResponse.json(data, responseInit);
 }
 
 export function jsonError(message: string, status: number = 400, extra?: Record<string, unknown>) {
@@ -11,7 +12,8 @@ export function jsonError(message: string, status: number = 400, extra?: Record<
 
 // Verbose helpers compatible with earlier imports
 export function ok(data: Record<string, unknown> = {}, init?: number | ResponseInit) {
-  return NextResponse.json({ success: true, ...data }, init);
+  const responseInit: ResponseInit | undefined = typeof init === 'number' ? { status: init } : init;
+  return NextResponse.json({ success: true, ...data }, responseInit);
 }
 
 export function badRequest(message: string) {
