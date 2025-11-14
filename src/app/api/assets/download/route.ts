@@ -30,25 +30,41 @@ export async function GET(req: NextRequest) {
     }
 
     // Get signed URL from Firebase Storage (valid for 1 hour)
-    const bucket = adminStorage.bucket();
+    // Use explicit bucket name - Firebase supports both .appspot.com and .firebasestorage.app
+    // Both refer to the same bucket, but we'll use .firebasestorage.app (newer format)
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || 'course-creator-academy-866d6';
+    const bucketName = `${projectId}.firebasestorage.app`;
+    const bucket = adminStorage.bucket(bucketName);
     const file = bucket.file(storagePath);
     
     // Check if file exists
     const [exists] = await file.exists();
     if (!exists) {
-      return NextResponse.json({ error: 'File not found in storage' }, { status: 404 });
+      console.error(`File not found at path: ${storagePath}`);
+      return NextResponse.json({ 
+        error: 'File not found in storage',
+        details: `Path: ${storagePath}`
+      }, { status: 404 });
     }
     
     // Generate signed URL (valid for 1 hour)
+    // Firebase Admin Storage expects expires as a Date object or timestamp string
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1);
     
-    const [signedUrl] = await file.getSignedUrl({
-      action: 'read',
-      expires: expiresAt,
-    });
+    try {
+      const [signedUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: expiresAt,
+      });
 
-    return NextResponse.json({ downloadUrl: signedUrl });
+      return NextResponse.json({ downloadUrl: signedUrl });
+    } catch (signError: any) {
+      console.error('Error generating signed URL:', signError);
+      console.error('Storage path:', storagePath);
+      console.error('Bucket name:', bucket.name);
+      throw signError;
+    }
   } catch (err: any) {
     console.error('Error generating download URL:', err);
     return NextResponse.json({ error: err?.message || 'Failed to generate download URL' }, { status: 500 });

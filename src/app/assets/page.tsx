@@ -121,7 +121,11 @@ export default function AssetsPage() {
               onClick={() => handleDownload(asset)}
             >
               <div className="h-44 bg-neutral-800 relative overflow-hidden">
-                {asset.thumbnailUrl && asset.thumbnailUrl.startsWith('https://') ? (
+                {asset.thumbnailUrl && 
+                 asset.thumbnailUrl.startsWith('https://') && 
+                 !asset.thumbnailUrl.includes('via.placeholder.com') &&
+                 (asset.thumbnailUrl.includes('firebasestorage.googleapis.com') || 
+                  asset.thumbnailUrl.includes('firebasestorage.app')) ? (
                   <img 
                     src={asset.thumbnailUrl} 
                     alt={asset.title}
