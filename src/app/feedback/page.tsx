@@ -109,15 +109,15 @@ export default function FeedbackPage() {
     <div className="min-h-screen flex items-start sm:items-center justify-center px-3 sm:px-4 py-6 sm:py-12 -mt-16 pt-safe pb-safe">
       <div className="w-full max-w-3xl">
         {/* Thank You Section */}
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 text-white px-2">
+        <div className="text-center mb-6 sm:mb-8 px-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 text-white">
             Thank You for Testing!
           </h1>
-          <p className="text-sm sm:text-base md:text-lg text-neutral-300 max-w-2xl mx-auto px-2 leading-relaxed">
+          <p className="text-sm sm:text-base md:text-lg text-neutral-300 max-w-2xl mx-auto leading-relaxed mb-3 sm:mb-4">
             Your participation in this round of testing is incredibly valuable to us. 
             We appreciate the time you've taken to explore the platform and provide your insights.
           </p>
-          <p className="text-xs sm:text-sm md:text-base text-neutral-400 mt-3 sm:mt-4 max-w-2xl mx-auto px-2 leading-relaxed">
+          <p className="text-xs sm:text-sm md:text-base text-neutral-400 max-w-2xl mx-auto leading-relaxed">
             Please share your feedback, suggestions, and any issues you encountered below. 
             Your input helps us build a better experience for everyone.
           </p>
