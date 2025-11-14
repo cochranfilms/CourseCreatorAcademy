@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { stripe } from '@/lib/stripe';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -113,9 +113,10 @@ export async function POST(req: NextRequest) {
     });
 
     return jsonOk({ url: session.url, sessionId: session.id });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating final payment checkout:', error);
-    return jsonError(error.message || 'Failed to create checkout session', 500);
+    const message = error instanceof Error ? error.message : 'Failed to create checkout session';
+    return jsonError(message, 500);
   }
 }
 

@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { stripe } from '@/lib/stripe';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getUserIdFromAuthHeader } from '@/lib/api/auth';
 import { getOrCreateCustomer } from '@/lib/api/stripeCustomer';
@@ -42,11 +41,12 @@ export async function POST(req: NextRequest) {
     if (!posterDoc.exists) return jsonError('Poster account not found', 404);
 
     const posterData = posterDoc.data();
-    const customerId = await getOrCreateCustomer(userId, posterData?.email);
+    // Ensure customer exists for later checkout flows
+    await getOrCreateCustomer(userId, posterData?.email);
 
     const applicantConnectAccountId = applicationData?.applicantConnectAccountId;
     if (!applicantConnectAccountId) {
-      return NextResponse.json({ error: 'Applicant Connect account not found' }, { status: 400 });
+      return jsonError('Applicant Connect account not found', 400);
     }
 
     // No platform fee on the remaining amount (fee only on deposit)
@@ -67,9 +67,10 @@ export async function POST(req: NextRequest) {
     });
 
     return jsonOk({ success: true, remainingAmount, platformFeeOnRemaining });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating final payment:', error);
-    return jsonError(error.message || 'Failed to create final payment', 500);
+    const message = error instanceof Error ? error.message : 'Failed to create final payment';
+    return jsonError(message, 500);
   }
 }
 

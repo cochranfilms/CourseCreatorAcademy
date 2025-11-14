@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 // Simple OK/ERROR helpers
 export function jsonOk<T>(data: T, init?: number | ResponseInit) {
-  return NextResponse.json(data as any, init);
+  return NextResponse.json(data, init);
 }
 
 export function jsonError(message: string, status: number = 400, extra?: Record<string, unknown>) {

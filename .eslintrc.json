@@ -16,7 +16,18 @@
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn",
     "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
-    "@typescript-eslint/consistent-type-imports": "warn"
+    "@typescript-eslint/consistent-type-imports": "warn",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/ban-ts-comment": "warn",
+    "@typescript-eslint/no-require-imports": "warn",
+    "@typescript-eslint/no-unused-expressions": "warn",
+    "no-empty": "warn",
+    "no-extra-boolean-cast": "warn",
+    "prefer-const": "warn",
+    "react/no-unescaped-entities": "warn",
+    "@next/next/no-img-element": "warn",
+    "@next/next/no-css-tags": "warn",
+    "@next/next/no-assign-module-variable": "warn"
   },
   "settings": {
     "react": {
