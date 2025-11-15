@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.mux.com https://www.google.com https://www.gstatic.com https://apis.google.com https://connect.facebook.net https://accounts.google.com",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://image.mux.com https://firebasestorage.googleapis.com https://*.firebasestorage.app",
+      "img-src 'self' data: blob: https://image.mux.com https://firebasestorage.googleapis.com https://storage.googleapis.com https://*.firebasestorage.app",
       "media-src 'self' blob: https://stream.mux.com https://*.mux.com",
       "font-src 'self' data:",
       "connect-src 'self' https://api.mux.com https://stream.mux.com https://image.mux.com https://*.mux.com https://*.edgemv.mux.com https://inferred.litix.io https://litix.io https://js.stripe.com https://api.stripe.com https://firebasestorage.googleapis.com https://*.firebasestorage.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com https://graph.facebook.com https://content-firebaseappcheck.googleapis.com",
