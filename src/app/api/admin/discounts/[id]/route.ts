@@ -62,6 +62,35 @@ export async function PUT(req: NextRequest, context: any) {
         );
       }
       updates.discountType = discountType;
+      
+      // Validate required fields based on discount type
+      if (discountType === 'code' && (!discountCode && !discountDoc.data()?.discountCode)) {
+        return NextResponse.json(
+          { error: 'discountCode required when discountType is "code"' },
+          { status: 400 }
+        );
+      }
+      if (discountType === 'code' && (!discountLink && !discountDoc.data()?.discountLink)) {
+        return NextResponse.json(
+          { error: 'discountLink (Partner Website Link) required when discountType is "code" so users know where to use the code' },
+          { status: 400 }
+        );
+      }
+      if ((discountType === 'link' || discountType === 'both') && (!discountLink && !discountDoc.data()?.discountLink)) {
+        return NextResponse.json(
+          { error: 'discountLink required when discountType is "link" or "both"' },
+          { status: 400 }
+        );
+      }
+    } else {
+      // If discountType is not being updated, validate based on current type
+      const currentType = discountDoc.data()?.discountType;
+      if (currentType === 'code' && discountLink !== undefined && !discountLink) {
+        return NextResponse.json(
+          { error: 'Cannot remove discountLink from a code discount. Users need to know where to use the code.' },
+          { status: 400 }
+        );
+      }
     }
     if (discountAmount !== undefined) updates.discountAmount = discountAmount;
     if (category !== undefined) updates.category = category;

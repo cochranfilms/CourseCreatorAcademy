@@ -394,8 +394,8 @@ function DiscountFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-neutral-950 border border-neutral-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm p-4 pt-24">
+      <div className="bg-neutral-950 border border-neutral-800 rounded-xl max-w-2xl w-full max-h-[calc(100vh-8rem)] overflow-y-auto shadow-2xl mt-4">
         <div className="sticky top-0 bg-neutral-950 border-b border-neutral-800 px-6 py-4 flex items-center justify-between z-10">
           <h2 className="text-xl font-semibold text-white">
             {discount ? 'Edit Discount' : 'Create Discount'}
@@ -488,8 +488,33 @@ function DiscountFormModal({
                 onChange={(e) => setFormData({ ...formData, discountLink: e.target.value })}
                 className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
               />
+              <p className="text-xs text-neutral-500 mt-1">
+                Direct link to redeem the discount (if applicable)
+              </p>
             </div>
           )}
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              Partner Website Link
+              {(formData.discountType === 'code') && ' *'}
+            </label>
+            <input
+              type="url"
+              required={formData.discountType === 'code'}
+              value={formData.discountLink || ''}
+              onChange={(e) => setFormData({ ...formData, discountLink: e.target.value })}
+              placeholder="https://partner-website.com"
+              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+            />
+            <p className="text-xs text-neutral-500 mt-1">
+              {formData.discountType === 'code' 
+                ? 'Website where users go to enter the discount code (required for code discounts)'
+                : formData.discountType === 'link'
+                ? 'Optional: Partner website URL (if different from discount link)'
+                : 'Website where users can go to use the discount code'}
+            </p>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-2">Discount Amount</label>

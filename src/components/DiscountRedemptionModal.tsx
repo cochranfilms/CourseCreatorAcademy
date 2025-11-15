@@ -154,19 +154,31 @@ export function DiscountRedemptionModal({
                 </div>
               )}
 
-            {(discount.discountType === 'link' || discount.discountType === 'both') &&
-              discount.discountLink && (
-                <div>
-                  <a
-                    href={discount.discountLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full px-4 py-3 bg-ccaBlue hover:opacity-90 transition text-white font-medium text-center rounded-lg"
+            {discount.discountLink && (
+              <div>
+                <a
+                  href={discount.discountLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full px-4 py-3 bg-ccaBlue hover:opacity-90 transition text-white font-medium text-center rounded-lg flex items-center justify-center gap-2"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    Visit Partner Website
-                  </a>
-                </div>
-              )}
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                    />
+                  </svg>
+                  Visit Partner Website
+                </a>
+              </div>
+            )}
 
             <div className="pt-4 border-t border-neutral-800">
               <p className="text-xs text-neutral-500">

@@ -91,6 +91,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (discountType === 'code' && !discountLink) {
+      return NextResponse.json(
+        { error: 'discountLink (Partner Website Link) required when discountType is "code" so users know where to use the code' },
+        { status: 400 }
+      );
+    }
+
     if (discountType === 'link' && !discountLink) {
       return NextResponse.json(
         { error: 'discountLink required when discountType is "link" or "both"' },
