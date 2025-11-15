@@ -36,4 +36,19 @@ export function serverError(message: string) {
   return NextResponse.json({ error: message }, { status: 500 });
 }
 
+// Helper to safely parse JSON from request body
+export async function safeJsonParse<T = any>(req: Request): Promise<{ success: true; data: T } | { success: false; error: string }> {
+  try {
+    const data = await req.json();
+    return { success: true, data };
+  } catch (error: any) {
+    return { 
+      success: false, 
+      error: error instanceof SyntaxError 
+        ? 'Invalid JSON in request body' 
+        : 'Failed to parse request body' 
+    };
+  }
+}
+
 

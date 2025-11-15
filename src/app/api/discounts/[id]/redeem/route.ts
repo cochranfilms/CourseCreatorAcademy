@@ -41,9 +41,16 @@ export async function POST(req: NextRequest, context: any) {
 
     // Check expiration date if set
     if (discount.expirationDate) {
-      const expirationDate = discount.expirationDate.toDate();
-      if (expirationDate < new Date()) {
-        return NextResponse.json({ error: 'Discount has expired' }, { status: 400 });
+      try {
+        const expirationDate = discount.expirationDate?.toDate 
+          ? discount.expirationDate.toDate() 
+          : new Date(discount.expirationDate);
+        if (expirationDate < new Date()) {
+          return NextResponse.json({ error: 'Discount has expired' }, { status: 400 });
+        }
+      } catch (error) {
+        // If expirationDate is invalid, skip expiration check
+        console.warn('Invalid expirationDate format for discount:', discountId, error);
       }
     }
 

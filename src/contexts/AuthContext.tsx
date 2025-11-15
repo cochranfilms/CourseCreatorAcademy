@@ -204,7 +204,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
     // Ensure profile is created/updated
-    await ensureUserProfile(result.user);
+    try {
+      await ensureUserProfile(result.user);
+    } catch (error) {
+      // Profile creation failure shouldn't block sign-in
+      console.error('Failed to ensure user profile after Google sign-in:', error);
+    }
   };
 
   const signInWithFacebook = async () => {
@@ -212,7 +217,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new FacebookAuthProvider();
     const result = await signInWithPopup(auth, provider);
     // Ensure profile is created/updated
-    await ensureUserProfile(result.user);
+    try {
+      await ensureUserProfile(result.user);
+    } catch (error) {
+      // Profile creation failure shouldn't block sign-in
+      console.error('Failed to ensure user profile after Facebook sign-in:', error);
+    }
   };
 
   const logout = async () => {

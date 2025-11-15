@@ -34,9 +34,14 @@ export async function GET(req: NextRequest) {
         const data = doc.data();
         // Check expiration date if set
         if (data.expirationDate) {
-          const expirationDate = data.expirationDate.toDate();
-          if (expirationDate < now) {
-            return null; // Filter out expired discounts
+          try {
+            const expirationDate = data.expirationDate?.toDate ? data.expirationDate.toDate() : new Date(data.expirationDate);
+            if (expirationDate < now) {
+              return null; // Filter out expired discounts
+            }
+          } catch (error) {
+            // If expirationDate is invalid, skip expiration check
+            console.warn('Invalid expirationDate format for discount:', doc.id, error);
           }
         }
         return {
