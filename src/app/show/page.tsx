@@ -1,23 +1,131 @@
+"use client";
+
+import { useEffect, useState } from 'react';
+import MuxPlayer from '@mux/mux-player-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, firebaseReady } from '@/lib/firebaseClient';
+
+interface EpisodeData {
+  assetId: string;
+  playbackId: string | null;
+  title: string;
+  durationSec: number;
+  durationFormatted: string;
+  dateFormatted: string;
+  createdAt: string;
+  status: string;
+  passthrough: any;
+}
+
 export default function ShowPage() {
+  const [episode, setEpisode] = useState<EpisodeData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchEpisode() {
+      try {
+        let assetId = '';
+
+        // First, try to get assetId from Firestore (allows updates without redeploying)
+        if (firebaseReady && db) {
+          try {
+            const configDoc = await getDoc(doc(db, 'config', 'show'));
+            if (configDoc.exists()) {
+              const configData = configDoc.data();
+              assetId = configData.muxAssetId || '';
+            }
+          } catch (firestoreError) {
+            console.log('Could not fetch from Firestore, falling back to env var');
+          }
+        }
+
+        // Fall back to environment variable if Firestore doesn't have it
+        if (!assetId) {
+          assetId = process.env.NEXT_PUBLIC_SHOW_ASSET_ID || '';
+        }
+        
+        if (!assetId) {
+          setError('Show asset ID not configured. Please set it in Firestore (config/show.muxAssetId) or NEXT_PUBLIC_SHOW_ASSET_ID environment variable.');
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch(`/api/show/episode?assetId=${encodeURIComponent(assetId)}`);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to fetch episode');
+        }
+
+        const data = await response.json();
+        setEpisode(data);
+      } catch (err: any) {
+        console.error('Error fetching episode:', err);
+        setError(err.message || 'Failed to load episode');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchEpisode();
+  }, []);
+
   return (
     <main className="max-w-7xl mx-auto px-6 py-8">
       <h1 className="text-3xl md:text-4xl font-bold">CCA Show</h1>
       <p className="text-neutral-400 mt-2">Insights, interviews and inspiration for creators.</p>
 
-      <div className="mt-8 rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
-        <div className="aspect-video bg-neutral-800 rounded-xl overflow-hidden">
-          <iframe
-            className="w-full h-full"
-            src="https://www.youtube.com/embed/5e7C65RRz08?rel=0&modestbranding=1"
-            title="Episode 006: Building Creative Momentum"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerPolicy="strict-origin-when-cross-origin"
-            allowFullScreen
-          />
+      {loading ? (
+        <div className="mt-8 rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
+          <div className="aspect-video bg-neutral-800 rounded-xl flex items-center justify-center">
+            <div className="text-neutral-400">Loading episode...</div>
+          </div>
         </div>
-        <div className="mt-4 text-xl font-semibold">Episode 006: Building Creative Momentum</div>
-        <div className="text-neutral-400 text-sm">40m • Aug 11, 2025</div>
-      </div>
+      ) : error ? (
+        <div className="mt-8 rounded-2xl overflow-hidden border border-red-500/50 bg-neutral-950 p-4">
+          <div className="aspect-video bg-neutral-800 rounded-xl flex items-center justify-center">
+              <div className="text-red-400 text-center px-4">
+              {error}
+              <div className="text-sm text-neutral-500 mt-2">
+                To configure, create a document in Firestore: <code className="bg-neutral-900 px-2 py-1 rounded">config/show</code> with field <code className="bg-neutral-900 px-2 py-1 rounded">muxAssetId</code>, or set NEXT_PUBLIC_SHOW_ASSET_ID environment variable.
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : episode && episode.playbackId ? (
+        <div className="mt-8 rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
+          <div className="aspect-video bg-neutral-800 rounded-xl overflow-hidden">
+            <MuxPlayer
+              playbackId={episode.playbackId}
+              streamType="on-demand"
+              primaryColor="#3B82F6"
+              className="w-full"
+              style={{ aspectRatio: '16 / 9' }}
+              playsInline
+              preload="metadata"
+              // @ts-ignore
+              preferMse
+              // @ts-ignore
+              maxResolution="540p"
+              // @ts-ignore
+              disablePictureInPicture
+              // @ts-ignore
+              autoPictureInPicture={false}
+            />
+          </div>
+          <div className="mt-4 text-xl font-semibold">{episode.title}</div>
+          <div className="text-neutral-400 text-sm">
+            {episode.durationFormatted} • {episode.dateFormatted}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-8 rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
+          <div className="aspect-video bg-neutral-800 rounded-xl flex items-center justify-center">
+            <div className="text-neutral-400">Video not available</div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
