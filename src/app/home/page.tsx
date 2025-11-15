@@ -59,6 +59,14 @@ type LegacyCreator = {
   kitSlug: string;
 };
 
+type Asset = {
+  id: string;
+  title: string;
+  category?: string;
+  thumbnailUrl?: string;
+  description?: string;
+};
+
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
@@ -115,6 +123,7 @@ export default function HomePage() {
     guest?: string;
     handle?: string;
   } | null>(null);
+  const [featuredAsset, setFeaturedAsset] = useState<Asset | null>(null);
 
   // Post-checkout auto sign-in via custom token handled in Suspense-wrapped child
 
@@ -210,7 +219,7 @@ export default function HomePage() {
           configDoc,
           creatorsResponse,
           discountsData,
-          showEpisodeData
+          assetsSnap
         ] = await Promise.allSettled([
           // Fetch courses
           getDocs(collection(db, 'courses')),
@@ -228,8 +237,8 @@ export default function HomePage() {
                 }).then(r => r.ok ? r.json() : null)
               )
             : Promise.resolve(null),
-          // Fetch show episode (will be resolved after assetId is found)
-          Promise.resolve(null)
+          // Fetch assets (for featured asset)
+          getDocs(query(collection(db, 'assets'), orderBy('createdAt', 'desc'), limit(1)))
         ]);
 
         // Process courses and lessons
@@ -318,6 +327,19 @@ export default function HomePage() {
           if (garrett) {
             setGarrettKing(garrett);
           }
+        }
+
+        // Process featured asset
+        if (assetsSnap.status === 'fulfilled' && assetsSnap.value && !assetsSnap.value.empty) {
+          const firstAsset = assetsSnap.value.docs[0];
+          const assetData = firstAsset.data();
+          setFeaturedAsset({
+            id: firstAsset.id,
+            title: assetData.title || 'Untitled Asset',
+            category: assetData.category || '',
+            thumbnailUrl: assetData.thumbnailUrl || '',
+            description: assetData.description || '',
+          });
         }
 
         // Process show episode
@@ -732,28 +754,59 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Overlay+ Plugin */}
-          <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
-            <div className="relative aspect-video bg-neutral-900">
-              <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
-                <div className="text-center">
-                  <div className="text-3xl sm:text-4xl mb-2">🎛️</div>
-                  <div className="text-[10px] sm:text-xs">Lo-Fi FX</div>
-                </div>
+          {/* Featured Asset */}
+          {dataLoading || !featuredAsset ? (
+            <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
+              <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
+              <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
+                <div className="h-3 bg-neutral-800 rounded w-24 mb-2 animate-pulse"></div>
+                <div className="h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
+                <div className="h-4 bg-neutral-800 rounded w-full mb-4 flex-1 animate-pulse"></div>
+                <div className="h-4 bg-neutral-800 rounded w-32 mt-auto animate-pulse"></div>
               </div>
             </div>
-            <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
-              <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">OVERLAY+</div>
-              <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 leading-tight">New Release: Lo-Fi FX Plugin</h3>
-              <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed flex-1">Give your audio that nostalgic, radio-style vibe. Midrange warmth, filtered clarity, and analog soul with just one knob.</p>
-              <a href="#" className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
-                CHECK IT OUT
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </a>
+          ) : (
+            <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
+              <div className="relative aspect-video bg-neutral-900">
+                {featuredAsset.thumbnailUrl && 
+                 featuredAsset.thumbnailUrl.startsWith('https://') && 
+                 (featuredAsset.thumbnailUrl.includes('firebasestorage.googleapis.com') || 
+                  featuredAsset.thumbnailUrl.includes('firebasestorage.app')) ? (
+                  <img 
+                    src={featuredAsset.thumbnailUrl} 
+                    alt={featuredAsset.title}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
+                    <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
+                <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">ASSETS</div>
+                <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 leading-tight">{featuredAsset.title}</h3>
+                {featuredAsset.description ? (
+                  <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed flex-1 line-clamp-2">{featuredAsset.description}</p>
+                ) : featuredAsset.category ? (
+                  <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed flex-1">{featuredAsset.category}</p>
+                ) : null}
+                <Link href="/assets" className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
+                  CHECK IT OUT
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
