@@ -103,7 +103,7 @@ function AdminDiscountsManager() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="max-w-7xl mx-auto px-6 pt-24 pb-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Admin Discounts</h1>
@@ -279,6 +279,7 @@ function DiscountFormModal({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [createdDiscountId, setCreatedDiscountId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Discount>>({
     title: discount?.title || '',
     description: discount?.description || '',
@@ -303,10 +304,10 @@ function DiscountFormModal({
     setLoading(true);
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const url = discount
-        ? `/api/admin/discounts/${discount.id}`
+      const url = discount || createdDiscountId
+        ? `/api/admin/discounts/${discount?.id || createdDiscountId}`
         : '/api/admin/discounts';
-      const method = discount ? 'PUT' : 'POST';
+      const method = discount || createdDiscountId ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
@@ -320,6 +321,13 @@ function DiscountFormModal({
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to save discount');
 
+      // If creating a new discount, save the ID for logo upload
+      if (!discount && !createdDiscountId && data.discount?.id) {
+        setCreatedDiscountId(data.discount.id);
+        // Don't close yet - allow logo upload
+        return;
+      }
+
       onClose();
     } catch (err: any) {
       alert(err.message || 'Failed to save discount');
@@ -330,20 +338,26 @@ function DiscountFormModal({
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !auth.currentUser || !discount) return;
+    if (!file || !auth.currentUser) return;
+
+    const discountId = discount?.id || createdDiscountId;
+    if (!discountId) {
+      alert('Please save the discount first before uploading a logo');
+      return;
+    }
 
     setUploadingLogo(true);
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const formData = new FormData();
-      formData.append('file', file);
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
 
-      const response = await fetch(`/api/admin/discounts/${discount.id}/logo`, {
+      const response = await fetch(`/api/admin/discounts/${discountId}/logo`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${idToken}`,
         },
-        body: formData,
+        body: uploadFormData,
       });
 
       const data = await response.json();
@@ -359,12 +373,15 @@ function DiscountFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-neutral-950 border border-neutral-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold">
+      <div className="bg-neutral-950 border border-neutral-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="sticky top-0 bg-neutral-950 border-b border-neutral-800 px-6 py-4 flex items-center justify-between z-10">
+          <h2 className="text-xl font-semibold text-white">
             {discount ? 'Edit Discount' : 'Create Discount'}
           </h2>
-          <button onClick={onClose} className="text-neutral-400 hover:text-white">
+          <button 
+            onClick={onClose} 
+            className="text-neutral-400 hover:text-white transition-colors p-1 hover:bg-neutral-800 rounded"
+          >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -375,49 +392,50 @@ function DiscountFormModal({
             </svg>
           </button>
         </div>
+        <div className="p-6">
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm text-neutral-300 mb-1">Title *</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">Title *</label>
             <input
               type="text"
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-300 mb-1">Partner Name *</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">Partner Name *</label>
             <input
               type="text"
               required
               value={formData.partnerName}
               onChange={(e) => setFormData({ ...formData, partnerName: e.target.value })}
-              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-300 mb-1">Description</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent resize-none"
               rows={3}
             />
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-300 mb-1">Discount Type *</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">Discount Type *</label>
             <select
               required
               value={formData.discountType}
               onChange={(e) =>
                 setFormData({ ...formData, discountType: e.target.value as any })
               }
-              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
             >
               <option value="code">Code Only</option>
               <option value="link">Link Only</option>
@@ -427,81 +445,99 @@ function DiscountFormModal({
 
           {(formData.discountType === 'code' || formData.discountType === 'both') && (
             <div>
-              <label className="block text-sm text-neutral-300 mb-1">Discount Code *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">Discount Code *</label>
               <input
                 type="text"
                 required
                 value={formData.discountCode}
                 onChange={(e) => setFormData({ ...formData, discountCode: e.target.value })}
-                className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+                className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
               />
             </div>
           )}
 
           {(formData.discountType === 'link' || formData.discountType === 'both') && (
             <div>
-              <label className="block text-sm text-neutral-300 mb-1">Discount Link *</label>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">Discount Link *</label>
               <input
                 type="url"
                 required
                 value={formData.discountLink}
                 onChange={(e) => setFormData({ ...formData, discountLink: e.target.value })}
-                className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+                className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-sm text-neutral-300 mb-1">Discount Amount</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">Discount Amount</label>
             <input
               type="text"
               placeholder="e.g., 10% or $50 off"
               value={formData.discountAmount}
               onChange={(e) => setFormData({ ...formData, discountAmount: e.target.value })}
-              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-300 mb-1">Category</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">Category</label>
             <input
               type="text"
               placeholder="e.g., software, gear, services"
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-300 mb-1">Partner Logo URL</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">Partner Logo</label>
             {formData.partnerLogoUrl && (
-              <img
-                src={formData.partnerLogoUrl}
-                alt="Logo"
-                className="w-24 h-24 object-contain mb-2"
-              />
+              <div className="mb-3 p-3 bg-neutral-900 rounded-lg border border-neutral-800">
+                <img
+                  src={formData.partnerLogoUrl}
+                  alt="Logo preview"
+                  className="w-24 h-24 object-contain mx-auto"
+                />
+              </div>
             )}
-            <input
-              type="url"
-              value={formData.partnerLogoUrl}
-              onChange={(e) => setFormData({ ...formData, partnerLogoUrl: e.target.value })}
-              placeholder="https://example.com/logo.png"
-              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white mb-2"
-            />
-            {discount && (
-              <>
-                <p className="text-xs text-neutral-400 mb-2">Or upload a file:</p>
+            <div className="space-y-2">
+              <div>
+                <label className="block text-xs text-neutral-400 mb-1">Option 1: Enter Logo URL</label>
+                <input
+                  type="url"
+                  value={formData.partnerLogoUrl || ''}
+                  onChange={(e) => setFormData({ ...formData, partnerLogoUrl: e.target.value })}
+                  placeholder="https://example.com/logo.png"
+                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-neutral-400 mb-1">
+                  Option 2: Upload Logo File
+                  {(discount || createdDiscountId) ? '' : ' (Save discount first)'}
+                </label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleLogoUpload}
-                  disabled={uploadingLogo}
-                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+                  disabled={uploadingLogo || (!discount && !createdDiscountId)}
+                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-ccaBlue file:text-white hover:file:opacity-90"
                 />
-                {uploadingLogo && <p className="text-sm text-neutral-400 mt-1">Uploading...</p>}
-              </>
-            )}
+                {uploadingLogo && (
+                  <p className="text-sm text-ccaBlue mt-1 flex items-center gap-2">
+                    <span className="animate-spin">⏳</span>
+                    Uploading logo...
+                  </p>
+                )}
+                {!discount && !createdDiscountId && (
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Create the discount first, then you can upload a logo file
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
@@ -537,7 +573,7 @@ function DiscountFormModal({
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-300 mb-1">Max Redemptions</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">Max Redemptions</label>
             <input
               type="number"
               value={formData.maxRedemptions || ''}
@@ -547,12 +583,12 @@ function DiscountFormModal({
                   maxRedemptions: e.target.value ? parseInt(e.target.value) : undefined,
                 })
               }
-              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-300 mb-1">Expiration Date</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">Expiration Date</label>
             <input
               type="datetime-local"
               value={formData.expirationDate?.substring(0, 16) || ''}
@@ -562,27 +598,28 @@ function DiscountFormModal({
                   expirationDate: e.target.value ? new Date(e.target.value).toISOString() : undefined,
                 })
               }
-              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 rounded text-white"
+              className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-6 border-t border-neutral-800">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-ccaBlue hover:opacity-90 transition text-white font-medium rounded disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-ccaBlue hover:opacity-90 transition text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : discount ? 'Update' : 'Create'}
+              {loading ? 'Saving...' : discount || createdDiscountId ? 'Update Discount' : 'Create Discount'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 transition text-white font-medium rounded"
+              className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 transition text-white font-medium rounded-lg"
             >
-              Cancel
+              {createdDiscountId ? 'Done' : 'Cancel'}
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );
