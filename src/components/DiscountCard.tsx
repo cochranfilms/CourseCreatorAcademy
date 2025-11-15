@@ -22,7 +22,7 @@ export function DiscountCard({ discount }: DiscountCardProps) {
 
   return (
     <>
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-950 p-5 hover:border-ccaBlue/50 transition-colors">
+      <div className="rounded-2xl border border-neutral-800 bg-neutral-950 p-5 hover:border-ccaBlue/50 transition-colors flex flex-col h-full">
         {discount.partnerLogoUrl && (
           <div className="mb-4 flex items-center justify-center h-16">
             <img
@@ -34,12 +34,16 @@ export function DiscountCard({ discount }: DiscountCardProps) {
         )}
         <div className="text-lg font-semibold mb-1">{discount.title}</div>
         {discount.discountAmount && (
-          <div className="text-ccaBlue font-medium text-sm mb-2">{discount.discountAmount}</div>
+          <div className="mb-2">
+            <span className="inline-block bg-white text-ccaBlue font-medium text-sm px-2 py-1 rounded">
+              {discount.discountAmount}
+            </span>
+          </div>
         )}
-        <div className="text-neutral-400 text-sm mb-4 line-clamp-2">{discount.description}</div>
+        <div className="text-neutral-400 text-sm mb-4 line-clamp-2 flex-grow">{discount.description}</div>
         <button
           onClick={() => setShowModal(true)}
-          className="w-full px-4 py-2 rounded-lg bg-ccaBlue hover:opacity-90 transition text-white font-medium"
+          className="w-full px-4 py-2 rounded-lg bg-ccaBlue hover:opacity-90 transition text-white font-medium mt-auto"
         >
           Redeem
         </button>

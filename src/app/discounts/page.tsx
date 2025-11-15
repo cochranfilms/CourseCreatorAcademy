@@ -86,7 +86,7 @@ export default function DiscountsPage() {
       )}
 
       {!loading && !error && discounts.length > 0 && (
-        <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           {discounts.map((discount) => (
             <DiscountCard key={discount.id} discount={discount} />
           ))}
