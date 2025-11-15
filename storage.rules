@@ -98,8 +98,17 @@ service firebase.storage {
     }
 
     // Assets - premium downloadable assets (LUTs, presets, SFX, templates, etc.)
-    // Downloads are handled via signed URLs from the API, but allow authenticated read for flexibility
-    match /assets/{allPaths=**} {
+    // Preview images in asset folders are public for display
+    match /assets/{category}/{assetFolder}/{fileName} {
+      // All files in asset folders are public (images for preview, ZIPs still protected by download API)
+      allow read: if true;
+      // Admin-only writes (via Firebase Admin SDK)
+      allow write: if false;
+    }
+    
+    // ZIP files directly in category folders (e.g., assets/luts/file.zip)
+    match /assets/{category}/{zipFile} {
+      // ZIP files require authentication (downloads handled via signed URLs from API)
       allow read: if request.auth != null;
       // Admin-only writes (via Firebase Admin SDK)
       allow write: if false;
