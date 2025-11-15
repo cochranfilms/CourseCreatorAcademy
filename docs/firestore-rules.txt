@@ -320,6 +320,28 @@ service cloud.firestore {
       allow write: if false;
     }
     
+    // Discounts collection - partner discounts for members
+    match /discounts/{discountId} {
+      // Allow authenticated users with active membership to read active discounts
+      // Note: Actual membership check happens in API, but we allow authenticated reads here
+      allow read: if isAuthenticated();
+      
+      // Only admins can create/update/delete discounts (via Admin SDK or API)
+      allow write: if false;
+    }
+    
+    // Discount redemptions - track user redemptions
+    match /discountRedemptions/{redemptionId} {
+      // Users can read their own redemptions
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Creation happens via API (server-side)
+      allow create: if false;
+      
+      // Updates/deletes not allowed (for audit trail)
+      allow update, delete: if false;
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

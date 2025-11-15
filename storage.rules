@@ -114,6 +114,14 @@ service firebase.storage {
       allow write: if false;
     }
 
+    // Discount logos - partner brand logos for discount cards
+    match /discount-logos/{discountId}/{fileName} {
+      // Public read (logos shown on discount cards)
+      allow read: if true;
+      // Admin-only writes (via Firebase Admin SDK or API)
+      allow write: if false;
+    }
+
     // Deny all other paths
     match /{allPaths=**} {
       allow read, write: if false;

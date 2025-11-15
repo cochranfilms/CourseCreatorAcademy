@@ -40,6 +40,15 @@ Collections (top‑level):
 11. `reviews/{reviewId}`
     - userId, targetType:"course|listing", targetId, rating, text, createdAt
 
+12. `discounts/{discountId}`
+    - title, description, partnerName, partnerLogoUrl, discountCode, discountLink
+    - discountType: "code" | "link" | "both"
+    - discountAmount, category, isActive, isTestOnly, requiresMembership
+    - maxRedemptions, expirationDate, createdAt, updatedAt, createdBy
+
+13. `discountRedemptions/{redemptionId}`
+    - userId, discountId, redeemedAt, codeUsed, linkUsed
+
 ### Indexes (examples)
 - purchases: userId + createdAt desc
 - orders: sellerId + createdAt desc; buyerId + createdAt desc
