@@ -60,6 +60,13 @@ export default function ShowPage() {
         }
 
         const data = await response.json();
+        console.log('Received episode data:', {
+          title: data.title,
+          description: data.description,
+          hasTitle: !!data.title,
+          hasDescription: !!data.description,
+          fullData: data
+        });
         setEpisode(data);
       } catch (err: any) {
         console.error('Error fetching episode:', err);

@@ -49,11 +49,21 @@ export async function GET(req: NextRequest) {
           const configData = configDoc.data();
           title = configData?.title || '';
           description = configData?.description || '';
+          console.log('Fetched from Firestore config/show:', { title, description });
+        } else {
+          console.log('Firestore config/show document does not exist');
         }
-      } catch (firestoreError) {
-        console.log('Could not fetch config from Firestore:', firestoreError);
+      } catch (firestoreError: any) {
+        console.error('Error fetching config from Firestore:', firestoreError);
+        console.error('Error details:', {
+          message: firestoreError?.message,
+          code: firestoreError?.code,
+          stack: firestoreError?.stack
+        });
         // Continue without config - not a critical error
       }
+    } else {
+      console.warn('adminDb is not initialized - cannot fetch title/description from Firestore');
     }
     
     // Extract title from MUX asset metadata if not found in Firestore
@@ -83,7 +93,7 @@ export async function GET(req: NextRequest) {
       year: 'numeric' 
     });
 
-    return NextResponse.json({
+    const responseData = {
       assetId: asset.id,
       playbackId,
       title,
@@ -94,7 +104,16 @@ export async function GET(req: NextRequest) {
       createdAt: createdAt.toISOString(),
       status: asset.status,
       passthrough: passthroughData,
+    };
+    
+    console.log('Returning episode data:', {
+      title: responseData.title,
+      description: responseData.description,
+      hasTitle: !!responseData.title,
+      hasDescription: !!responseData.description
     });
+    
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('Error fetching MUX asset:', error);
     return NextResponse.json(
