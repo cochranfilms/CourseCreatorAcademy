@@ -498,9 +498,10 @@ export default function HomePage() {
               <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-3 sm:pb-4 scrollbar-hide -mx-3 sm:mx-0 px-3 sm:px-0">
                 {recentlyAdded.map((video) => {
                   const thumbnailUrl = getMuxThumbnailUrl(video.muxPlaybackId, video.muxAnimatedGifUrl);
-                  const videoLink = video.courseSlug && video.moduleId && video.lessonId
+                  const hasValidLink = !!(video.courseSlug && video.moduleId && video.lessonId);
+                  const videoLink: string = hasValidLink
                     ? `/learn/${video.courseSlug}/module/${video.moduleId}/lesson/${video.lessonId}`
-                    : null;
+                    : '';
                   
                   const videoContent = (
                     <>
@@ -535,9 +536,9 @@ export default function HomePage() {
                     </>
                   );
 
-                  if (videoLink) {
+                  if (hasValidLink) {
                     return (
-                      <Link key={video.id} href={videoLink as string} className="flex-shrink-0 w-56 sm:w-64">
+                      <Link key={video.id} href={videoLink} className="flex-shrink-0 w-56 sm:w-64">
                         {videoContent}
                       </Link>
                     );
