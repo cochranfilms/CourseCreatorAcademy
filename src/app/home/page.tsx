@@ -222,7 +222,7 @@ export default function HomePage() {
           fetch('/api/legacy/creators').then(r => r.ok ? r.json() : null),
           // Fetch discounts (if user authenticated)
           user && auth.currentUser 
-            ? auth.currentUser.getIdToken().then(token => 
+            ? auth.currentUser.getIdToken().then((token: string) => 
                 fetch('/api/discounts', {
                   headers: { Authorization: `Bearer ${token}` },
                 }).then(r => r.ok ? r.json() : null)
