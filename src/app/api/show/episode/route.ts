@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     if (adminDb) {
       try {
         const configDoc = await adminDb.collection('config').doc('show').get();
-        if (configDoc.exists()) {
+        if (configDoc.exists) {
           const configData = configDoc.data();
           title = configData?.title || '';
           description = configData?.description || '';
