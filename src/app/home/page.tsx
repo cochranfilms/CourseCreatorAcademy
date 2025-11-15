@@ -1,14 +1,20 @@
 "use client";
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useMemo, useCallback, startTransition } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
-import MuxPlayer from '@mux/mux-player-react';
-import { doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import dynamic from 'next/dynamic';
+import { doc, getDoc, collection, getDocs, query, orderBy, limit, getDocFromCache, getDocsFromCache } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { auth } from '@/lib/firebaseClient';
 import { signInWithCustomToken, fetchSignInMethodsForEmail, sendPasswordResetEmail } from 'firebase/auth';
 import { useSearchParams, useRouter } from 'next/navigation';
+
+// Lazy load MuxPlayer - only load when needed
+const MuxPlayer = dynamic(() => import('@mux/mux-player-react').then(mod => mod.default), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-neutral-800 animate-pulse" />
+});
 
 type UserProfile = {
   displayName?: string;
@@ -212,7 +218,24 @@ export default function HomePage() {
     }
   }, [user]);
 
-  // Fetch data from Firestore - optimized for parallel loading
+  // Helper function for cache-first reads
+  const getDocCacheFirst = useCallback(async (docRef: ReturnType<typeof doc>) => {
+    try {
+      return await getDocFromCache(docRef);
+    } catch {
+      return getDoc(docRef);
+    }
+  }, []);
+
+  const getDocsCacheFirst = useCallback(async (queryRef: ReturnType<typeof query>) => {
+    try {
+      return await getDocsFromCache(queryRef);
+    } catch {
+      return getDocs(queryRef);
+    }
+  }, []);
+
+  // Fetch data from Firestore - optimized for instant cache-first loading
   useEffect(() => {
     const fetchData = async () => {
       if (!firebaseReady || !db) {
@@ -221,9 +244,10 @@ export default function HomePage() {
       }
 
       try {
-        // Fetch all data in parallel for instant loading
+        // Fetch critical data first (cache-first strategy)
+        // Use API route for recent lessons (server-side aggregation is much faster)
         const [
-          coursesSnap,
+          recentLessonsResponse,
           listingsSnap,
           configDoc,
           walkthroughConfigDoc,
@@ -231,85 +255,37 @@ export default function HomePage() {
           discountsData,
           assetsSnap
         ] = await Promise.allSettled([
-          // Fetch courses
-          getDocs(collection(db, 'courses')),
-          // Fetch marketplace listings
-          getDocs(query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(3))),
-          // Fetch show config
-          db ? getDoc(doc(db, 'config', 'show')) : Promise.resolve(null),
-          // Fetch walkthrough config
-          db ? getDoc(doc(db, 'config', 'walkthrough')) : Promise.resolve(null),
+          // Use API route for lessons - server-side aggregation avoids nested queries
+          fetch('/api/home/recent-lessons').then(r => r.ok ? r.json() : null).catch(() => null),
+          // Fetch marketplace listings (cache-first)
+          getDocsCacheFirst(query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(3))),
+          // Fetch show config (cache-first)
+          db ? getDocCacheFirst(doc(db, 'config', 'show')) : Promise.resolve(null),
+          // Fetch walkthrough config (cache-first)
+          db ? getDocCacheFirst(doc(db, 'config', 'walkthrough')) : Promise.resolve(null),
           // Fetch legacy creators
-          fetch('/api/legacy/creators').then(r => r.ok ? r.json() : null),
+          fetch('/api/legacy/creators').then(r => r.ok ? r.json() : null).catch(() => null),
           // Fetch discounts (if user authenticated)
           user && auth.currentUser 
             ? auth.currentUser.getIdToken().then((token: string) => 
                 fetch('/api/discounts', {
                   headers: { Authorization: `Bearer ${token}` },
-                }).then(r => r.ok ? r.json() : null)
+                }).then(r => r.ok ? r.json() : null).catch(() => null)
               )
             : Promise.resolve(null),
-          // Fetch assets (for featured asset)
-          getDocs(query(collection(db, 'assets'), orderBy('createdAt', 'desc'), limit(1)))
+          // Fetch assets (for featured asset) - cache-first
+          getDocsCacheFirst(query(collection(db, 'assets'), orderBy('createdAt', 'desc'), limit(1)))
         ]);
 
-        // Process courses and lessons
-        if (coursesSnap.status === 'fulfilled') {
-          const allLessons: Video[] = [];
-          const coursePromises = coursesSnap.value.docs.map(async (courseDoc) => {
-            const courseData = courseDoc.data();
-            const courseId = courseDoc.id;
-            const courseSlug = courseData.slug || courseId;
-
-            try {
-              const modulesRef = collection(db, `courses/${courseId}/modules`);
-              const modulesSnap = await getDocs(query(modulesRef, orderBy('index', 'asc')));
-
-              const modulePromises = modulesSnap.docs.map(async (moduleDoc) => {
-                const moduleId = moduleDoc.id;
-                const lessonsRef = collection(db, `courses/${courseId}/modules/${moduleId}/lessons`);
-                const lessonsSnap = await getDocs(query(lessonsRef, orderBy('index', 'asc')));
-
-                lessonsSnap.forEach((lessonDoc) => {
-                  const lessonData = lessonDoc.data();
-                  const durationSec = lessonData.durationSec || 0;
-                  const minutes = Math.floor(durationSec / 60);
-                  const seconds = durationSec % 60;
-                  const duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-
-                  let thumbnail = '';
-                  if (lessonData.muxAnimatedGifUrl) {
-                    thumbnail = lessonData.muxAnimatedGifUrl;
-                  } else if (lessonData.muxPlaybackId) {
-                    thumbnail = `https://image.mux.com/${lessonData.muxPlaybackId}/thumbnail.jpg?width=640&fit_mode=preserve`;
-                  }
-
-                  allLessons.push({
-                    id: lessonDoc.id,
-                    title: lessonData.title || 'Untitled Lesson',
-                    thumbnail,
-                    duration,
-                    courseSlug,
-                    courseId,
-                    moduleId,
-                    lessonId: lessonDoc.id,
-                    muxPlaybackId: lessonData.muxPlaybackId,
-                    muxAnimatedGifUrl: lessonData.muxAnimatedGifUrl,
-                  });
-                });
-              });
-
-              await Promise.all(modulePromises);
-            } catch (error) {
-              console.error(`Error fetching lessons for course ${courseId}:`, error);
-            }
+        // Process recent lessons from API (instant - no nested queries!)
+        // Mark as loaded early for progressive rendering
+        if (recentLessonsResponse.status === 'fulfilled' && recentLessonsResponse.value?.lessons) {
+          startTransition(() => {
+            setRecentlyAdded(recentLessonsResponse.value.lessons);
           });
-
-          await Promise.all(coursePromises);
-          setRecentlyAdded(allLessons.slice(0, 6));
         }
 
-        // Process marketplace listings
+        // Process marketplace listings (progressive rendering)
         if (listingsSnap.status === 'fulfilled') {
           const listingsData: Product[] = [];
           listingsSnap.value.forEach((doc) => {
@@ -323,34 +299,42 @@ export default function HomePage() {
               images: data.images || [],
             });
           });
-          setProducts(listingsData);
+          startTransition(() => {
+            setProducts(listingsData);
+          });
         }
 
-        // Process discounts
+        // Process discounts (progressive rendering)
         if (discountsData.status === 'fulfilled' && discountsData.value) {
-          setDiscounts((discountsData.value.discounts || []).slice(0, 3));
+          startTransition(() => {
+            setDiscounts((discountsData.value.discounts || []).slice(0, 3));
+          });
         }
 
-        // Process Garrett King
+        // Process Garrett King (progressive rendering)
         if (creatorsResponse.status === 'fulfilled' && creatorsResponse.value) {
           const garrett = creatorsResponse.value.creators?.find(
             (c: LegacyCreator) => c.handle === 'SHORT' || c.kitSlug === 'garrett-king'
           );
           if (garrett) {
-            setGarrettKing(garrett);
+            startTransition(() => {
+              setGarrettKing(garrett);
+            });
           }
         }
 
-        // Process featured asset
+        // Process featured asset (progressive rendering)
         if (assetsSnap.status === 'fulfilled' && assetsSnap.value && !assetsSnap.value.empty) {
           const firstAsset = assetsSnap.value.docs[0];
           const assetData = firstAsset.data();
-          setFeaturedAsset({
-            id: firstAsset.id,
-            title: assetData.title || 'Untitled Asset',
-            category: assetData.category || '',
-            thumbnailUrl: assetData.thumbnailUrl || '',
-            description: assetData.description || '',
+          startTransition(() => {
+            setFeaturedAsset({
+              id: firstAsset.id,
+              title: assetData.title || 'Untitled Asset',
+              category: assetData.category || '',
+              thumbnailUrl: assetData.thumbnailUrl || '',
+              description: assetData.description || '',
+            });
           });
         }
 
@@ -374,15 +358,17 @@ export default function HomePage() {
               const guest = passthrough.guest || passthrough.guestName || '';
               const handle = passthrough.handle || passthrough.guestHandle || '';
 
-              setShowEpisode({
-                title: episodeData.title || 'CCA Show',
-                description: episodeData.description || '',
-                playbackId: episodeData.playbackId,
-                thumbnailUrl: episodeData.playbackId
-                  ? `https://image.mux.com/${episodeData.playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`
-                  : undefined,
-                guest,
-                handle,
+              startTransition(() => {
+                setShowEpisode({
+                  title: episodeData.title || 'CCA Show',
+                  description: episodeData.description || '',
+                  playbackId: episodeData.playbackId,
+                  thumbnailUrl: episodeData.playbackId
+                    ? `https://image.mux.com/${episodeData.playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`
+                    : undefined,
+                  guest,
+                  handle,
+                });
               });
             }
           } catch (error) {
@@ -408,13 +394,15 @@ export default function HomePage() {
                 ? walkthroughConfigDoc.value.data()
                 : {};
 
-              setWalkthrough({
-                title: walkthroughConfigData.title || walkthroughData.title || 'Platform Walkthrough',
-                description: walkthroughConfigData.description || walkthroughData.description || 'Learn how to navigate the platform to unlock all the features.',
-                playbackId: walkthroughData.playbackId,
-                thumbnailUrl: walkthroughData.playbackId
-                  ? `https://image.mux.com/${walkthroughData.playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`
-                  : undefined,
+              startTransition(() => {
+                setWalkthrough({
+                  title: walkthroughConfigData.title || walkthroughData.title || 'Platform Walkthrough',
+                  description: walkthroughConfigData.description || walkthroughData.description || 'Learn how to navigate the platform to unlock all the features.',
+                  playbackId: walkthroughData.playbackId,
+                  thumbnailUrl: walkthroughData.playbackId
+                    ? `https://image.mux.com/${walkthroughData.playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`
+                    : undefined,
+                });
               });
             }
           } catch (error) {
@@ -424,34 +412,50 @@ export default function HomePage() {
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
-        setDataLoading(false);
+        // Only set loading to false if we haven't already (progressive rendering)
+        setDataLoading((prev) => prev ? false : prev);
       }
     };
 
     fetchData();
-  }, [user]);
+  }, [user, getDocCacheFirst, getDocsCacheFirst]);
 
-  const displayName = userProfile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Creator';
-  const photoURL = userProfile?.photoURL || user?.photoURL;
-  const memberSince = userProfile?.memberSince || formatMemberSince(userMemberSince);
-  const memberTag = userProfile?.memberTag || 'Member';
+  const displayName = useMemo(() => 
+    userProfile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Creator',
+    [userProfile?.displayName, user?.displayName, user?.email]
+  );
+  const photoURL = useMemo(() => 
+    userProfile?.photoURL || user?.photoURL,
+    [userProfile?.photoURL, user?.photoURL]
+  );
+  const memberSince = useMemo(() => 
+    userProfile?.memberSince || formatMemberSince(userMemberSince),
+    [userProfile?.memberSince, userMemberSince]
+  );
+  const memberTag = useMemo(() => 
+    userProfile?.memberTag || 'Member',
+    [userProfile?.memberTag]
+  );
 
-  function getMuxThumbnailUrl(playbackId?: string, animatedGifUrl?: string): string {
+  const getMuxThumbnailUrl = useCallback((playbackId?: string, animatedGifUrl?: string): string => {
     if (animatedGifUrl) return animatedGifUrl;
     if (playbackId) return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`;
     return '';
-  }
+  }, []);
 
-  // Featured Show - only use real data from show episode, no fallback
-  const featuredShow = showEpisode ? {
-    thumbnail: showEpisode.playbackId 
-      ? getMuxThumbnailUrl(showEpisode.playbackId)
-      : (showEpisode.thumbnailUrl || ''),
-    title: showEpisode.title,
-    description: showEpisode.description || '',
-    guest: showEpisode.guest || '',
-    handle: showEpisode.handle || ''
-  } : null;
+  // Featured Show - only use real data from show episode, no fallback (memoized)
+  const featuredShow = useMemo(() => {
+    if (!showEpisode) return null;
+    return {
+      thumbnail: showEpisode.playbackId 
+        ? getMuxThumbnailUrl(showEpisode.playbackId)
+        : (showEpisode.thumbnailUrl || ''),
+      title: showEpisode.title,
+      description: showEpisode.description || '',
+      guest: showEpisode.guest || '',
+      handle: showEpisode.handle || ''
+    };
+  }, [showEpisode, getMuxThumbnailUrl]);
 
   if (loading) {
     return (
@@ -597,6 +601,7 @@ export default function HomePage() {
                       alt={featuredShow.title}
                       className="w-full h-full object-cover"
                       loading="eager"
+                      fetchPriority="high"
                       decoding="async"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
