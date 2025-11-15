@@ -535,11 +535,14 @@ export default function HomePage() {
                     </>
                   );
 
-                  return videoLink ? (
-                    <Link key={video.id} href={videoLink} className="flex-shrink-0 w-56 sm:w-64">
-                      {videoContent}
-                    </Link>
-                  ) : (
+                  if (videoLink) {
+                    return (
+                      <Link key={video.id} href={videoLink as string} className="flex-shrink-0 w-56 sm:w-64">
+                        {videoContent}
+                      </Link>
+                    );
+                  }
+                  return (
                     <div key={video.id} className="flex-shrink-0 w-56 sm:w-64">
                       {videoContent}
                     </div>
