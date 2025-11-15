@@ -471,13 +471,16 @@ export default function HomePage() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6 lg:py-8 pt-safe">
+    <main className="max-w-7xl mx-auto px-2 sm:px-3 md:px-4 lg:px-6 py-2 sm:py-3 md:py-4 lg:py-6 xl:py-8 pt-safe overflow-x-hidden">
       <Suspense fallback={null}><ClaimFromSessionId /></Suspense>
       {/* Prompt to set a password for email login, if needed */}
       {user && needsPassword && !user?.providerData?.some((p) => p?.providerId === 'password') && (
-        <div className="mb-3 sm:mb-4 md:mb-6 rounded-lg sm:rounded-xl border border-amber-600/40 bg-amber-500/10 p-3 sm:p-4 text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 md:gap-4">
-          <div className="text-xs sm:text-sm flex-1 leading-relaxed">
-            Secure your account: set a password to enable email login for {user.email}.
+        <div className="mb-3 sm:mb-4 md:mb-6 rounded-lg sm:rounded-xl border border-amber-600/40 bg-amber-500/10 p-2.5 sm:p-3 md:p-4 text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 md:gap-4">
+          <div className="text-xs sm:text-sm flex-1 leading-relaxed break-words min-w-0">
+            <span className="block sm:inline">Secure your account: set a password to enable email login</span>
+            {user.email && (
+              <span className="block sm:inline mt-1 sm:mt-0 sm:ml-1 break-all">for {user.email}</span>
+            )}
           </div>
           <button
             onClick={async () => {
@@ -488,22 +491,27 @@ export default function HomePage() {
                 setNeedsPassword(false);
               } catch {}
             }}
-            className="px-3 py-1.5 sm:py-2 rounded-lg bg-amber-500/20 active:bg-amber-500/30 hover:bg-amber-500/30 text-amber-100 text-xs sm:text-sm font-medium border border-amber-500/40 touch-manipulation whitespace-nowrap min-h-[44px] flex items-center justify-center"
+            className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-amber-500/20 active:bg-amber-500/30 hover:bg-amber-500/30 text-amber-100 text-[10px] sm:text-xs md:text-sm font-medium border border-amber-500/40 touch-manipulation min-h-[44px] flex items-center justify-center w-full sm:w-auto flex-shrink-0"
           >
-            {passwordEmailSent ? 'Email Sent' : 'Send Password Setup Email'}
+            {passwordEmailSent ? 'Email Sent' : (
+              <>
+                <span className="hidden sm:inline">Send Password Setup Email</span>
+                <span className="sm:hidden">Setup Password</span>
+              </>
+            )}
           </button>
         </div>
       )}
-      <div className="grid lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+      <div className="grid lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6">
         {/* Left Column */}
-        <div className="lg:col-span-2 space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6">
+        <div className="lg:col-span-2 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 min-w-0">
           {/* Top Section: Profile and Featured Show */}
-          <div className="grid md:grid-cols-2 gap-3 sm:gap-4 md:gap-5 lg:gap-6 items-start">
+          <div className="grid md:grid-cols-2 gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6 items-start">
             {/* Profile Section */}
-            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-5 lg:p-6">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight">{getGreeting()}, {displayName.split(' ')[0]}.</h1>
-              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full overflow-hidden bg-neutral-800 border-2 border-neutral-700 flex-shrink-0">
+            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 min-w-0">
+              <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight break-words">{getGreeting()}, {displayName.split(' ')[0]}.</h1>
+              <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3 md:mb-4 min-w-0">
+                <div className="relative w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 xl:w-16 xl:h-16 rounded-full overflow-hidden bg-neutral-800 border-2 border-neutral-700 flex-shrink-0">
                   {photoURL ? (
                     <img 
                       src={photoURL} 
@@ -523,59 +531,59 @@ export default function HomePage() {
                     </div>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm sm:text-base md:text-lg truncate">{displayName}</div>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <div className="font-semibold text-xs sm:text-sm md:text-base lg:text-lg truncate">{displayName}</div>
                   <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 md:gap-2 mt-0.5 sm:mt-1">
-                    <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[9px] sm:text-[10px] md:text-xs font-medium border border-red-500/30 whitespace-nowrap">
+                    <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[9px] sm:text-[10px] md:text-xs font-medium border border-red-500/30 whitespace-nowrap flex-shrink-0">
                       {memberTag}
                     </span>
-                    <span className="text-[9px] sm:text-[10px] md:text-xs text-neutral-500 whitespace-nowrap">Member since {memberSince}</span>
+                    <span className="text-[9px] sm:text-[10px] md:text-xs text-neutral-500 whitespace-nowrap flex-shrink-0">Member since {memberSince}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-3 sm:mt-4 md:mt-5 lg:mt-6">
-                <h2 className="text-[10px] sm:text-xs md:text-sm font-semibold text-neutral-400 mb-2 sm:mb-3">Quick Access</h2>
-                <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-3">
-                  <Link href="/opportunities" className="flex flex-col items-center p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-red-500/30 hover:border-red-500/30 transition-all group touch-manipulation min-h-[80px] sm:min-h-[90px] md:min-h-[100px] justify-center">
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg bg-red-500/20 flex items-center justify-center mb-1 sm:mb-1.5 md:mb-2 group-active:bg-red-500/30 group-hover:bg-red-500/30 transition">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mt-2 sm:mt-3 md:mt-4 lg:mt-5 xl:mt-6">
+                <h2 className="text-[10px] sm:text-xs md:text-sm font-semibold text-neutral-400 mb-1.5 sm:mb-2 md:mb-3">Quick Access</h2>
+                <div className="grid grid-cols-2 gap-1 sm:gap-1.5 md:gap-2 lg:gap-3">
+                  <Link href="/opportunities" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-red-500/30 hover:border-red-500/30 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 rounded-lg bg-red-500/20 flex items-center justify-center mb-0.5 sm:mb-1 md:mb-1.5 lg:mb-2 group-active:bg-red-500/30 group-hover:bg-red-500/30 transition">
+                      <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                       </svg>
                     </div>
-                    <span className="text-[9px] sm:text-[10px] md:text-xs text-neutral-300 text-center leading-tight px-1">Post an Opportunity</span>
+                    <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-neutral-300 text-center leading-tight px-0.5 break-words">Post an Opportunity</span>
                   </Link>
                   
-                  <Link href="/learn" className="flex flex-col items-center p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-neutral-700 hover:border-neutral-700 transition-all group touch-manipulation min-h-[80px] sm:min-h-[90px] md:min-h-[100px] justify-center">
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg bg-neutral-800 flex items-center justify-center mb-1 sm:mb-1.5 md:mb-2 group-active:bg-neutral-700 group-hover:bg-neutral-700 transition">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <Link href="/learn" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-neutral-700 hover:border-neutral-700 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 rounded-lg bg-neutral-800 flex items-center justify-center mb-0.5 sm:mb-1 md:mb-1.5 lg:mb-2 group-active:bg-neutral-700 group-hover:bg-neutral-700 transition">
+                      <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                     </div>
-                    <span className="text-[9px] sm:text-[10px] md:text-xs text-neutral-300 text-center leading-tight px-1">Creator Kits</span>
+                    <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-neutral-300 text-center leading-tight px-0.5 break-words">Creator Kits</span>
                   </Link>
                   
-                  <a href="https://www.facebook.com/groups/1164427198416308" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-blue-500/30 hover:border-blue-500/30 transition-all group touch-manipulation min-h-[80px] sm:min-h-[90px] md:min-h-[100px] justify-center">
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg bg-blue-500/20 flex items-center justify-center mb-1 sm:mb-1.5 md:mb-2 group-active:bg-blue-500/30 group-hover:bg-blue-500/30 transition">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                  <a href="https://www.facebook.com/groups/1164427198416308" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-blue-500/30 hover:border-blue-500/30 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 rounded-lg bg-blue-500/20 flex items-center justify-center mb-0.5 sm:mb-1 md:mb-1.5 lg:mb-2 group-active:bg-blue-500/30 group-hover:bg-blue-500/30 transition">
+                      <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                       </svg>
                     </div>
-                    <span className="text-[9px] sm:text-[10px] md:text-xs text-neutral-300 text-center leading-tight px-1">Facebook Group</span>
+                    <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-neutral-300 text-center leading-tight px-0.5 break-words">Facebook Group</span>
                   </a>
                   
-                  <Link href="/discounts" className="flex flex-col items-center p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-orange-500/30 hover:border-orange-500/30 transition-all group touch-manipulation min-h-[80px] sm:min-h-[90px] md:min-h-[100px] justify-center">
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br from-orange-500/20 to-pink-500/20 flex items-center justify-center mb-1 sm:mb-1.5 md:mb-2 group-active:from-orange-500/30 group-active:to-pink-500/30 group-hover:from-orange-500/30 group-hover:to-pink-500/30 transition">
+                  <Link href="/discounts" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-orange-500/30 hover:border-orange-500/30 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 rounded-lg bg-gradient-to-br from-orange-500/20 to-pink-500/20 flex items-center justify-center mb-0.5 sm:mb-1 md:mb-1.5 lg:mb-2 group-active:from-orange-500/30 group-active:to-pink-500/30 group-hover:from-orange-500/30 group-hover:to-pink-500/30 transition">
                       <Image 
                         src="/Adobe-Logo.png" 
                         alt="Adobe" 
                         width={20} 
                         height={20} 
-                        className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 object-contain"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 object-contain"
                       />
                     </div>
-                    <span className="text-[9px] sm:text-[10px] md:text-xs text-neutral-300 text-center leading-tight px-1">Adobe Discount</span>
+                    <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-neutral-300 text-center leading-tight px-0.5 break-words">Adobe Discount</span>
                   </Link>
                 </div>
               </div>
@@ -583,9 +591,9 @@ export default function HomePage() {
 
             {/* Featured Show */}
             {dataLoading || !featuredShow ? (
-              <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col h-full">
+              <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col h-full min-w-0">
                 <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
-                <div className="p-3 sm:p-4 md:p-5 lg:p-6 flex-1 flex flex-col">
+                <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0">
                   <div className="h-2.5 sm:h-3 bg-neutral-800 rounded w-24 sm:w-32 mb-2 animate-pulse"></div>
                   <div className="h-4 sm:h-5 md:h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
                   <div className="h-3 sm:h-4 bg-neutral-800 rounded w-full mb-3 sm:mb-4 flex-1 animate-pulse"></div>
@@ -593,7 +601,7 @@ export default function HomePage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col h-full">
+              <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col h-full min-w-0">
                 <div className="relative aspect-video bg-neutral-900">
                   {featuredShow.thumbnail ? (
                     <img 
@@ -616,21 +624,21 @@ export default function HomePage() {
                     </div>
                   )}
                   {featuredShow.guest && (
-                    <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-2 sm:left-3 md:left-4">
-                      <div className="text-[10px] sm:text-xs md:text-sm font-semibold text-white">{featuredShow.guest}</div>
+                    <div className="absolute bottom-1.5 sm:bottom-2 md:bottom-3 lg:bottom-4 left-1.5 sm:left-2 md:left-3 lg:left-4">
+                      <div className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-semibold text-white break-words">{featuredShow.guest}</div>
                       {featuredShow.handle && (
-                        <div className="text-[9px] sm:text-[10px] md:text-xs text-neutral-300">{featuredShow.handle}</div>
+                        <div className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-neutral-300 break-words">{featuredShow.handle}</div>
                       )}
                     </div>
                   )}
                 </div>
-                <div className="p-3 sm:p-4 md:p-5 lg:p-6 flex-1 flex flex-col">
+                <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0">
                   <div className="text-[9px] sm:text-[10px] md:text-xs text-neutral-400 mb-1 sm:mb-1.5 md:mb-2">Creator Collective Show</div>
-                  <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-1 sm:mb-1.5 md:mb-2 leading-tight">{featuredShow.title}</h2>
-                  <p className="text-[10px] sm:text-xs md:text-sm text-neutral-400 line-clamp-2 leading-relaxed mb-2 sm:mb-3 md:mb-4 flex-1">{featuredShow.description}</p>
-                  <Link href="/show" className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[10px] sm:text-xs md:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center">
+                  <h2 className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl font-bold mb-1 sm:mb-1.5 md:mb-2 leading-tight break-words">{featuredShow.title}</h2>
+                  <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 line-clamp-2 leading-relaxed mb-2 sm:mb-3 md:mb-4 flex-1 break-words">{featuredShow.description}</p>
+                  <Link href="/show" className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center">
                     Watch now
-                    <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </Link>
@@ -640,19 +648,19 @@ export default function HomePage() {
           </div>
 
           {/* Recently Added */}
-          <div>
-            <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight">Recently Added</h2>
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight break-words">Recently Added</h2>
             {dataLoading ? (
-              <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto pb-2 sm:pb-3 md:pb-4 scrollbar-hide -mx-3 sm:mx-0 px-3 sm:px-0">
+              <div className="flex gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 overflow-x-auto pb-2 sm:pb-3 md:pb-4 scrollbar-hide -mx-2 sm:-mx-3 md:mx-0 px-2 sm:px-3 md:px-0">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex-shrink-0 w-[140px] sm:w-48 md:w-56 lg:w-64">
+                  <div key={i} className="flex-shrink-0 w-[120px] sm:w-[140px] md:w-48 lg:w-56 xl:w-64">
                     <div className="relative aspect-video bg-neutral-900 rounded-lg sm:rounded-xl animate-pulse"></div>
-                    <div className="mt-1.5 sm:mt-2 h-3 sm:h-4 bg-neutral-800 rounded animate-pulse"></div>
+                    <div className="mt-1 sm:mt-1.5 md:mt-2 h-2.5 sm:h-3 md:h-4 bg-neutral-800 rounded animate-pulse"></div>
                   </div>
                 ))}
               </div>
             ) : recentlyAdded.length > 0 ? (
-              <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto pb-2 sm:pb-3 md:pb-4 scrollbar-hide -mx-3 sm:mx-0 px-3 sm:px-0">
+              <div className="flex gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 overflow-x-auto pb-2 sm:pb-3 md:pb-4 scrollbar-hide -mx-2 sm:-mx-3 md:mx-0 px-2 sm:px-3 md:px-0">
                 {recentlyAdded.map((video) => {
                   const thumbnailUrl = getMuxThumbnailUrl(video.muxPlaybackId, video.muxAnimatedGifUrl);
                   const hasValidLink = !!(video.courseSlug && video.moduleId && video.lessonId);
@@ -697,14 +705,14 @@ export default function HomePage() {
                       <Link 
                         key={video.id} 
                         href={`/learn/${video.courseSlug}/module/${video.moduleId}/lesson/${video.lessonId}`} 
-                        className="flex-shrink-0 w-[140px] sm:w-48 md:w-56 lg:w-64"
+                        className="flex-shrink-0 w-[120px] sm:w-[140px] md:w-48 lg:w-56 xl:w-64"
                       >
                         {videoContent}
                       </Link>
                     );
                   }
                   return (
-                    <div key={video.id} className="flex-shrink-0 w-[140px] sm:w-48 md:w-56 lg:w-64">
+                    <div key={video.id} className="flex-shrink-0 w-[120px] sm:w-[140px] md:w-48 lg:w-56 xl:w-64">
                       {videoContent}
                     </div>
                   );
@@ -717,10 +725,10 @@ export default function HomePage() {
 
           {/* Garrett King Legacy Creator Widget */}
           {garrettKing && (
-            <div className="mt-4 sm:mt-5 md:mt-6 lg:mt-8">
-              <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight">Featured Creator</h2>
+            <div className="mt-3 sm:mt-4 md:mt-5 lg:mt-6 xl:mt-8 min-w-0">
+              <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight break-words">Featured Creator</h2>
               <Link href={`/creator-kits/${garrettKing.kitSlug}`}>
-                <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden group cursor-pointer hover:border-ccaBlue/50 transition-all">
+                <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden group cursor-pointer hover:border-ccaBlue/50 transition-all min-w-0">
                   <div className="relative aspect-video bg-neutral-900">
                     {garrettKing.bannerUrl ? (
                       <img 
@@ -735,14 +743,14 @@ export default function HomePage() {
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
-                        <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                       </div>
                     )}
-                    <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-2 sm:left-3 md:left-4 flex items-center gap-2 sm:gap-3">
+                    <div className="absolute bottom-1.5 sm:bottom-2 md:bottom-3 lg:bottom-4 left-1.5 sm:left-2 md:left-3 lg:left-4 flex items-center gap-1.5 sm:gap-2 md:gap-3 min-w-0">
                         {garrettKing.avatarUrl ? (
-                          <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full overflow-hidden border-2 border-white bg-neutral-800">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full overflow-hidden border-2 border-white bg-neutral-800 flex-shrink-0">
                             <img 
                               src={garrettKing.avatarUrl} 
                               alt={garrettKing.displayName}
@@ -752,26 +760,26 @@ export default function HomePage() {
                             />
                           </div>
                       ) : (
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-ccaBlue flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full bg-ccaBlue flex items-center justify-center text-white font-bold text-base sm:text-lg md:text-xl flex-shrink-0">
                           {garrettKing.displayName.charAt(0)}
                         </div>
                       )}
-                      <div>
-                        <div className="text-white font-bold text-sm sm:text-base md:text-lg">{garrettKing.displayName}</div>
-                        <div className="text-neutral-300 text-xs sm:text-sm">@{garrettKing.handle}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-white font-bold text-xs sm:text-sm md:text-base lg:text-lg truncate">{garrettKing.displayName}</div>
+                        <div className="text-neutral-300 text-[10px] sm:text-xs md:text-sm truncate">@{garrettKing.handle}</div>
                       </div>
                     </div>
-                    <div className="absolute top-2 sm:top-3 md:top-4 right-2 sm:right-3 md:right-4">
-                      <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-blue-500/20 text-blue-400 text-[10px] sm:text-xs font-medium border border-blue-500/30">
+                    <div className="absolute top-1.5 sm:top-2 md:top-3 lg:top-4 right-1.5 sm:right-2 md:right-3 lg:right-4">
+                      <span className="px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 rounded-full bg-blue-500/20 text-blue-400 text-[9px] sm:text-[10px] md:text-xs font-medium border border-blue-500/30 whitespace-nowrap">
                         Legacy+ Creator
                       </span>
                     </div>
                   </div>
-                  <div className="p-3 sm:p-4 md:p-5 lg:p-6">
-                    <p className="text-xs sm:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed">Explore exclusive content and resources from this featured creator.</p>
-                    <div className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[10px] sm:text-xs md:text-sm font-medium text-white group-hover:text-ccaBlue transition">
+                  <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 min-w-0">
+                    <p className="text-[10px] sm:text-xs md:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed break-words">Explore exclusive content and resources from this featured creator.</p>
+                    <div className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-medium text-white group-hover:text-ccaBlue transition">
                       View Creator Kit
-                      <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
@@ -783,16 +791,16 @@ export default function HomePage() {
         </div>
 
         {/* Right Column */}
-        <div className="flex flex-col gap-3 sm:gap-4 md:gap-5 lg:gap-6 h-full">
+        <div className="flex flex-col gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6 h-full min-w-0">
           {/* Platform Walkthrough */}
           {dataLoading || !walkthrough ? (
-            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1">
+            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
               <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
-              <div className="p-3 sm:p-4 md:p-5 lg:p-6 flex-1 flex flex-col">
-                <div className="h-2.5 sm:h-3 bg-neutral-800 rounded w-20 sm:w-24 mb-2 animate-pulse"></div>
-                <div className="h-4 sm:h-5 md:h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
-                <div className="h-3 sm:h-4 bg-neutral-800 rounded w-full mb-3 sm:mb-4 flex-1 animate-pulse"></div>
-                <div className="h-3 sm:h-4 bg-neutral-800 rounded w-20 sm:w-24 mt-auto animate-pulse"></div>
+              <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0">
+                <div className="h-2.5 sm:h-3 bg-neutral-800 rounded w-16 sm:w-20 md:w-24 mb-2 animate-pulse"></div>
+                <div className="h-3 sm:h-4 md:h-5 lg:h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
+                <div className="h-2.5 sm:h-3 md:h-4 bg-neutral-800 rounded w-full mb-2 sm:mb-3 md:mb-4 flex-1 animate-pulse"></div>
+                <div className="h-2.5 sm:h-3 md:h-4 bg-neutral-800 rounded w-16 sm:w-20 md:w-24 mt-auto animate-pulse"></div>
               </div>
             </div>
           ) : (
@@ -801,7 +809,7 @@ export default function HomePage() {
                 ? `/walkthrough?playbackId=${walkthrough.playbackId}` 
                 : '/learn';
               return (
-                <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1">
+                <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
                   <div 
                     className="relative aspect-video bg-neutral-900 cursor-pointer group"
                     onClick={() => walkthrough.playbackId && setShowWalkthroughVideo(true)}
@@ -820,8 +828,8 @@ export default function HomePage() {
                         />
                         {walkthrough.playbackId && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition">
-                            <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white transition shadow-lg">
-                              <svg className="w-6 h-6 sm:w-8 sm:w-8 md:w-10 md:h-10 text-neutral-900 ml-0.5 sm:ml-1" fill="currentColor" viewBox="0 0 24 24">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white transition shadow-lg">
+                              <svg className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 text-neutral-900 ml-0.5 sm:ml-1" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M8 5v14l11-7z"/>
                               </svg>
                             </div>
@@ -837,15 +845,15 @@ export default function HomePage() {
                       </div>
                     )}
                   </div>
-                  <div className="p-3 sm:p-4 md:p-5 lg:p-6 flex-1 flex flex-col">
+                  <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0">
                     <div className="text-[9px] sm:text-[10px] md:text-xs text-neutral-400 mb-1 sm:mb-1.5 md:mb-2">NEW HERE?</div>
-                    <h3 className="text-sm sm:text-base md:text-lg font-bold mb-1 sm:mb-1.5 md:mb-2 leading-tight">{walkthrough.title}</h3>
+                    <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-1 sm:mb-1.5 md:mb-2 leading-tight break-words">{walkthrough.title}</h3>
                     {walkthrough.description && (
-                      <p className="text-[10px] sm:text-xs md:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1 line-clamp-2">{walkthrough.description}</p>
+                      <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1 line-clamp-2 break-words">{walkthrough.description}</p>
                     )}
-                    <Link href={walkthroughHref as any} className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[10px] sm:text-xs md:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center">
+                    <Link href={walkthroughHref as any} className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center">
                       Get the Tour
-                      <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </Link>
@@ -857,17 +865,17 @@ export default function HomePage() {
 
           {/* Featured Asset */}
           {dataLoading || !featuredAsset ? (
-            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1">
+            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
               <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
-              <div className="p-3 sm:p-4 md:p-5 lg:p-6 flex-1 flex flex-col">
-                <div className="h-2.5 sm:h-3 bg-neutral-800 rounded w-20 sm:w-24 mb-2 animate-pulse"></div>
-                <div className="h-4 sm:h-5 md:h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
-                <div className="h-3 sm:h-4 bg-neutral-800 rounded w-full mb-3 sm:mb-4 flex-1 animate-pulse"></div>
-                <div className="h-3 sm:h-4 bg-neutral-800 rounded w-24 sm:w-32 mt-auto animate-pulse"></div>
+              <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0">
+                <div className="h-2.5 sm:h-3 bg-neutral-800 rounded w-16 sm:w-20 md:w-24 mb-2 animate-pulse"></div>
+                <div className="h-3 sm:h-4 md:h-5 lg:h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
+                <div className="h-2.5 sm:h-3 md:h-4 bg-neutral-800 rounded w-full mb-2 sm:mb-3 md:mb-4 flex-1 animate-pulse"></div>
+                <div className="h-2.5 sm:h-3 md:h-4 bg-neutral-800 rounded w-20 sm:w-24 md:w-32 mt-auto animate-pulse"></div>
               </div>
             </div>
           ) : (
-            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1">
+            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
               <div className="relative aspect-video bg-neutral-900">
                 {featuredAsset.thumbnailUrl && 
                  featuredAsset.thumbnailUrl.startsWith('https://') && 
@@ -891,17 +899,17 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
-              <div className="p-3 sm:p-4 md:p-5 lg:p-6 flex-1 flex flex-col">
+              <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0">
                 <div className="text-[9px] sm:text-[10px] md:text-xs text-neutral-400 mb-1 sm:mb-1.5 md:mb-2">ASSETS</div>
-                <h3 className="text-sm sm:text-base md:text-lg font-bold mb-1 sm:mb-1.5 md:mb-2 leading-tight">{featuredAsset.title}</h3>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-1 sm:mb-1.5 md:mb-2 leading-tight break-words">{featuredAsset.title}</h3>
                 {featuredAsset.description ? (
-                  <p className="text-[10px] sm:text-xs md:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1 line-clamp-2">{featuredAsset.description}</p>
+                  <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1 line-clamp-2 break-words">{featuredAsset.description}</p>
                 ) : featuredAsset.category ? (
-                  <p className="text-[10px] sm:text-xs md:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1">{featuredAsset.category}</p>
+                  <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1 break-words">{featuredAsset.category}</p>
                 ) : null}
-                <Link href="/assets" className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[10px] sm:text-xs md:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center">
+                <Link href="/assets" className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center">
                   CHECK IT OUT
-                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </Link>
@@ -912,10 +920,10 @@ export default function HomePage() {
       </div>
 
       {/* Product Packs */}
-      <div className="mt-4 sm:mt-5 md:mt-6 lg:mt-8">
-        <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight">Marketplace</h2>
+      <div className="mt-3 sm:mt-4 md:mt-5 lg:mt-6 xl:mt-8 min-w-0">
+        <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight break-words">Marketplace</h2>
         {dataLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden">
                 <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
@@ -926,9 +934,9 @@ export default function HomePage() {
             ))}
           </div>
         ) : products.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
             {products.map((product) => (
-              <Link key={product.id} href={`/marketplace`} className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden group cursor-pointer active:border-neutral-700 hover:border-neutral-700 transition touch-manipulation">
+              <Link key={product.id} href={`/marketplace`} className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden group cursor-pointer active:border-neutral-700 hover:border-neutral-700 transition touch-manipulation min-w-0">
                 <div className="relative aspect-video bg-neutral-900">
                   {product.image ? (
                     <img 
@@ -949,32 +957,32 @@ export default function HomePage() {
                     </div>
                   )}
                 </div>
-                <div className="p-2 sm:p-3 md:p-4">
-                  <h3 className="font-semibold text-xs sm:text-sm md:text-base leading-tight mb-0.5 sm:mb-1">{product.title}</h3>
+                <div className="p-1.5 sm:p-2 md:p-3 lg:p-4 min-w-0">
+                  <h3 className="font-semibold text-xs sm:text-sm md:text-base leading-tight mb-0.5 sm:mb-1 break-words">{product.title}</h3>
                   {product.price !== undefined && (
                     <div className="text-ccaBlue font-medium text-xs sm:text-sm">${product.price.toFixed(2)}</div>
                   )}
                   {product.condition && (
-                    <div className="text-[10px] sm:text-xs text-neutral-500 mt-0.5 sm:mt-1">{product.condition}</div>
+                    <div className="text-[10px] sm:text-xs text-neutral-500 mt-0.5 sm:mt-1 break-words">{product.condition}</div>
                   )}
                 </div>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="text-neutral-400 text-xs sm:text-sm">No marketplace listings available.</div>
+          <div className="text-neutral-400 text-xs sm:text-sm break-words">No marketplace listings available.</div>
         )}
       </div>
 
       {/* Discounts Section */}
       {discounts.length > 0 && (
-        <div className="mt-4 sm:mt-5 md:mt-6 lg:mt-8">
-          <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight">Member Discounts</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+        <div className="mt-3 sm:mt-4 md:mt-5 lg:mt-6 xl:mt-8 min-w-0">
+          <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight break-words">Member Discounts</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
             {discounts.map((discount) => (
-              <Link key={discount.id} href="/discounts" className="rounded-lg sm:rounded-xl md:rounded-2xl border border-neutral-800 bg-neutral-950 p-3 sm:p-4 md:p-5 hover:border-ccaBlue/50 transition-colors flex flex-col h-full">
+              <Link key={discount.id} href="/discounts" className="rounded-lg sm:rounded-xl md:rounded-2xl border border-neutral-800 bg-neutral-950 p-2 sm:p-3 md:p-4 lg:p-5 hover:border-ccaBlue/50 transition-colors flex flex-col h-full min-w-0">
                 {discount.partnerLogoUrl && (
-                  <div className="mb-3 sm:mb-4 flex items-center justify-center h-12 sm:h-14 md:h-16">
+                  <div className="mb-2 sm:mb-3 md:mb-4 flex items-center justify-center h-10 sm:h-12 md:h-14 lg:h-16">
                     <img
                       src={discount.partnerLogoUrl}
                       alt={discount.partnerName}
@@ -986,16 +994,16 @@ export default function HomePage() {
                     />
                   </div>
                 )}
-                <div className="text-sm sm:text-base md:text-lg font-semibold mb-1 leading-tight">{discount.title}</div>
+                <div className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold mb-1 leading-tight break-words">{discount.title}</div>
                 {discount.discountAmount && (
-                  <div className="mb-2">
-                    <span className="inline-block bg-white text-ccaBlue font-medium text-xs sm:text-sm px-2 py-1 rounded">
+                  <div className="mb-1.5 sm:mb-2">
+                    <span className="inline-block bg-white text-ccaBlue font-medium text-[10px] sm:text-xs md:text-sm px-1.5 sm:px-2 py-0.5 sm:py-1 rounded break-words">
                       {discount.discountAmount}
                     </span>
                   </div>
                 )}
-                <div className="text-neutral-400 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 flex-grow leading-relaxed">{discount.description}</div>
-                <div className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-ccaBlue hover:opacity-90 transition text-white font-medium mt-auto text-center text-xs sm:text-sm min-h-[44px] flex items-center justify-center">
+                <div className="text-neutral-400 text-[10px] sm:text-xs md:text-sm mb-2 sm:mb-3 md:mb-4 line-clamp-2 flex-grow leading-relaxed break-words">{discount.description}</div>
+                <div className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 rounded-lg bg-ccaBlue hover:opacity-90 transition text-white font-medium mt-auto text-center text-[10px] sm:text-xs md:text-sm min-h-[44px] flex items-center justify-center">
                   View Discount
                 </div>
               </Link>

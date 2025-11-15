@@ -66,6 +66,37 @@ body {
   overflow: hidden;
 }
 
+/* Word break utilities for mobile */
+.break-words {
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.break-all {
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+/* Ensure no horizontal overflow on mobile */
+@media (max-width: 640px) {
+  main, section, article, div[class*="container"], div[class*="max-w"] {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  
+  img, video, iframe {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Prevent text overflow */
+  h1, h2, h3, h4, h5, h6, p, span, a, button {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+}
+
 /* iOS Safari safe-area helpers */
 :root {
   --safe-top: env(safe-area-inset-top);
