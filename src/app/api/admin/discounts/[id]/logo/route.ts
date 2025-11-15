@@ -47,7 +47,11 @@ export async function POST(req: NextRequest, context: any) {
     const buffer = Buffer.from(arrayBuffer);
 
     // Upload to Firebase Storage
-    const bucket = adminStorage.bucket();
+    // Use explicit bucket name - Firebase supports both .appspot.com and .firebasestorage.app
+    // Both refer to the same bucket, but we'll use .firebasestorage.app (newer format)
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || 'course-creator-academy-866d6';
+    const bucketName = `${projectId}.firebasestorage.app`;
+    const bucket = adminStorage.bucket(bucketName);
     const fileName = `${discountId}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     const fileRef = bucket.file(`discount-logos/${fileName}`);
 

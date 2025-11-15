@@ -336,6 +336,28 @@ function DiscountFormModal({
     }
   };
 
+  const validateImageUrl = (url: string): boolean => {
+    if (!url) return true; // Empty is OK
+    // Check if URL ends with common image extensions
+    const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico'];
+    const lowerUrl = url.toLowerCase();
+    const hasImageExtension = imageExtensions.some(ext => lowerUrl.includes(ext));
+    
+    // Also check if it's a data URL or blob URL
+    const isDataUrl = url.startsWith('data:image/');
+    const isBlobUrl = url.startsWith('blob:');
+    
+    return hasImageExtension || isDataUrl || isBlobUrl || url.includes('firebasestorage.googleapis.com') || url.includes('firebasestorage.app');
+  };
+
+  const handleLogoUrlChange = (url: string) => {
+    setFormData({ ...formData, partnerLogoUrl: url });
+    // Warn if URL doesn't look like an image URL
+    if (url && !validateImageUrl(url)) {
+      console.warn('Warning: URL does not appear to be a direct image URL. Use a URL ending in .png, .jpg, .svg, etc.');
+    }
+  };
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !auth.currentUser) return;
@@ -508,10 +530,22 @@ function DiscountFormModal({
                 <input
                   type="url"
                   value={formData.partnerLogoUrl || ''}
-                  onChange={(e) => setFormData({ ...formData, partnerLogoUrl: e.target.value })}
+                  onChange={(e) => handleLogoUrlChange(e.target.value)}
                   placeholder="https://example.com/logo.png"
-                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+                  className={`w-full bg-neutral-900 border px-4 py-2.5 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent ${
+                    formData.partnerLogoUrl && !validateImageUrl(formData.partnerLogoUrl)
+                      ? 'border-yellow-500/50'
+                      : 'border-neutral-800'
+                  }`}
                 />
+                <p className="text-xs text-neutral-500 mt-1">
+                  Must be a direct image URL (ends in .png, .jpg, .svg, etc.), not a website URL
+                </p>
+                {formData.partnerLogoUrl && !validateImageUrl(formData.partnerLogoUrl) && (
+                  <p className="text-xs text-yellow-500 mt-1">
+                    ⚠️ This URL doesn't appear to be a direct image URL. It may be blocked by security policies.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs text-neutral-400 mb-1">
