@@ -392,7 +392,7 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
 
   return (
     <>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4">
         {/* Backdrop */}
         <div 
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -400,20 +400,20 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
         />
         
         {/* Messages Container */}
-        <div className="relative w-full max-w-4xl h-[80vh] bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="relative w-full max-w-4xl h-[90vh] sm:h-[80vh] bg-neutral-900 rounded-lg sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
-            <div className="flex items-center gap-3">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 border-b border-neutral-800 flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
-              <h2 className="text-xl font-bold text-white">Messages</h2>
+              <h2 className="text-base sm:text-lg md:text-xl font-bold text-white truncate">Messages</h2>
             </div>
             <button
               onClick={onClose}
-              className="text-neutral-400 hover:text-white transition"
+              className="text-neutral-400 hover:text-white transition flex-shrink-0 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -421,11 +421,11 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
 
           <div className="flex flex-1 overflow-hidden">
             {/* Left Sidebar - Conversations */}
-            <div className="w-80 border-r border-neutral-800 flex flex-col">
+            <div className={`${selectedThreadId ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-neutral-800 flex flex-col`}>
               {/* Search Bar */}
-              <div className="p-4 border-b border-neutral-800">
+              <div className="p-2 sm:p-3 md:p-4 border-b border-neutral-800 flex-shrink-0">
                 <div className="relative">
-                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   <input
@@ -433,32 +433,32 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                     placeholder="Search users..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                    className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue text-sm sm:text-base"
                   />
                 </div>
               </div>
 
               {/* Conversations List */}
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto min-h-0">
                 {loading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-neutral-400">Loading conversations...</div>
+                  <div className="flex items-center justify-center h-full px-4">
+                    <div className="text-neutral-400 text-sm sm:text-base">Loading conversations...</div>
                   </div>
                 ) : searchQuery ? (
                   <div className="divide-y divide-neutral-800">
                     {/* People results (from user directory) */}
-                    <div className="px-4 py-2 text-xs uppercase tracking-wider text-neutral-500">People</div>
+                    <div className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs uppercase tracking-wider text-neutral-500">People</div>
                     {filteredUsers.length === 0 ? (
-                      <div className="px-4 py-3 text-neutral-500">No users found</div>
+                      <div className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-neutral-500 text-sm sm:text-base">No users found</div>
                     ) : (
                       filteredUsers.map((u) => (
                         <button
                           key={u.id}
                           onClick={() => handleCreateThread(u.id)}
-                          className="w-full p-4 hover:bg-neutral-800 transition text-left"
+                          className="w-full p-2 sm:p-3 md:p-4 hover:bg-neutral-800 transition text-left touch-manipulation min-h-[60px] sm:min-h-[70px]"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
+                          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
                               {u.photoURL ? (
                                 <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover" />
                               ) : (
@@ -468,8 +468,8 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-white truncate">{u.displayName}</div>
-                              <div className="text-sm text-neutral-400 truncate">{u.handle ? `@${u.handle}` : u.email || ''}</div>
+                              <div className="font-semibold text-white truncate text-sm sm:text-base">{u.displayName}</div>
+                              <div className="text-xs sm:text-sm text-neutral-400 truncate">{u.handle ? `@${u.handle}` : u.email || ''}</div>
                             </div>
                           </div>
                         </button>
@@ -477,7 +477,7 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                     )}
 
                     {/* Conversations that match */}
-                    <div className="px-4 py-2 text-xs uppercase tracking-wider text-neutral-500">Conversations</div>
+                    <div className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs uppercase tracking-wider text-neutral-500">Conversations</div>
                     {threads
                       .filter((thread) => {
                         const searchLower = searchQuery.toLowerCase();
@@ -490,12 +490,12 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                         <button
                           key={thread.id}
                           onClick={() => setSelectedThreadId(thread.id)}
-                          className={`w-full p-4 hover:bg-neutral-800 transition text-left relative ${
+                          className={`w-full p-2 sm:p-3 md:p-4 hover:bg-neutral-800 transition text-left relative touch-manipulation min-h-[60px] sm:min-h-[70px] ${
                             selectedThreadId === thread.id ? 'bg-neutral-800' : ''
                           }`}
                         >
-                      <div className="flex items-center gap-3">
-                        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
                           {thread.otherUser?.photoURL ? (
                             <img
                               src={thread.otherUser.photoURL}
@@ -514,21 +514,21 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                             </div>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="font-semibold text-white truncate">
-                              {thread.otherUser?.displayName || 'Unknown User'}
-                                  {threadUnreadCounts[thread.id] > 0 && <span className="ml-2 inline-block w-2 h-2 bg-red-500 rounded-full"></span>}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1 gap-2">
+                              <div className="font-semibold text-white truncate text-sm sm:text-base min-w-0">
+                                {thread.otherUser?.displayName || 'Unknown User'}
+                                  {threadUnreadCounts[thread.id] > 0 && <span className="ml-1.5 sm:ml-2 inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full"></span>}
                             </div>
                             {thread.lastMessageAt && (
-                              <span className={`text-xs ml-2 flex-shrink-0 ${
+                              <span className={`text-[10px] sm:text-xs ml-2 flex-shrink-0 whitespace-nowrap ${
                                 threadUnreadCounts[thread.id] > 0 ? 'text-white font-semibold' : 'text-neutral-500'
                               }`}>
                                 {formatTimestamp(thread.lastMessageAt)}
                               </span>
                             )}
                           </div>
-                          <div className={`text-sm truncate ${
+                          <div className={`text-xs sm:text-sm truncate ${
                             threadUnreadCounts[thread.id] > 0 ? 'text-white font-medium' : 'text-neutral-400'
                           }`}>
                                 {thread.lastMessage ? (thread.lastMessageSenderId === user?.uid ? `You: ${thread.lastMessage}` : thread.lastMessage) : 'No messages yet'}
@@ -539,12 +539,12 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                       ))}
                   </div>
                 ) : threads.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                    <svg className="w-16 h-16 text-neutral-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex flex-col items-center justify-center h-full text-center px-3 sm:px-4">
+                    <svg className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-600 mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
-                    <p className="text-neutral-400 mb-2">No conversations yet</p>
-                    <p className="text-sm text-neutral-500">Start a new conversation to begin messaging</p>
+                    <p className="text-neutral-400 mb-2 text-sm sm:text-base">No conversations yet</p>
+                    <p className="text-xs sm:text-sm text-neutral-500 px-2">Start a new conversation to begin messaging</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-neutral-800">
@@ -552,12 +552,12 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                       <button
                         key={thread.id}
                         onClick={() => setSelectedThreadId(thread.id)}
-                        className={`w-full p-4 hover:bg-neutral-800 transition text-left relative ${
+                        className={`w-full p-2 sm:p-3 md:p-4 hover:bg-neutral-800 transition text-left relative touch-manipulation min-h-[60px] sm:min-h-[70px] ${
                           selectedThreadId === thread.id ? 'bg-neutral-800' : ''
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
                             {thread.otherUser?.photoURL ? (
                               <img src={thread.otherUser.photoURL} alt={thread.otherUser.displayName} className="w-full h-full object-cover" />
                             ) : (
@@ -573,20 +573,20 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="font-semibold text-white truncate">
+                            <div className="flex items-center justify-between mb-1 gap-2">
+                              <div className="font-semibold text-white truncate text-sm sm:text-base min-w-0">
                                 {thread.otherUser?.displayName || 'Unknown User'}
-                                {threadUnreadCounts[thread.id] > 0 && <span className="ml-2 inline-block w-2 h-2 bg-red-500 rounded-full"></span>}
+                                {threadUnreadCounts[thread.id] > 0 && <span className="ml-1.5 sm:ml-2 inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full"></span>}
                               </div>
                               {thread.lastMessageAt && (
-                                <span className={`text-xs ml-2 flex-shrink-0 ${
+                                <span className={`text-[10px] sm:text-xs ml-2 flex-shrink-0 whitespace-nowrap ${
                                   threadUnreadCounts[thread.id] > 0 ? 'text-white font-semibold' : 'text-neutral-500'
                                 }`}>
                                   {formatTimestamp(thread.lastMessageAt)}
                                 </span>
                               )}
                             </div>
-                            <div className={`text-sm truncate ${
+                            <div className={`text-xs sm:text-sm truncate ${
                               threadUnreadCounts[thread.id] > 0 ? 'text-white font-medium' : 'text-neutral-400'
                             }`}>
                               {thread.lastMessage ? (thread.lastMessageSenderId === user?.uid ? `You: ${thread.lastMessage}` : thread.lastMessage) : 'No messages yet'}
@@ -600,27 +600,36 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
               </div>
 
               {/* New Message Button */}
-              <div className="p-4 border-t border-neutral-800">
+              <div className="p-2 sm:p-3 md:p-4 border-t border-neutral-800 flex-shrink-0">
                 <button
                   onClick={() => setShowUserDirectory(true)}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 sm:py-2.5 md:py-3 px-3 sm:px-4 rounded-lg transition flex items-center justify-center gap-1.5 sm:gap-2 touch-manipulation min-h-[44px] text-sm sm:text-base"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  New Message
+                  <span className="whitespace-nowrap">New Message</span>
                 </button>
               </div>
             </div>
 
             {/* Right Content Area - Messages */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col min-w-0">
               {selectedThread ? (
                 <>
                   {/* Chat Header */}
-                  <div className="p-4 border-b border-neutral-800">
-                    <div className="flex items-center gap-3">
-                      <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-700">
+                  <div className="p-2 sm:p-3 md:p-4 border-b border-neutral-800 flex-shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      {/* Back button for mobile */}
+                      <button
+                        onClick={() => setSelectedThreadId(null)}
+                        className="md:hidden text-neutral-400 hover:text-white transition flex-shrink-0 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center mr-1"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
                         {selectedThread.otherUser?.photoURL ? (
                           <img
                             src={selectedThread.otherUser.photoURL}
@@ -633,11 +642,11 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                           </div>
                         )}
                       </div>
-                      <div>
-                        <div className="font-semibold text-white">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-white truncate text-sm sm:text-base">
                           {selectedThread.otherUser?.displayName || 'Unknown User'}
                         </div>
-                        <div className="text-sm text-neutral-400">
+                        <div className="text-xs sm:text-sm text-neutral-400 truncate">
                           {selectedThread.otherUser?.handle && `@${selectedThread.otherUser.handle}`}
                         </div>
                       </div>
@@ -645,7 +654,7 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                   </div>
 
                   {/* Messages Area */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 space-y-3 sm:space-y-4 min-h-0">
                     {messages.map((message, index) => {
                       const isOwn = message.senderId === user?.uid;
                       const isRead = message.readBy?.includes(user?.uid || '') || message.senderId === user?.uid;
@@ -669,7 +678,7 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                           <div
                             className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                           >
-                            <div className={`relative max-w-[70%] rounded-lg px-4 py-2 ${
+                            <div className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 ${
                               isOwn 
                                 ? 'bg-ccaBlue text-white' 
                                 : isUnread 
@@ -678,12 +687,12 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                             }`}>
                               {/* Unread indicator dot */}
                               {isUnread && (
-                                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full border-2 border-neutral-900"></div>
+                                <div className="absolute -left-1.5 sm:-left-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded-full border-2 border-neutral-900"></div>
                               )}
-                              <p className="text-sm">{message.text}</p>
-                              <div className="flex items-center justify-end gap-2 mt-1">
+                              <p className="text-xs sm:text-sm break-words">{message.text}</p>
+                              <div className="flex items-center justify-end gap-1.5 sm:gap-2 mt-1">
                                 {message.createdAt && (
-                                  <p className={`text-xs ${
+                                  <p className={`text-[10px] sm:text-xs ${
                                     isOwn ? 'text-blue-100' : 'text-neutral-400'
                                   }`}>
                                     {formatTimestamp(message.createdAt)}
@@ -691,13 +700,13 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                                 )}
                                 {/* Read receipt for own messages */}
                                 {isOwn && (
-                                  <div className="flex items-center">
+                                  <div className="flex items-center flex-shrink-0">
                                     {isRead ? (
-                                      <svg className="w-4 h-4 text-blue-200" fill="currentColor" viewBox="0 0 20 20">
+                                      <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-200" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                       </svg>
                                     ) : (
-                                      <svg className="w-4 h-4 text-blue-200/50" fill="currentColor" viewBox="0 0 20 20">
+                                      <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-200/50" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                       </svg>
                                     )}
@@ -713,20 +722,20 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                   </div>
 
                   {/* Message Input */}
-                  <div className="p-4 border-t border-neutral-800">
-                    <div className="flex gap-2">
+                  <div className="p-2 sm:p-3 md:p-4 border-t border-neutral-800 flex-shrink-0">
+                    <div className="flex gap-1.5 sm:gap-2">
                       <input
                         type="text"
                         value={newMessageText}
                         onChange={(e) => setNewMessageText(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                         placeholder="Type a message..."
-                        className="flex-1 px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                        className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue text-sm sm:text-base min-w-0"
                       />
                       <button
                         onClick={handleSendMessage}
                         disabled={!newMessageText.trim()}
-                        className="px-6 py-2 bg-ccaBlue text-white rounded-lg hover:bg-ccaBlue/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 sm:px-5 md:px-6 py-1.5 sm:py-2 bg-ccaBlue text-white rounded-lg hover:bg-ccaBlue/90 transition disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[44px] text-sm sm:text-base whitespace-nowrap"
                       >
                         Send
                       </button>
@@ -734,22 +743,22 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
                   </div>
                 </>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-                  <svg className="w-20 h-20 text-neutral-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex-1 flex flex-col items-center justify-center text-center px-3 sm:px-4 min-w-0">
+                  <svg className="w-16 h-16 sm:w-20 sm:h-20 text-neutral-600 mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
-                  <h3 className="text-xl font-bold text-white mb-2">Your Messages</h3>
-                  <p className="text-neutral-400 mb-6">
+                  <h3 className="text-lg sm:text-xl font-bold text-white mb-2 break-words">Your Messages</h3>
+                  <p className="text-sm sm:text-base text-neutral-400 mb-4 sm:mb-6 px-2 break-words">
                     Select a conversation from the sidebar or start a new one to begin messaging.
                   </p>
                   <button
                     onClick={() => setShowUserDirectory(true)}
-                    className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition flex items-center gap-2 mx-auto"
+                    className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg transition flex items-center gap-1.5 sm:gap-2 mx-auto touch-manipulation min-h-[44px] text-sm sm:text-base"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
-                    New Message
+                    <span className="whitespace-nowrap">New Message</span>
                   </button>
                 </div>
               )}
