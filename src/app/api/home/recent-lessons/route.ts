@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import * as FirebaseFirestore from 'firebase-admin/firestore';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     const coursesSnap = await adminDb.collection('courses').get();
 
     // Process all courses in parallel
-    const coursePromises = coursesSnap.docs.map(async (courseDoc) => {
+    const coursePromises = coursesSnap.docs.map(async (courseDoc: FirebaseFirestore.QueryDocumentSnapshot) => {
       const courseData = courseDoc.data();
       const courseId = courseDoc.id;
       const courseSlug = courseData.slug || courseId;
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
           .get();
 
         // Process all modules in parallel
-        const modulePromises = modulesSnap.docs.map(async (moduleDoc) => {
+        const modulePromises = modulesSnap.docs.map(async (moduleDoc: FirebaseFirestore.QueryDocumentSnapshot) => {
           const moduleId = moduleDoc.id;
           
           // Fetch all lessons for this module
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
             .orderBy('index', 'asc')
             .get();
 
-          lessonsSnap.forEach((lessonDoc) => {
+          lessonsSnap.forEach((lessonDoc: FirebaseFirestore.QueryDocumentSnapshot) => {
             const lessonData = lessonDoc.data();
             const durationSec = lessonData.durationSec || 0;
             const minutes = Math.floor(durationSec / 60);
