@@ -246,15 +246,28 @@ async function uploadImageToStorage(bucket, storagePath, imageBuffer) {
 }
 
 /**
- * Generates a public download URL for a Firebase Storage file
- * Uses the Firebase Storage public URL format
+ * Generates a signed download URL for a Firebase Storage file
+ * Uses long-lived signed URLs (10 years) for thumbnails
  */
-async function getPublicUrl(bucket, filePath) {
-  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || 'course-creator-academy-866d6';
-  // Generate public URL format - this works when storage rules allow public read
-  // Format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media
-  const encodedPath = encodeURIComponent(filePath);
-  return `https://firebasestorage.googleapis.com/v0/b/${projectId}.appspot.com/o/${encodedPath}?alt=media`;
+async function getSignedUrl(bucket, filePath) {
+  const file = bucket.file(filePath);
+  
+  // Check if file exists
+  const [exists] = await file.exists();
+  if (!exists) {
+    throw new Error(`File does not exist: ${filePath}`);
+  }
+  
+  // Generate signed URL valid for 10 years (thumbnails should be long-lived)
+  const expiresAt = new Date();
+  expiresAt.setFullYear(expiresAt.getFullYear() + 10);
+  
+  const [signedUrl] = await file.getSignedUrl({
+    action: 'read',
+    expires: expiresAt,
+  });
+  
+  return signedUrl;
 }
 
 /**
@@ -297,8 +310,13 @@ async function generateAndUploadImages(bucket, asset) {
     console.log(`  ⏭️  Skipped (exists): ${previewPath}`);
   }
   
-  // Generate public URL for the preview image
-  const thumbnailUrl = await getPublicUrl(bucket, previewPath);
+  // Generate signed URL for the preview image (long-lived)
+  let thumbnailUrl = null;
+  try {
+    thumbnailUrl = await getSignedUrl(bucket, previewPath);
+  } catch (error) {
+    console.error(`  ⚠️  Warning: Could not generate thumbnail URL: ${error.message}`);
+  }
   
   return { uploadedImages, thumbnailUrl };
 }
@@ -415,16 +433,18 @@ async function seedAssets() {
         console.log(`  ℹ️  All images already exist in Storage`);
       }
       
-      // Update Firestore document with thumbnailUrl if it doesn't have one
+      // Update Firestore document with thumbnailUrl if it doesn't have one and we have a URL
       const currentData = !existing.empty ? existing.docs[0].data() : null;
-      if (!currentData?.thumbnailUrl) {
+      if (thumbnailUrl && !currentData?.thumbnailUrl) {
         await assetDocRef.update({
           thumbnailUrl: thumbnailUrl,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         console.log(`  ✅ Updated Firestore with thumbnailUrl`);
-      } else {
+      } else if (thumbnailUrl && currentData?.thumbnailUrl) {
         console.log(`  ⏭️  Firestore already has thumbnailUrl`);
+      } else if (!thumbnailUrl) {
+        console.log(`  ⚠️  Could not generate thumbnailUrl - skipping Firestore update`);
       }
       
     } catch (error) {

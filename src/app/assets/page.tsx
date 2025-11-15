@@ -131,11 +131,18 @@ export default function AssetsPage() {
                     alt={asset.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {
+                      // Log error for debugging
+                      console.error('Failed to load thumbnail:', asset.title, asset.thumbnailUrl);
                       // Hide image if it fails to load
                       e.currentTarget.style.display = 'none';
                     }}
+                    onLoad={() => {
+                      console.log('Thumbnail loaded successfully:', asset.title);
+                    }}
                   />
-                ) : null}
+                ) : (
+                  asset.thumbnailUrl && console.log('Thumbnail URL format issue:', asset.title, asset.thumbnailUrl)
+                )}
                 <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-800 to-neutral-900">
                   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
