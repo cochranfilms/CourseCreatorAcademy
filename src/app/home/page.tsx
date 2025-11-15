@@ -376,7 +376,7 @@ export default function HomePage() {
     return '';
   }
 
-  // Featured Show - use real data from show episode or fallback to placeholder
+  // Featured Show - only use real data from show episode, no fallback
   const featuredShow = showEpisode ? {
     thumbnail: showEpisode.playbackId 
       ? getMuxThumbnailUrl(showEpisode.playbackId)
@@ -385,13 +385,7 @@ export default function HomePage() {
     description: showEpisode.description || '',
     guest: showEpisode.guest || '',
     handle: showEpisode.handle || ''
-  } : {
-    thumbnail: '',
-    title: 'CCA Show Episode 006: Ezra Cohen - Building Creative Momentum',
-    description: 'In this CCA Show episode, Ezra Cohen opens up about his creative journey, the challenges of building a brand, and the mindset shifts that keep him inspired. From the early days of experimenting with...',
-    guest: 'Ezra Cohen',
-    handle: '@ezcohen'
-  };
+  } : null;
 
   if (loading) {
     return (
@@ -514,48 +508,60 @@ export default function HomePage() {
             </div>
 
             {/* Featured Show */}
-            <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col h-full">
-              <div className="relative aspect-video bg-neutral-900">
-                {featuredShow.thumbnail ? (
-                  <img 
-                    src={featuredShow.thumbnail} 
-                    alt={featuredShow.title}
-                    className="w-full h-full object-cover"
-                    loading="eager"
-                    decoding="async"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
-                    <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            {dataLoading || !featuredShow ? (
+              <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col h-full">
+                <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
+                <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
+                  <div className="h-3 bg-neutral-800 rounded w-32 mb-2 animate-pulse"></div>
+                  <div className="h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
+                  <div className="h-4 bg-neutral-800 rounded w-full mb-4 flex-1 animate-pulse"></div>
+                  <div className="h-4 bg-neutral-800 rounded w-24 mt-auto animate-pulse"></div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col h-full">
+                <div className="relative aspect-video bg-neutral-900">
+                  {featuredShow.thumbnail ? (
+                    <img 
+                      src={featuredShow.thumbnail} 
+                      alt={featuredShow.title}
+                      className="w-full h-full object-cover"
+                      loading="eager"
+                      decoding="async"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
+                      <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  )}
+                  {featuredShow.guest && (
+                    <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-2 sm:left-3 md:left-4">
+                      <div className="text-xs sm:text-sm font-semibold text-white">{featuredShow.guest}</div>
+                      {featuredShow.handle && (
+                        <div className="text-[10px] sm:text-xs text-neutral-300">{featuredShow.handle}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
+                  <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">Creator Collective Show</div>
+                  <h2 className="text-base sm:text-lg md:text-xl font-bold mb-1.5 sm:mb-2 leading-tight">{featuredShow.title}</h2>
+                  <p className="text-xs sm:text-sm text-neutral-400 line-clamp-2 leading-relaxed mb-3 sm:mb-4 flex-1">{featuredShow.description}</p>
+                  <Link href="/show" className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
+                    Watch now
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
-                  </div>
-                )}
-                {featuredShow.guest && (
-                  <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-2 sm:left-3 md:left-4">
-                    <div className="text-xs sm:text-sm font-semibold text-white">{featuredShow.guest}</div>
-                    {featuredShow.handle && (
-                      <div className="text-[10px] sm:text-xs text-neutral-300">{featuredShow.handle}</div>
-                    )}
-                  </div>
-                )}
+                  </Link>
+                </div>
               </div>
-              <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
-                <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">Creator Collective Show</div>
-                <h2 className="text-base sm:text-lg md:text-xl font-bold mb-1.5 sm:mb-2 leading-tight">{featuredShow.title}</h2>
-                <p className="text-xs sm:text-sm text-neutral-400 line-clamp-2 leading-relaxed mb-3 sm:mb-4 flex-1">{featuredShow.description}</p>
-                <Link href="/show" className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
-                  Watch now
-                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Recently Added */}
