@@ -789,42 +789,49 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
-              <div className="relative aspect-video bg-neutral-900">
-                {walkthrough.thumbnailUrl ? (
-                  <img 
-                    src={walkthrough.thumbnailUrl} 
-                    alt={walkthrough.title}
-                    className="w-full h-full object-cover"
-                    loading="eager"
-                    decoding="async"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
-                    <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+            (() => {
+              const walkthroughHref: string = walkthrough.playbackId 
+                ? `/walkthrough?playbackId=${walkthrough.playbackId}` 
+                : '/learn';
+              return (
+                <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
+                  <div className="relative aspect-video bg-neutral-900">
+                    {walkthrough.thumbnailUrl ? (
+                      <img 
+                        src={walkthrough.thumbnailUrl} 
+                        alt={walkthrough.title}
+                        className="w-full h-full object-cover"
+                        loading="eager"
+                        decoding="async"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
+                        <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
-                <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">NEW HERE?</div>
-                <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 leading-tight">{walkthrough.title}</h3>
-                {walkthrough.description && (
-                  <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed flex-1 line-clamp-2">{walkthrough.description}</p>
-                )}
-                <Link href={walkthrough.playbackId ? `/walkthrough?playbackId=${walkthrough.playbackId}` : '/learn'} className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
-                  Get the Tour
-                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
-              </div>
-            </div>
+                  <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
+                    <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">NEW HERE?</div>
+                    <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 leading-tight">{walkthrough.title}</h3>
+                    {walkthrough.description && (
+                      <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed flex-1 line-clamp-2">{walkthrough.description}</p>
+                    )}
+                    <Link href={walkthroughHref as string} className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
+                      Get the Tour
+                      <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })()
           )}
 
           {/* Featured Asset */}
