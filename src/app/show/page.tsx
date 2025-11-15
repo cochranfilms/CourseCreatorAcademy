@@ -102,7 +102,7 @@ export default function ShowPage() {
           </div>
         </div>
       ) : episode && episode.playbackId ? (
-        <div className="mt-8 rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
+        <div className="mt-8 max-w-4xl mx-auto rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
           <div className="aspect-video bg-neutral-800 rounded-xl overflow-hidden">
             <MuxPlayer
               playbackId={episode.playbackId}
