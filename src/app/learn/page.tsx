@@ -213,7 +213,18 @@ export default function LearnPage() {
       </section>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        <SectionHeader title="Course Creator Academy" subtitle="Premium courses for filmmakers and creators" />
+        <div className="mb-6">
+          <div className="mb-2">
+            <Image 
+              src="/logo-cca.png" 
+              alt="Course Creator Academy" 
+              width={1443} 
+              height={210} 
+              className="h-[42px] w-auto sm:h-[52px] object-contain" 
+            />
+          </div>
+          <p className="text-neutral-400">Premium courses for filmmakers and creators</p>
+        </div>
 
         {/* Featured Video hero */}
         {featuredCourse && (

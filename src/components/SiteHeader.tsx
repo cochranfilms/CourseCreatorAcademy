@@ -214,17 +214,13 @@ export function SiteHeader() {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 w-full relative">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <Link href="/" className="flex-shrink-0">
-          {pathname?.startsWith('/learn') ? (
-            <Image src="/logo-cca.png" alt="Course Creator Academy" width={140} height={38} className="sm:w-[180px] sm:h-[48px]" />
-          ) : (
-            <Image 
-              src="/CC-Logo-White.png" 
-              alt="Creator Collective" 
-              width={1447} 
-              height={190} 
-              className="h-[21px] w-auto sm:h-[26px] object-contain" 
-            />
-          )}
+          <Image 
+            src="/CC-Logo-White.png" 
+            alt="Creator Collective" 
+            width={1447} 
+            height={190} 
+            className="h-[21px] w-auto sm:h-[26px] object-contain" 
+          />
         </Link>
           
           {/* Mobile Hamburger Menu Button */}
