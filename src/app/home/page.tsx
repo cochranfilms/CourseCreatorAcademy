@@ -289,7 +289,7 @@ export default function HomePage() {
         if (listingsSnap.status === 'fulfilled') {
           const listingsData: Product[] = [];
           listingsSnap.value.forEach((doc) => {
-            const data = doc.data();
+            const data = doc.data() as any;
             listingsData.push({
               id: doc.id,
               title: data.title || 'Untitled Listing',
