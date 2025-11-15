@@ -2,7 +2,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { auth } from '@/lib/firebaseClient';
 import { signInWithCustomToken, fetchSignInMethodsForEmail, sendPasswordResetEmail } from 'firebase/auth';
@@ -21,12 +21,42 @@ type Video = {
   thumbnail: string;
   duration: string;
   overlay?: string;
+  courseSlug?: string;
+  courseId?: string;
+  moduleId?: string;
+  lessonId?: string;
+  muxPlaybackId?: string;
+  muxAnimatedGifUrl?: string;
 };
 
 type Product = {
   id: string;
   title: string;
   image: string;
+  price?: number;
+  condition?: string;
+  images?: string[];
+};
+
+type Discount = {
+  id: string;
+  title: string;
+  description: string;
+  partnerName: string;
+  partnerLogoUrl?: string;
+  discountCode?: string;
+  discountLink?: string;
+  discountType: 'code' | 'link' | 'both';
+  discountAmount?: string;
+};
+
+type LegacyCreator = {
+  id: string;
+  displayName: string;
+  handle: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  kitSlug: string;
 };
 
 function getGreeting() {
@@ -72,6 +102,11 @@ export default function HomePage() {
   const [userMemberSince, setUserMemberSince] = useState<Date | null>(null);
   const [needsPassword, setNeedsPassword] = useState(false);
   const [passwordEmailSent, setPasswordEmailSent] = useState(false);
+  const [recentlyAdded, setRecentlyAdded] = useState<Video[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
+  const [garrettKing, setGarrettKing] = useState<LegacyCreator | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
   const router = useRouter();
 
   // Post-checkout auto sign-in via custom token handled in Suspense-wrapped child
@@ -152,12 +187,140 @@ export default function HomePage() {
     }
   }, [user]);
 
+  // Fetch data from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!firebaseReady || !db) {
+        setDataLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch recent lessons from all courses
+        const coursesRef = collection(db, 'courses');
+        const coursesSnap = await getDocs(coursesRef);
+        const allLessons: Video[] = [];
+
+        for (const courseDoc of coursesSnap.docs) {
+          const courseData = courseDoc.data();
+          const courseId = courseDoc.id;
+          const courseSlug = courseData.slug || courseId;
+
+          try {
+            const modulesRef = collection(db, `courses/${courseId}/modules`);
+            const modulesSnap = await getDocs(query(modulesRef, orderBy('index', 'asc')));
+
+            for (const moduleDoc of modulesSnap.docs) {
+              const moduleId = moduleDoc.id;
+              const lessonsRef = collection(db, `courses/${courseId}/modules/${moduleId}/lessons`);
+              const lessonsSnap = await getDocs(query(lessonsRef, orderBy('index', 'asc')));
+
+              lessonsSnap.forEach((lessonDoc) => {
+                const lessonData = lessonDoc.data();
+                const durationSec = lessonData.durationSec || 0;
+                const minutes = Math.floor(durationSec / 60);
+                const seconds = durationSec % 60;
+                const duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                let thumbnail = '';
+                if (lessonData.muxAnimatedGifUrl) {
+                  thumbnail = lessonData.muxAnimatedGifUrl;
+                } else if (lessonData.muxPlaybackId) {
+                  thumbnail = `https://image.mux.com/${lessonData.muxPlaybackId}/thumbnail.jpg?width=640&fit_mode=preserve`;
+                }
+
+                allLessons.push({
+                  id: lessonDoc.id,
+                  title: lessonData.title || 'Untitled Lesson',
+                  thumbnail,
+                  duration,
+                  courseSlug,
+                  courseId,
+                  moduleId,
+                  lessonId: lessonDoc.id,
+                  muxPlaybackId: lessonData.muxPlaybackId,
+                  muxAnimatedGifUrl: lessonData.muxAnimatedGifUrl,
+                });
+              });
+            }
+          } catch (error) {
+            console.error(`Error fetching lessons for course ${courseId}:`, error);
+          }
+        }
+
+        // Sort by creation date (if available) or use order, limit to 6
+        const sortedLessons = allLessons.slice(0, 6);
+        setRecentlyAdded(sortedLessons);
+
+        // Fetch marketplace listings
+        const listingsRef = collection(db, 'listings');
+        const listingsSnap = await getDocs(query(listingsRef, orderBy('createdAt', 'desc'), limit(3)));
+        const listingsData: Product[] = [];
+
+        listingsSnap.forEach((doc) => {
+          const data = doc.data();
+          listingsData.push({
+            id: doc.id,
+            title: data.title || 'Untitled Listing',
+            image: data.images && data.images.length > 0 ? data.images[0] : '',
+            price: data.price || 0,
+            condition: data.condition || '',
+            images: data.images || [],
+          });
+        });
+
+        setProducts(listingsData);
+
+        // Fetch discounts (if user is authenticated)
+        if (user && auth.currentUser) {
+          try {
+            const idToken = await auth.currentUser.getIdToken();
+            const discountsResponse = await fetch('/api/discounts', {
+              headers: {
+                Authorization: `Bearer ${idToken}`,
+              },
+            });
+
+            if (discountsResponse.ok) {
+              const discountsData = await discountsResponse.json();
+              setDiscounts((discountsData.discounts || []).slice(0, 3));
+            }
+          } catch (error) {
+            console.error('Error fetching discounts:', error);
+          }
+        }
+
+        // Fetch Garrett King's legacy creator data
+        try {
+          const creatorsResponse = await fetch('/api/legacy/creators');
+          if (creatorsResponse.ok) {
+            const creatorsData = await creatorsResponse.json();
+            const garrett = creatorsData.creators?.find(
+              (c: LegacyCreator) => c.handle === 'SHORT' || c.kitSlug === 'garrett-king'
+            );
+            if (garrett) {
+              setGarrettKing(garrett);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching Garrett King:', error);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
+
   const displayName = userProfile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Creator';
   const photoURL = userProfile?.photoURL || user?.photoURL;
   const memberSince = userProfile?.memberSince || formatMemberSince(userMemberSince);
   const memberTag = userProfile?.memberTag || 'Member';
 
-  // Sample data - replace with actual data from Firestore/Firebase
+  // Featured Show - keeping existing placeholder for now
   const featuredShow = {
     thumbnail: '/placeholder-video.jpg',
     title: 'CCA Show Episode 006: Ezra Cohen - Building Creative Momentum',
@@ -166,20 +329,17 @@ export default function HomePage() {
     handle: '@ezcohen'
   };
 
-  const recentlyAdded: Video[] = [
-    { id: '1', title: 'EP04 - Lamborghini Shoot: Behind the Scenes', thumbnail: '/placeholder-video.jpg', duration: '8:00', overlay: 'BEHIND THE SCENES' },
-    { id: '2', title: 'EP02 - How I Color Grade My Footage', thumbnail: '/placeholder-video.jpg', duration: '23:00', overlay: 'HOW I COLOR GRADE MY FOOTAGE' },
-    { id: '3', title: 'EP02 - A Welcome Video from Pete', thumbnail: '/placeholder-video.jpg', duration: '8:00', overlay: 'A WELCOME VIDEO FROM Pete' },
-    { id: '4', title: 'Backstage EP2 - The Getaway: Polestar...', thumbnail: '/placeholder-video.jpg', duration: '21:00', overlay: 'BACKSTAGE' },
-    { id: '5', title: 'EP03 - My Photography Gear', thumbnail: '/placeholder-video.jpg', duration: '10:00', overlay: 'GEAR' },
-    { id: '6', title: 'Backstage EP3 - Run & Gun: Fashion Grit with...', thumbnail: '/placeholder-video.jpg', duration: '7:00', overlay: 'BACKSTAGE' },
-  ];
+  function formatDuration(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  }
 
-  const products: Product[] = [
-    { id: '1', title: 'CineLog - DJI D-Log / D-Log M LUTs', image: '/placeholder-product.jpg' },
-    { id: '2', title: 'Arrows Animation Pack - VOL.1', image: '/placeholder-product.jpg' },
-    { id: '3', title: 'Bubble Wrap Transitions for Premiere Pro', image: '/placeholder-product.jpg' },
-  ];
+  function getMuxThumbnailUrl(playbackId?: string, animatedGifUrl?: string): string {
+    if (animatedGifUrl) return animatedGifUrl;
+    if (playbackId) return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`;
+    return '';
+  }
 
   if (loading) {
     return (
@@ -332,30 +492,123 @@ export default function HomePage() {
           {/* Recently Added */}
           <div>
             <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 leading-tight">Recently Added</h2>
-            <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-3 sm:pb-4 scrollbar-hide -mx-3 sm:mx-0 px-3 sm:px-0">
-              {recentlyAdded.map((video) => (
-                <div key={video.id} className="flex-shrink-0 w-56 sm:w-64">
-                  <div className="relative aspect-video bg-neutral-900 rounded-xl overflow-hidden group cursor-pointer">
-                    <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
-                      <svg className="w-12 h-12 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    {video.overlay && (
-                      <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/60 text-xs font-semibold text-white">
-                        {video.overlay}
+            {dataLoading ? (
+              <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-3 sm:pb-4 scrollbar-hide -mx-3 sm:mx-0 px-3 sm:px-0">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex-shrink-0 w-56 sm:w-64">
+                    <div className="relative aspect-video bg-neutral-900 rounded-xl animate-pulse"></div>
+                    <div className="mt-2 h-4 bg-neutral-800 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            ) : recentlyAdded.length > 0 ? (
+              <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-3 sm:pb-4 scrollbar-hide -mx-3 sm:mx-0 px-3 sm:px-0">
+                {recentlyAdded.map((video) => {
+                  const thumbnailUrl = getMuxThumbnailUrl(video.muxPlaybackId, video.muxAnimatedGifUrl);
+                  const videoLink = video.courseSlug && video.moduleId && video.lessonId
+                    ? `/learn/${video.courseSlug}/module/${video.moduleId}/lesson/${video.lessonId}`
+                    : '#';
+                  
+                  return (
+                    <Link key={video.id} href={videoLink} className="flex-shrink-0 w-56 sm:w-64">
+                      <div className="relative aspect-video bg-neutral-900 rounded-xl overflow-hidden group cursor-pointer">
+                        {thumbnailUrl ? (
+                          <img 
+                            src={thumbnailUrl} 
+                            alt={video.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
+                            <svg className="w-12 h-12 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                        )}
+                        {video.overlay && (
+                          <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/60 text-xs font-semibold text-white">
+                            {video.overlay}
+                          </div>
+                        )}
+                        <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 text-xs font-semibold text-white">
+                          {video.duration}
+                        </div>
+                      </div>
+                      <h3 className="mt-2 text-sm font-semibold line-clamp-2">{video.title}</h3>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-neutral-400 text-sm">No recent content available.</div>
+            )}
+          </div>
+
+          {/* Garrett King Legacy Creator Widget */}
+          {garrettKing && (
+            <div className="mt-6 sm:mt-7 md:mt-8">
+              <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 leading-tight">Featured Creator</h2>
+              <Link href={`/creator-kits/${garrettKing.kitSlug}`}>
+                <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden group cursor-pointer hover:border-ccaBlue/50 transition-all">
+                  <div className="relative aspect-video bg-neutral-900">
+                    {garrettKing.bannerUrl ? (
+                      <img 
+                        src={garrettKing.bannerUrl} 
+                        alt={garrettKing.displayName}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
+                        <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
                       </div>
                     )}
-                    <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 text-xs font-semibold text-white">
-                      {video.duration}
+                    <div className="absolute bottom-4 left-4 flex items-center gap-3">
+                      {garrettKing.avatarUrl ? (
+                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white bg-neutral-800">
+                          <img 
+                            src={garrettKing.avatarUrl} 
+                            alt={garrettKing.displayName}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-ccaBlue flex items-center justify-center text-white font-bold text-xl">
+                          {garrettKing.displayName.charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-white font-bold text-lg">{garrettKing.displayName}</div>
+                        <div className="text-neutral-300 text-sm">@{garrettKing.handle}</div>
+                      </div>
+                    </div>
+                    <div className="absolute top-4 right-4">
+                      <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-medium border border-blue-500/30">
+                        Legacy+ Creator
+                      </span>
                     </div>
                   </div>
-                  <h3 className="mt-2 text-sm font-semibold line-clamp-2">{video.title}</h3>
+                  <div className="p-4 sm:p-5 md:p-6">
+                    <p className="text-sm text-neutral-400 mb-3 sm:mb-4">Explore exclusive content and resources from this featured creator.</p>
+                    <div className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white group-hover:text-ccaBlue transition">
+                      View Creator Kit
+                      <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              </Link>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Right Column */}
@@ -410,24 +663,94 @@ export default function HomePage() {
 
       {/* Product Packs */}
       <div className="mt-6 sm:mt-7 md:mt-8">
-        <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 leading-tight">Product Packs</h2>
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-          {products.map((product) => (
-            <div key={product.id} className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden group cursor-pointer active:border-neutral-700 hover:border-neutral-700 transition touch-manipulation">
-              <div className="relative aspect-video bg-neutral-900">
-                <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
-                  <svg className="w-10 h-10 sm:w-12 sm:h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+        <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 leading-tight">Marketplace</h2>
+        {dataLoading ? (
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden">
+                <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
+                <div className="p-3 sm:p-4">
+                  <div className="h-4 bg-neutral-800 rounded animate-pulse"></div>
                 </div>
               </div>
-              <div className="p-3 sm:p-4">
-                <h3 className="font-semibold text-sm sm:text-base leading-tight">{product.title}</h3>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : products.length > 0 ? (
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+            {products.map((product) => (
+              <Link key={product.id} href={`/marketplace`} className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden group cursor-pointer active:border-neutral-700 hover:border-neutral-700 transition touch-manipulation">
+                <div className="relative aspect-video bg-neutral-900">
+                  {product.image ? (
+                    <img 
+                      src={product.image} 
+                      alt={product.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
+                      <svg className="w-10 h-10 sm:w-12 sm:h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 sm:p-4">
+                  <h3 className="font-semibold text-sm sm:text-base leading-tight mb-1">{product.title}</h3>
+                  {product.price !== undefined && (
+                    <div className="text-ccaBlue font-medium text-sm">${product.price.toFixed(2)}</div>
+                  )}
+                  {product.condition && (
+                    <div className="text-xs text-neutral-500 mt-1">{product.condition}</div>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="text-neutral-400 text-sm">No marketplace listings available.</div>
+        )}
       </div>
+
+      {/* Discounts Section */}
+      {discounts.length > 0 && (
+        <div className="mt-6 sm:mt-7 md:mt-8">
+          <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 leading-tight">Member Discounts</h2>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+            {discounts.map((discount) => (
+              <Link key={discount.id} href="/discounts" className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden group cursor-pointer hover:border-ccaBlue/50 transition">
+                <div className="p-4 sm:p-5">
+                  {discount.partnerLogoUrl && (
+                    <div className="mb-3">
+                      <img 
+                        src={discount.partnerLogoUrl} 
+                        alt={discount.partnerName}
+                        className="h-8 object-contain"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <h3 className="font-semibold text-base sm:text-lg mb-2">{discount.title}</h3>
+                  <p className="text-sm text-neutral-400 mb-3 line-clamp-2">{discount.description}</p>
+                  {discount.discountAmount && (
+                    <div className="text-ccaBlue font-bold text-lg mb-2">{discount.discountAmount}</div>
+                  )}
+                  <div className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white group-hover:text-ccaBlue transition">
+                    View Discount
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
