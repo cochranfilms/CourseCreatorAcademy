@@ -107,6 +107,14 @@ export default function HomePage() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [garrettKing, setGarrettKing] = useState<LegacyCreator | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [showEpisode, setShowEpisode] = useState<{
+    title: string;
+    description?: string;
+    playbackId: string | null;
+    thumbnailUrl?: string;
+    guest?: string;
+    handle?: string;
+  } | null>(null);
 
   // Post-checkout auto sign-in via custom token handled in Suspense-wrapped child
 
@@ -186,7 +194,7 @@ export default function HomePage() {
     }
   }, [user]);
 
-  // Fetch data from Firestore
+  // Fetch data from Firestore - optimized for parallel loading
   useEffect(() => {
     const fetchData = async () => {
       if (!firebaseReady || !db) {
@@ -195,114 +203,158 @@ export default function HomePage() {
       }
 
       try {
-        // Fetch recent lessons from all courses
-        const coursesRef = collection(db, 'courses');
-        const coursesSnap = await getDocs(coursesRef);
-        const allLessons: Video[] = [];
+        // Fetch all data in parallel for instant loading
+        const [
+          coursesSnap,
+          listingsSnap,
+          configDoc,
+          creatorsResponse,
+          discountsData,
+          showEpisodeData
+        ] = await Promise.allSettled([
+          // Fetch courses
+          getDocs(collection(db, 'courses')),
+          // Fetch marketplace listings
+          getDocs(query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(3))),
+          // Fetch show config
+          db ? getDoc(doc(db, 'config', 'show')) : Promise.resolve(null),
+          // Fetch legacy creators
+          fetch('/api/legacy/creators').then(r => r.ok ? r.json() : null),
+          // Fetch discounts (if user authenticated)
+          user && auth.currentUser 
+            ? auth.currentUser.getIdToken().then(token => 
+                fetch('/api/discounts', {
+                  headers: { Authorization: `Bearer ${token}` },
+                }).then(r => r.ok ? r.json() : null)
+              )
+            : Promise.resolve(null),
+          // Fetch show episode (will be resolved after assetId is found)
+          Promise.resolve(null)
+        ]);
 
-        for (const courseDoc of coursesSnap.docs) {
-          const courseData = courseDoc.data();
-          const courseId = courseDoc.id;
-          const courseSlug = courseData.slug || courseId;
+        // Process courses and lessons
+        if (coursesSnap.status === 'fulfilled') {
+          const allLessons: Video[] = [];
+          const coursePromises = coursesSnap.value.docs.map(async (courseDoc) => {
+            const courseData = courseDoc.data();
+            const courseId = courseDoc.id;
+            const courseSlug = courseData.slug || courseId;
 
-          try {
-            const modulesRef = collection(db, `courses/${courseId}/modules`);
-            const modulesSnap = await getDocs(query(modulesRef, orderBy('index', 'asc')));
+            try {
+              const modulesRef = collection(db, `courses/${courseId}/modules`);
+              const modulesSnap = await getDocs(query(modulesRef, orderBy('index', 'asc')));
 
-            for (const moduleDoc of modulesSnap.docs) {
-              const moduleId = moduleDoc.id;
-              const lessonsRef = collection(db, `courses/${courseId}/modules/${moduleId}/lessons`);
-              const lessonsSnap = await getDocs(query(lessonsRef, orderBy('index', 'asc')));
+              const modulePromises = modulesSnap.docs.map(async (moduleDoc) => {
+                const moduleId = moduleDoc.id;
+                const lessonsRef = collection(db, `courses/${courseId}/modules/${moduleId}/lessons`);
+                const lessonsSnap = await getDocs(query(lessonsRef, orderBy('index', 'asc')));
 
-              lessonsSnap.forEach((lessonDoc) => {
-                const lessonData = lessonDoc.data();
-                const durationSec = lessonData.durationSec || 0;
-                const minutes = Math.floor(durationSec / 60);
-                const seconds = durationSec % 60;
-                const duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                lessonsSnap.forEach((lessonDoc) => {
+                  const lessonData = lessonDoc.data();
+                  const durationSec = lessonData.durationSec || 0;
+                  const minutes = Math.floor(durationSec / 60);
+                  const seconds = durationSec % 60;
+                  const duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
-                let thumbnail = '';
-                if (lessonData.muxAnimatedGifUrl) {
-                  thumbnail = lessonData.muxAnimatedGifUrl;
-                } else if (lessonData.muxPlaybackId) {
-                  thumbnail = `https://image.mux.com/${lessonData.muxPlaybackId}/thumbnail.jpg?width=640&fit_mode=preserve`;
-                }
+                  let thumbnail = '';
+                  if (lessonData.muxAnimatedGifUrl) {
+                    thumbnail = lessonData.muxAnimatedGifUrl;
+                  } else if (lessonData.muxPlaybackId) {
+                    thumbnail = `https://image.mux.com/${lessonData.muxPlaybackId}/thumbnail.jpg?width=640&fit_mode=preserve`;
+                  }
 
-                allLessons.push({
-                  id: lessonDoc.id,
-                  title: lessonData.title || 'Untitled Lesson',
-                  thumbnail,
-                  duration,
-                  courseSlug,
-                  courseId,
-                  moduleId,
-                  lessonId: lessonDoc.id,
-                  muxPlaybackId: lessonData.muxPlaybackId,
-                  muxAnimatedGifUrl: lessonData.muxAnimatedGifUrl,
+                  allLessons.push({
+                    id: lessonDoc.id,
+                    title: lessonData.title || 'Untitled Lesson',
+                    thumbnail,
+                    duration,
+                    courseSlug,
+                    courseId,
+                    moduleId,
+                    lessonId: lessonDoc.id,
+                    muxPlaybackId: lessonData.muxPlaybackId,
+                    muxAnimatedGifUrl: lessonData.muxAnimatedGifUrl,
+                  });
                 });
+              });
+
+              await Promise.all(modulePromises);
+            } catch (error) {
+              console.error(`Error fetching lessons for course ${courseId}:`, error);
+            }
+          });
+
+          await Promise.all(coursePromises);
+          setRecentlyAdded(allLessons.slice(0, 6));
+        }
+
+        // Process marketplace listings
+        if (listingsSnap.status === 'fulfilled') {
+          const listingsData: Product[] = [];
+          listingsSnap.value.forEach((doc) => {
+            const data = doc.data();
+            listingsData.push({
+              id: doc.id,
+              title: data.title || 'Untitled Listing',
+              image: data.images && data.images.length > 0 ? data.images[0] : '',
+              price: data.price || 0,
+              condition: data.condition || '',
+              images: data.images || [],
+            });
+          });
+          setProducts(listingsData);
+        }
+
+        // Process discounts
+        if (discountsData.status === 'fulfilled' && discountsData.value) {
+          setDiscounts((discountsData.value.discounts || []).slice(0, 3));
+        }
+
+        // Process Garrett King
+        if (creatorsResponse.status === 'fulfilled' && creatorsResponse.value) {
+          const garrett = creatorsResponse.value.creators?.find(
+            (c: LegacyCreator) => c.handle === 'SHORT' || c.kitSlug === 'garrett-king'
+          );
+          if (garrett) {
+            setGarrettKing(garrett);
+          }
+        }
+
+        // Process show episode
+        let assetId = '';
+        if (configDoc.status === 'fulfilled' && configDoc.value?.exists()) {
+          const configData = configDoc.value.data();
+          assetId = configData.muxAssetId || '';
+        }
+        if (!assetId) {
+          assetId = process.env.NEXT_PUBLIC_SHOW_ASSET_ID || '';
+        }
+
+        if (assetId) {
+          try {
+            const episodeResponse = await fetch(`/api/show/episode?assetId=${encodeURIComponent(assetId)}`);
+            if (episodeResponse.ok) {
+              const episodeData = await episodeResponse.json();
+              const thumbnailUrl = episodeData.playbackId
+                ? `https://image.mux.com/${episodeData.playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`
+                : '';
+              
+              const passthrough = episodeData.passthrough || {};
+              const guest = passthrough.guest || passthrough.guestName || '';
+              const handle = passthrough.handle || passthrough.guestHandle || '';
+
+              setShowEpisode({
+                title: episodeData.title || 'CCA Show',
+                description: episodeData.description || '',
+                playbackId: episodeData.playbackId,
+                thumbnailUrl,
+                guest,
+                handle,
               });
             }
           } catch (error) {
-            console.error(`Error fetching lessons for course ${courseId}:`, error);
+            console.error('Error fetching show episode:', error);
           }
-        }
-
-        // Sort by creation date (if available) or use order, limit to 6
-        const sortedLessons = allLessons.slice(0, 6);
-        setRecentlyAdded(sortedLessons);
-
-        // Fetch marketplace listings
-        const listingsRef = collection(db, 'listings');
-        const listingsSnap = await getDocs(query(listingsRef, orderBy('createdAt', 'desc'), limit(3)));
-        const listingsData: Product[] = [];
-
-        listingsSnap.forEach((doc) => {
-          const data = doc.data();
-          listingsData.push({
-            id: doc.id,
-            title: data.title || 'Untitled Listing',
-            image: data.images && data.images.length > 0 ? data.images[0] : '',
-            price: data.price || 0,
-            condition: data.condition || '',
-            images: data.images || [],
-          });
-        });
-
-        setProducts(listingsData);
-
-        // Fetch discounts (if user is authenticated)
-        if (user && auth.currentUser) {
-          try {
-            const idToken = await auth.currentUser.getIdToken();
-            const discountsResponse = await fetch('/api/discounts', {
-              headers: {
-                Authorization: `Bearer ${idToken}`,
-              },
-            });
-
-            if (discountsResponse.ok) {
-              const discountsData = await discountsResponse.json();
-              setDiscounts((discountsData.discounts || []).slice(0, 3));
-            }
-          } catch (error) {
-            console.error('Error fetching discounts:', error);
-          }
-        }
-
-        // Fetch Garrett King's legacy creator data
-        try {
-          const creatorsResponse = await fetch('/api/legacy/creators');
-          if (creatorsResponse.ok) {
-            const creatorsData = await creatorsResponse.json();
-            const garrett = creatorsData.creators?.find(
-              (c: LegacyCreator) => c.handle === 'SHORT' || c.kitSlug === 'garrett-king'
-            );
-            if (garrett) {
-              setGarrettKing(garrett);
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching Garrett King:', error);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -319,8 +371,14 @@ export default function HomePage() {
   const memberSince = userProfile?.memberSince || formatMemberSince(userMemberSince);
   const memberTag = userProfile?.memberTag || 'Member';
 
-  // Featured Show - keeping existing placeholder for now
-  const featuredShow = {
+  // Featured Show - use real data from show episode or fallback to placeholder
+  const featuredShow = showEpisode ? {
+    thumbnail: showEpisode.thumbnailUrl || '',
+    title: showEpisode.title,
+    description: showEpisode.description || '',
+    guest: showEpisode.guest || '',
+    handle: showEpisode.handle || ''
+  } : {
     thumbnail: '/placeholder-video.jpg',
     title: 'CCA Show Episode 006: Ezra Cohen - Building Creative Momentum',
     description: 'In this CCA Show episode, Ezra Cohen opens up about his creative journey, the challenges of building a brand, and the mindset shifts that keep him inspired. From the early days of experimenting with...',
@@ -375,7 +433,7 @@ export default function HomePage() {
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-5 md:space-y-6">
           {/* Top Section: Profile and Featured Show */}
-          <div className="grid md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
+          <div className="grid md:grid-cols-2 gap-4 sm:gap-5 md:gap-6 items-start">
             {/* Profile Section */}
             <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6">
               <h1 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 leading-tight">{getGreeting()}, {displayName.split(' ')[0]}.</h1>
@@ -455,24 +513,41 @@ export default function HomePage() {
             </div>
 
             {/* Featured Show */}
-            <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden">
+            <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col h-full">
               <div className="relative aspect-video bg-neutral-900">
-                <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
-                  <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-2 sm:left-3 md:left-4">
-                  <div className="text-xs sm:text-sm font-semibold text-white">{featuredShow.guest}</div>
-                  <div className="text-[10px] sm:text-xs text-neutral-300">{featuredShow.handle}</div>
-                </div>
+                {featuredShow.thumbnail ? (
+                  <img 
+                    src={featuredShow.thumbnail} 
+                    alt={featuredShow.title}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
+                    <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                )}
+                {featuredShow.guest && (
+                  <div className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-2 sm:left-3 md:left-4">
+                    <div className="text-xs sm:text-sm font-semibold text-white">{featuredShow.guest}</div>
+                    {featuredShow.handle && (
+                      <div className="text-[10px] sm:text-xs text-neutral-300">{featuredShow.handle}</div>
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="p-4 sm:p-5 md:p-6">
+              <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
                 <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">Creator Collective Show</div>
                 <h2 className="text-base sm:text-lg md:text-xl font-bold mb-1.5 sm:mb-2 leading-tight">{featuredShow.title}</h2>
-                <p className="text-xs sm:text-sm text-neutral-400 line-clamp-2 leading-relaxed">{featuredShow.description}</p>
-                <Link href="/show" className="inline-flex items-center gap-1.5 sm:gap-2 mt-3 sm:mt-4 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation">
+                <p className="text-xs sm:text-sm text-neutral-400 line-clamp-2 leading-relaxed mb-3 sm:mb-4 flex-1">{featuredShow.description}</p>
+                <Link href="/show" className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
                   Watch now
                   <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -508,6 +583,8 @@ export default function HomePage() {
                             src={thumbnailUrl} 
                             alt={video.title}
                             className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                             }}
@@ -568,6 +645,8 @@ export default function HomePage() {
                         src={garrettKing.bannerUrl} 
                         alt={garrettKing.displayName}
                         className="w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
                         }}
@@ -580,14 +659,16 @@ export default function HomePage() {
                       </div>
                     )}
                     <div className="absolute bottom-4 left-4 flex items-center gap-3">
-                      {garrettKing.avatarUrl ? (
-                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white bg-neutral-800">
-                          <img 
-                            src={garrettKing.avatarUrl} 
-                            alt={garrettKing.displayName}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                        {garrettKing.avatarUrl ? (
+                          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white bg-neutral-800">
+                            <img 
+                              src={garrettKing.avatarUrl} 
+                              alt={garrettKing.displayName}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          </div>
                       ) : (
                         <div className="w-16 h-16 rounded-full bg-ccaBlue flex items-center justify-center text-white font-bold text-xl">
                           {garrettKing.displayName.charAt(0)}
@@ -620,9 +701,9 @@ export default function HomePage() {
         </div>
 
         {/* Right Column */}
-        <div className="space-y-4 sm:space-y-5 md:space-y-6">
+        <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 h-full">
           {/* Platform Walkthrough */}
-          <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden">
+          <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
             <div className="relative aspect-video bg-neutral-900">
               <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
                 <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -631,11 +712,11 @@ export default function HomePage() {
                 </svg>
               </div>
             </div>
-            <div className="p-4 sm:p-5 md:p-6">
+            <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
               <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">NEW HERE?</div>
               <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 leading-tight">Get Started: Platform Walkthrough</h3>
-              <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed">Learn how to navigate the platform to unlock all the features.</p>
-              <Link href="/learn" className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation">
+              <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed flex-1">Learn how to navigate the platform to unlock all the features.</p>
+              <Link href="/learn" className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
                 Get the Tour
                 <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -645,7 +726,7 @@ export default function HomePage() {
           </div>
 
           {/* Overlay+ Plugin */}
-          <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden">
+          <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
             <div className="relative aspect-video bg-neutral-900">
               <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
                 <div className="text-center">
@@ -654,11 +735,11 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-            <div className="p-4 sm:p-5 md:p-6">
+            <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
               <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">OVERLAY+</div>
               <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 leading-tight">New Release: Lo-Fi FX Plugin</h3>
-              <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed">Give your audio that nostalgic, radio-style vibe. Midrange warmth, filtered clarity, and analog soul with just one knob.</p>
-              <a href="#" className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation">
+              <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed flex-1">Give your audio that nostalgic, radio-style vibe. Midrange warmth, filtered clarity, and analog soul with just one knob.</p>
+              <a href="#" className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
                 CHECK IT OUT
                 <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -693,6 +774,8 @@ export default function HomePage() {
                       src={product.image} 
                       alt={product.title}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                       }}
@@ -728,31 +811,31 @@ export default function HomePage() {
           <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 leading-tight">Member Discounts</h2>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {discounts.map((discount) => (
-              <Link key={discount.id} href="/discounts" className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden group cursor-pointer hover:border-ccaBlue/50 transition">
-                <div className="p-4 sm:p-5">
-                  {discount.partnerLogoUrl && (
-                    <div className="mb-3">
-                      <img 
-                        src={discount.partnerLogoUrl} 
-                        alt={discount.partnerName}
-                        className="h-8 object-contain"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-                  <h3 className="font-semibold text-base sm:text-lg mb-2">{discount.title}</h3>
-                  <p className="text-sm text-neutral-400 mb-3 line-clamp-2">{discount.description}</p>
-                  {discount.discountAmount && (
-                    <div className="text-ccaBlue font-bold text-lg mb-2">{discount.discountAmount}</div>
-                  )}
-                  <div className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white group-hover:text-ccaBlue transition">
-                    View Discount
-                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+              <Link key={discount.id} href="/discounts" className="rounded-2xl border border-neutral-800 bg-neutral-950 p-5 hover:border-ccaBlue/50 transition-colors flex flex-col h-full">
+                {discount.partnerLogoUrl && (
+                  <div className="mb-4 flex items-center justify-center h-16">
+                    <img
+                      src={discount.partnerLogoUrl}
+                      alt={discount.partnerName}
+                      className="max-h-full max-w-full object-contain"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                   </div>
+                )}
+                <div className="text-lg font-semibold mb-1">{discount.title}</div>
+                {discount.discountAmount && (
+                  <div className="mb-2">
+                    <span className="inline-block bg-white text-ccaBlue font-medium text-sm px-2 py-1 rounded">
+                      {discount.discountAmount}
+                    </span>
+                  </div>
+                )}
+                <div className="text-neutral-400 text-sm mb-4 line-clamp-2 flex-grow">{discount.description}</div>
+                <div className="w-full px-4 py-2 rounded-lg bg-ccaBlue hover:opacity-90 transition text-white font-medium mt-auto text-center">
+                  View Discount
                 </div>
               </Link>
             ))}
