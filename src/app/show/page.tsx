@@ -5,7 +5,16 @@ export default function ShowPage() {
       <p className="text-neutral-400 mt-2">Insights, interviews and inspiration for creators.</p>
 
       <div className="mt-8 rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
-        <div className="aspect-video bg-neutral-800 rounded-xl" />
+        <div className="aspect-video bg-neutral-800 rounded-xl overflow-hidden">
+          <iframe
+            className="w-full h-full"
+            src="https://www.youtube.com/embed/5e7C65RRz08?rel=0&modestbranding=1"
+            title="Episode 006: Building Creative Momentum"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
+        </div>
         <div className="mt-4 text-xl font-semibold">Episode 006: Building Creative Momentum</div>
         <div className="text-neutral-400 text-sm">40m • Aug 11, 2025</div>
       </div>
