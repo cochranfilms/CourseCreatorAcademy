@@ -217,7 +217,13 @@ export function SiteHeader() {
           {pathname?.startsWith('/learn') ? (
             <Image src="/logo-cca.png" alt="Course Creator Academy" width={140} height={38} className="sm:w-[180px] sm:h-[48px]" />
           ) : (
-            <Image src="/CC-Logo-White.png" alt="Creator Collective" width={160} height={45} className="sm:w-[200px] sm:h-[56px]" />
+            <Image 
+              src="/CC-Logo-White.png" 
+              alt="Creator Collective" 
+              width={1447} 
+              height={190} 
+              className="h-[21px] w-auto sm:h-[26px] object-contain" 
+            />
           )}
         </Link>
           
