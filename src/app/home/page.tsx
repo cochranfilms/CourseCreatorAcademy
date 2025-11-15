@@ -335,9 +335,6 @@ export default function HomePage() {
             const episodeResponse = await fetch(`/api/show/episode?assetId=${encodeURIComponent(assetId)}`);
             if (episodeResponse.ok) {
               const episodeData = await episodeResponse.json();
-              const thumbnailUrl = episodeData.playbackId
-                ? `https://image.mux.com/${episodeData.playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`
-                : '';
               
               const passthrough = episodeData.passthrough || {};
               const guest = passthrough.guest || passthrough.guestName || '';
@@ -347,7 +344,9 @@ export default function HomePage() {
                 title: episodeData.title || 'CCA Show',
                 description: episodeData.description || '',
                 playbackId: episodeData.playbackId,
-                thumbnailUrl,
+                thumbnailUrl: episodeData.playbackId
+                  ? `https://image.mux.com/${episodeData.playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`
+                  : undefined,
                 guest,
                 handle,
               });
@@ -371,26 +370,28 @@ export default function HomePage() {
   const memberSince = userProfile?.memberSince || formatMemberSince(userMemberSince);
   const memberTag = userProfile?.memberTag || 'Member';
 
-  // Featured Show - use real data from show episode or fallback to placeholder
-  const featuredShow = showEpisode ? {
-    thumbnail: showEpisode.thumbnailUrl || '',
-    title: showEpisode.title,
-    description: showEpisode.description || '',
-    guest: showEpisode.guest || '',
-    handle: showEpisode.handle || ''
-  } : {
-    thumbnail: '/placeholder-video.jpg',
-    title: 'CCA Show Episode 006: Ezra Cohen - Building Creative Momentum',
-    description: 'In this CCA Show episode, Ezra Cohen opens up about his creative journey, the challenges of building a brand, and the mindset shifts that keep him inspired. From the early days of experimenting with...',
-    guest: 'Ezra Cohen',
-    handle: '@ezcohen'
-  };
-
   function getMuxThumbnailUrl(playbackId?: string, animatedGifUrl?: string): string {
     if (animatedGifUrl) return animatedGifUrl;
     if (playbackId) return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`;
     return '';
   }
+
+  // Featured Show - use real data from show episode or fallback to placeholder
+  const featuredShow = showEpisode ? {
+    thumbnail: showEpisode.playbackId 
+      ? getMuxThumbnailUrl(showEpisode.playbackId)
+      : (showEpisode.thumbnailUrl || ''),
+    title: showEpisode.title,
+    description: showEpisode.description || '',
+    guest: showEpisode.guest || '',
+    handle: showEpisode.handle || ''
+  } : {
+    thumbnail: '',
+    title: 'CCA Show Episode 006: Ezra Cohen - Building Creative Momentum',
+    description: 'In this CCA Show episode, Ezra Cohen opens up about his creative journey, the challenges of building a brand, and the mindset shifts that keep him inspired. From the early days of experimenting with...',
+    guest: 'Ezra Cohen',
+    handle: '@ezcohen'
+  };
 
   if (loading) {
     return (
