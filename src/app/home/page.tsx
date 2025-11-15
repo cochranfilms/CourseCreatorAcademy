@@ -3,6 +3,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
+import MuxPlayer from '@mux/mux-player-react';
 import { doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { auth } from '@/lib/firebaseClient';
@@ -131,6 +132,7 @@ export default function HomePage() {
     playbackId: string | null;
     thumbnailUrl?: string;
   } | null>(null);
+  const [showWalkthroughVideo, setShowWalkthroughVideo] = useState(false);
 
   // Post-checkout auto sign-in via custom token handled in Suspense-wrapped child
 
@@ -795,18 +797,32 @@ export default function HomePage() {
                 : '/learn';
               return (
                 <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
-                  <div className="relative aspect-video bg-neutral-900">
+                  <div 
+                    className="relative aspect-video bg-neutral-900 cursor-pointer group"
+                    onClick={() => walkthrough.playbackId && setShowWalkthroughVideo(true)}
+                  >
                     {walkthrough.thumbnailUrl ? (
-                      <img 
-                        src={walkthrough.thumbnailUrl} 
-                        alt={walkthrough.title}
-                        className="w-full h-full object-cover"
-                        loading="eager"
-                        decoding="async"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
+                      <>
+                        <img 
+                          src={walkthrough.thumbnailUrl} 
+                          alt={walkthrough.title}
+                          className="w-full h-full object-cover"
+                          loading="eager"
+                          decoding="async"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                        {walkthrough.playbackId && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white transition shadow-lg">
+                              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-neutral-900 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
                         <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -979,6 +995,53 @@ export default function HomePage() {
                 </div>
               </Link>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Walkthrough Video Modal */}
+      {showWalkthroughVideo && walkthrough?.playbackId && (
+        <div 
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setShowWalkthroughVideo(false)}
+        >
+          <div 
+            className="relative w-full max-w-6xl bg-neutral-900 rounded-xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowWalkthroughVideo(false)}
+              className="absolute -top-10 right-0 text-white hover:text-neutral-400 transition z-10"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="aspect-video bg-neutral-800">
+              <MuxPlayer
+                playbackId={walkthrough.playbackId}
+                streamType="on-demand"
+                primaryColor="#3B82F6"
+                className="w-full h-full"
+                style={{ aspectRatio: '16 / 9' }}
+                playsInline
+                preload="metadata"
+                // @ts-ignore
+                preferMse
+                // @ts-ignore
+                maxResolution="540p"
+                // @ts-ignore
+                disablePictureInPicture
+                // @ts-ignore
+                autoPictureInPicture={false}
+              />
+            </div>
+            <div className="p-4 sm:p-6">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">{walkthrough.title}</h3>
+              {walkthrough.description && (
+                <p className="text-neutral-300 text-sm sm:text-base">{walkthrough.description}</p>
+              )}
+            </div>
           </div>
         </div>
       )}
