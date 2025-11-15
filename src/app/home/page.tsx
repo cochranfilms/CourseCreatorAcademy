@@ -2,6 +2,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import Image from 'next/image';
 import { doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { auth } from '@/lib/firebaseClient';
@@ -124,6 +125,12 @@ export default function HomePage() {
     handle?: string;
   } | null>(null);
   const [featuredAsset, setFeaturedAsset] = useState<Asset | null>(null);
+  const [walkthrough, setWalkthrough] = useState<{
+    title: string;
+    description?: string;
+    playbackId: string | null;
+    thumbnailUrl?: string;
+  } | null>(null);
 
   // Post-checkout auto sign-in via custom token handled in Suspense-wrapped child
 
@@ -217,6 +224,7 @@ export default function HomePage() {
           coursesSnap,
           listingsSnap,
           configDoc,
+          walkthroughConfigDoc,
           creatorsResponse,
           discountsData,
           assetsSnap
@@ -227,6 +235,8 @@ export default function HomePage() {
           getDocs(query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(3))),
           // Fetch show config
           db ? getDoc(doc(db, 'config', 'show')) : Promise.resolve(null),
+          // Fetch walkthrough config
+          db ? getDoc(doc(db, 'config', 'walkthrough')) : Promise.resolve(null),
           // Fetch legacy creators
           fetch('/api/legacy/creators').then(r => r.ok ? r.json() : null),
           // Fetch discounts (if user authenticated)
@@ -377,6 +387,38 @@ export default function HomePage() {
             console.error('Error fetching show episode:', error);
           }
         }
+
+        // Process walkthrough video
+        let walkthroughAssetId = '';
+        if (walkthroughConfigDoc.status === 'fulfilled' && walkthroughConfigDoc.value?.exists()) {
+          const walkthroughConfigData = walkthroughConfigDoc.value.data();
+          walkthroughAssetId = walkthroughConfigData.muxAssetId || '';
+        }
+
+        if (walkthroughAssetId) {
+          try {
+            const walkthroughResponse = await fetch(`/api/show/episode?assetId=${encodeURIComponent(walkthroughAssetId)}`);
+            if (walkthroughResponse.ok) {
+              const walkthroughData = await walkthroughResponse.json();
+              
+              // Use Firestore title/description if available, otherwise use MUX data
+              const walkthroughConfigData = walkthroughConfigDoc.status === 'fulfilled' && walkthroughConfigDoc.value?.exists()
+                ? walkthroughConfigDoc.value.data()
+                : {};
+
+              setWalkthrough({
+                title: walkthroughConfigData.title || walkthroughData.title || 'Platform Walkthrough',
+                description: walkthroughConfigData.description || walkthroughData.description || 'Learn how to navigate the platform to unlock all the features.',
+                playbackId: walkthroughData.playbackId,
+                thumbnailUrl: walkthroughData.playbackId
+                  ? `https://image.mux.com/${walkthroughData.playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`
+                  : undefined,
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching walkthrough video:', error);
+          }
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -498,7 +540,7 @@ export default function HomePage() {
                     <span className="text-[10px] sm:text-xs text-neutral-300 text-center leading-tight">Post an Opportunity</span>
                   </Link>
                   
-                  <Link href="/assets" className="flex flex-col items-center p-3 sm:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-neutral-700 hover:border-neutral-700 transition-all group touch-manipulation">
+                  <Link href="/learn" className="flex flex-col items-center p-3 sm:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-neutral-700 hover:border-neutral-700 transition-all group touch-manipulation">
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-neutral-800 flex items-center justify-center mb-1.5 sm:mb-2 group-active:bg-neutral-700 group-hover:bg-neutral-700 transition">
                       <svg className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -508,23 +550,27 @@ export default function HomePage() {
                     <span className="text-[10px] sm:text-xs text-neutral-300 text-center leading-tight">Creator Kits</span>
                   </Link>
                   
-                  <a href="#" className="flex flex-col items-center p-3 sm:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-purple-500/30 hover:border-purple-500/30 transition-all group touch-manipulation">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mb-1.5 sm:mb-2 group-active:bg-purple-500/30 group-hover:bg-purple-500/30 transition">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+                  <a href="https://www.facebook.com/groups/1164427198416308" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center p-3 sm:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-blue-500/30 hover:border-blue-500/30 transition-all group touch-manipulation">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/20 flex items-center justify-center mb-1.5 sm:mb-2 group-active:bg-blue-500/30 group-hover:bg-blue-500/30 transition">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                       </svg>
                     </div>
-                    <span className="text-[10px] sm:text-xs text-neutral-300 text-center leading-tight">Discord Server</span>
+                    <span className="text-[10px] sm:text-xs text-neutral-300 text-center leading-tight">Facebook Group</span>
                   </a>
                   
-                  <a href="#" className="flex flex-col items-center p-3 sm:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-orange-500/30 hover:border-orange-500/30 transition-all group touch-manipulation">
+                  <Link href="/discounts" className="flex flex-col items-center p-3 sm:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-orange-500/30 hover:border-orange-500/30 transition-all group touch-manipulation">
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-orange-500/20 to-pink-500/20 flex items-center justify-center mb-1.5 sm:mb-2 group-active:from-orange-500/30 group-active:to-pink-500/30 group-hover:from-orange-500/30 group-hover:to-pink-500/30 transition">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M13.966 22.624l-1.66-4.126-3.027-2.582a.5.5 0 0 1-.224-.423V9.5a.5.5 0 0 1 .13-.337l.5-.5a.5.5 0 0 1 .353-.146h1.5a.5.5 0 0 1 .5.5v.5a.5.5 0 0 0 .5.5h.5a.5.5 0 0 1 .5.5v1a.5.5 0 0 0 .5.5h.5a.5.5 0 0 1 .5.5v1a.5.5 0 0 0 .5.5h.5a.5.5 0 0 1 .5.5v1a.5.5 0 0 0 .5.5h2.5a.5.5 0 0 1 .5.5v.5a.5.5 0 0 1-.064.237l-2.5 5a.5.5 0 0 1-.453.263h-1.5a.5.5 0 0 1-.47-.376zM11.5 15.5a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-.5a.5.5 0 0 1-.5-.5v-2z"/>
-                      </svg>
+                      <Image 
+                        src="/Adobe-Logo.png" 
+                        alt="Adobe" 
+                        width={20} 
+                        height={20} 
+                        className="w-5 h-5 sm:w-6 sm:h-6 object-contain"
+                      />
                     </div>
                     <span className="text-[10px] sm:text-xs text-neutral-300 text-center leading-tight">Adobe Discount</span>
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -732,27 +778,54 @@ export default function HomePage() {
         {/* Right Column */}
         <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 h-full">
           {/* Platform Walkthrough */}
-          <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
-            <div className="relative aspect-video bg-neutral-900">
-              <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
-                <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+          {dataLoading || !walkthrough ? (
+            <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
+              <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
+              <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
+                <div className="h-3 bg-neutral-800 rounded w-24 mb-2 animate-pulse"></div>
+                <div className="h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
+                <div className="h-4 bg-neutral-800 rounded w-full mb-4 flex-1 animate-pulse"></div>
+                <div className="h-4 bg-neutral-800 rounded w-24 mt-auto animate-pulse"></div>
               </div>
             </div>
-            <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
-              <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">NEW HERE?</div>
-              <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 leading-tight">Get Started: Platform Walkthrough</h3>
-              <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed flex-1">Learn how to navigate the platform to unlock all the features.</p>
-              <Link href="/learn" className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
-                Get the Tour
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+          ) : (
+            <div className="bg-neutral-950 border border-neutral-800 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col flex-1">
+              <div className="relative aspect-video bg-neutral-900">
+                {walkthrough.thumbnailUrl ? (
+                  <img 
+                    src={walkthrough.thumbnailUrl} 
+                    alt={walkthrough.title}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-neutral-500">
+                    <svg className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
+                <div className="text-[10px] sm:text-xs text-neutral-400 mb-1.5 sm:mb-2">NEW HERE?</div>
+                <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 leading-tight">{walkthrough.title}</h3>
+                {walkthrough.description && (
+                  <p className="text-xs sm:text-sm text-neutral-400 mb-3 sm:mb-4 leading-relaxed flex-1 line-clamp-2">{walkthrough.description}</p>
+                )}
+                <Link href={walkthrough.playbackId ? `/walkthrough?playbackId=${walkthrough.playbackId}` : '/learn'} className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto">
+                  Get the Tour
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Featured Asset */}
           {dataLoading || !featuredAsset ? (
