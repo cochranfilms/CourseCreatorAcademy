@@ -107,7 +107,6 @@ export default function HomePage() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [garrettKing, setGarrettKing] = useState<LegacyCreator | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
-  const router = useRouter();
 
   // Post-checkout auto sign-in via custom token handled in Suspense-wrapped child
 
@@ -329,12 +328,6 @@ export default function HomePage() {
     handle: '@ezcohen'
   };
 
-  function formatDuration(seconds: number): string {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-  }
-
   function getMuxThumbnailUrl(playbackId?: string, animatedGifUrl?: string): string {
     if (animatedGifUrl) return animatedGifUrl;
     if (playbackId) return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=640&fit_mode=preserve`;
@@ -507,10 +500,10 @@ export default function HomePage() {
                   const thumbnailUrl = getMuxThumbnailUrl(video.muxPlaybackId, video.muxAnimatedGifUrl);
                   const videoLink = video.courseSlug && video.moduleId && video.lessonId
                     ? `/learn/${video.courseSlug}/module/${video.moduleId}/lesson/${video.lessonId}`
-                    : '#';
+                    : null;
                   
-                  return (
-                    <Link key={video.id} href={videoLink} className="flex-shrink-0 w-56 sm:w-64">
+                  const videoContent = (
+                    <>
                       <div className="relative aspect-video bg-neutral-900 rounded-xl overflow-hidden group cursor-pointer">
                         {thumbnailUrl ? (
                           <img 
@@ -539,7 +532,17 @@ export default function HomePage() {
                         </div>
                       </div>
                       <h3 className="mt-2 text-sm font-semibold line-clamp-2">{video.title}</h3>
+                    </>
+                  );
+
+                  return videoLink ? (
+                    <Link key={video.id} href={videoLink} className="flex-shrink-0 w-56 sm:w-64">
+                      {videoContent}
                     </Link>
+                  ) : (
+                    <div key={video.id} className="flex-shrink-0 w-56 sm:w-64">
+                      {videoContent}
+                    </div>
                   );
                 })}
               </div>
