@@ -499,9 +499,6 @@ export default function HomePage() {
                 {recentlyAdded.map((video) => {
                   const thumbnailUrl = getMuxThumbnailUrl(video.muxPlaybackId, video.muxAnimatedGifUrl);
                   const hasValidLink = !!(video.courseSlug && video.moduleId && video.lessonId);
-                  const videoLink: string = hasValidLink
-                    ? `/learn/${video.courseSlug}/module/${video.moduleId}/lesson/${video.lessonId}`
-                    : '';
                   
                   const videoContent = (
                     <>
@@ -536,9 +533,13 @@ export default function HomePage() {
                     </>
                   );
 
-                  if (hasValidLink) {
+                  if (hasValidLink && video.courseSlug && video.moduleId && video.lessonId) {
                     return (
-                      <Link key={video.id} href={videoLink} className="flex-shrink-0 w-56 sm:w-64">
+                      <Link 
+                        key={video.id} 
+                        href={`/learn/${video.courseSlug}/module/${video.moduleId}/lesson/${video.lessonId}`} 
+                        className="flex-shrink-0 w-56 sm:w-64"
+                      >
                         {videoContent}
                       </Link>
                     );
