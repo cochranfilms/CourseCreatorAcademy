@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mux } from '@/lib/mux';
+import { adminDb } from '@/lib/firebaseAdmin';
 
 /**
  * GET /api/show/episode?assetId=xxx
  * Fetches MUX asset metadata for the show episode
+ * Also fetches description from Firestore config/show document
  */
 export async function GET(req: NextRequest) {
   try {
@@ -37,8 +39,34 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Extract title from passthrough or use a default
-    const title = passthroughData.title || asset.id;
+    // Fetch title and description from Firestore config/show document
+    let title = '';
+    let description = '';
+    if (adminDb) {
+      try {
+        const configDoc = await adminDb.collection('config').doc('show').get();
+        if (configDoc.exists()) {
+          const configData = configDoc.data();
+          title = configData?.title || '';
+          description = configData?.description || '';
+        }
+      } catch (firestoreError) {
+        console.log('Could not fetch config from Firestore:', firestoreError);
+        // Continue without config - not a critical error
+      }
+    }
+    
+    // Extract title from MUX asset metadata if not found in Firestore
+    // Priority: Firestore title > passthrough.title > asset.test (MUX test field) > fallback
+    if (!title) {
+      title = passthroughData.title || asset.test || null;
+      
+      // If still no title, use a more user-friendly fallback
+      if (!title) {
+        // Try to extract from playback ID or use a generic episode title
+        title = `Episode ${asset.id.slice(-4)}`; // Last 4 chars of asset ID as episode number
+      }
+    }
     
     // Format duration
     const minutes = Math.floor(durationSec / 60);
@@ -59,6 +87,7 @@ export async function GET(req: NextRequest) {
       assetId: asset.id,
       playbackId,
       title,
+      description,
       durationSec,
       durationFormatted,
       dateFormatted,

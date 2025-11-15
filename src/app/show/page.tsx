@@ -9,6 +9,7 @@ interface EpisodeData {
   assetId: string;
   playbackId: string | null;
   title: string;
+  description?: string;
   durationSec: number;
   durationFormatted: string;
   dateFormatted: string;
@@ -118,6 +119,11 @@ export default function ShowPage() {
           <div className="text-neutral-400 text-sm">
             {episode.durationFormatted} • {episode.dateFormatted}
           </div>
+          {episode.description && (
+            <div className="mt-4 text-neutral-300 text-sm leading-relaxed">
+              {episode.description}
+            </div>
+          )}
         </div>
       ) : (
         <div className="mt-8 rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
