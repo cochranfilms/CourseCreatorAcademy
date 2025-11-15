@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
     const now = new Date();
     const discounts = discountsSnapshot.docs
-      .map((doc) => {
+      .map((doc: any) => {
         const data = doc.data();
         // Check expiration date if set
         if (data.expirationDate) {

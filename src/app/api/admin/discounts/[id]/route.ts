@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { ensureAdmin } from '@/lib/api/admin';
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: NextRequest, context: any) {
   try {
     if (!adminDb) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
@@ -16,7 +13,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const discountId = params.id;
+    const discountId = String(context?.params?.id || '');
     if (!discountId) {
       return NextResponse.json({ error: 'Discount ID required' }, { status: 400 });
     }
@@ -101,10 +98,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: NextRequest, context: any) {
   try {
     if (!adminDb) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
@@ -115,7 +109,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const discountId = params.id;
+    const discountId = String(context?.params?.id || '');
     if (!discountId) {
       return NextResponse.json({ error: 'Discount ID required' }, { status: 400 });
     }

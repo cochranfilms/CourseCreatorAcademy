@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       .orderBy('createdAt', 'desc')
       .get();
 
-    const discounts = discountsSnapshot.docs.map((doc) => {
+    const discounts = discountsSnapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,

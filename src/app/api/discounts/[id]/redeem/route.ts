@@ -3,16 +3,13 @@ import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { getUserIdFromAuthHeader } from '@/lib/api/auth';
 import { hasGlobalMembership } from '@/lib/entitlements';
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest, context: any) {
   try {
     if (!adminDb || !adminAuth) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     }
 
-    const discountId = params.id;
+    const discountId = String(context?.params?.id || '');
     if (!discountId) {
       return NextResponse.json({ error: 'Discount ID required' }, { status: 400 });
     }
