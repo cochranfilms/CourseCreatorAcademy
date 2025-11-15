@@ -177,7 +177,7 @@ export default function HomePage() {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
-            const data = userDoc.data();
+            const data = userDoc.data() as any;
             setUserProfile({
               displayName: data.displayName || user.displayName,
               photoURL: (data.photoURL || user.photoURL) || undefined,
@@ -326,7 +326,7 @@ export default function HomePage() {
         // Process featured asset (progressive rendering)
         if (assetsSnap.status === 'fulfilled' && assetsSnap.value && !assetsSnap.value.empty) {
           const firstAsset = assetsSnap.value.docs[0];
-          const assetData = firstAsset.data();
+          const assetData = firstAsset.data() as any;
           startTransition(() => {
             setFeaturedAsset({
               id: firstAsset.id,
@@ -341,7 +341,7 @@ export default function HomePage() {
         // Process show episode
         let assetId = '';
         if (configDoc.status === 'fulfilled' && configDoc.value?.exists()) {
-          const configData = configDoc.value.data();
+          const configData = configDoc.value.data() as any;
           assetId = configData.muxAssetId || '';
         }
         if (!assetId) {
@@ -379,7 +379,7 @@ export default function HomePage() {
         // Process walkthrough video
         let walkthroughAssetId = '';
         if (walkthroughConfigDoc.status === 'fulfilled' && walkthroughConfigDoc.value?.exists()) {
-          const walkthroughConfigData = walkthroughConfigDoc.value.data();
+          const walkthroughConfigData = walkthroughConfigDoc.value.data() as any;
           walkthroughAssetId = walkthroughConfigData.muxAssetId || '';
         }
 
@@ -391,7 +391,7 @@ export default function HomePage() {
               
               // Use Firestore title/description if available, otherwise use MUX data
               const walkthroughConfigData = walkthroughConfigDoc.status === 'fulfilled' && walkthroughConfigDoc.value?.exists()
-                ? walkthroughConfigDoc.value.data()
+                ? (walkthroughConfigDoc.value.data() as any)
                 : {};
 
               startTransition(() => {
