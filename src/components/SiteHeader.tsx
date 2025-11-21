@@ -35,6 +35,11 @@ type UserProfile = {
 export function SiteHeader() {
   const pathname = usePathname();
   const { user, loading, logout } = useAuth();
+  
+  // Hide header on waitlist page
+  if (pathname === '/wait') {
+    return null;
+  }
   const router = useRouter();
   const unreadCount = useUnreadMessagesCount();
   const [profile, setProfile] = useState<UserProfile | null>(null);

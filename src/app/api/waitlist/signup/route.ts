@@ -70,8 +70,15 @@ export async function POST(req: NextRequest) {
     // Send confirmation email via EmailJS
     try {
       const templateId = process.env.EMAILJS_TEMPLATE_ID_WAITLIST;
-      if (templateId) {
-        await sendEmailJS(templateId, {
+      const serviceId = process.env.EMAILJS_SERVICE_ID;
+      const publicKey = process.env.EMAILJS_PUBLIC_KEY;
+      
+      if (!templateId) {
+        console.warn('EMAILJS_TEMPLATE_ID_WAITLIST not configured, skipping email');
+      } else if (!serviceId || !publicKey) {
+        console.warn('EmailJS credentials not configured (EMAILJS_SERVICE_ID or EMAILJS_PUBLIC_KEY missing), skipping email');
+      } else {
+        const result = await sendEmailJS(templateId, {
           user_name: name,
           user_email: email,
           excitement: excitement,
@@ -80,10 +87,21 @@ export async function POST(req: NextRequest) {
           name: 'Course Creator Academy',
           year: new Date().getFullYear().toString(),
         });
+        
+        if (!result.ok) {
+          console.warn('EmailJS returned non-ok result:', result);
+        }
       }
     } catch (error: any) {
       // Don't fail the request if email fails, just log it
       console.error('Failed to send confirmation email:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        templateId: process.env.EMAILJS_TEMPLATE_ID_WAITLIST ? 'set' : 'missing',
+        serviceId: process.env.EMAILJS_SERVICE_ID ? 'set' : 'missing',
+        publicKey: process.env.EMAILJS_PUBLIC_KEY ? 'set' : 'missing',
+      });
     }
 
     return NextResponse.json({
