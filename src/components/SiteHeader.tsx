@@ -35,11 +35,6 @@ type UserProfile = {
 export function SiteHeader() {
   const pathname = usePathname();
   const { user, loading, logout } = useAuth();
-  
-  // Hide header on waitlist page
-  if (pathname === '/wait') {
-    return null;
-  }
   const router = useRouter();
   const unreadCount = useUnreadMessagesCount();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -211,6 +206,11 @@ export function SiteHeader() {
   const isLegacyCreator = Boolean(profile?.isLegacyCreator);
   const profileHref = isLegacyCreator ? '/creator/legacy/profile' : '/dashboard';
   const profileLabel = isLegacyCreator ? 'Legacy Profile' : 'Your Profile';
+
+  // Hide header on waitlist page
+  if (pathname === '/wait') {
+    return null;
+  }
 
   return (
     <>
