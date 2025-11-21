@@ -118,7 +118,7 @@ export default function WaitlistPage() {
             <span className="text-white">EXPERT CREATOR</span>
           </h1>
           <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-300 mb-6 sm:mb-8 max-w-3xl mx-auto px-3 leading-relaxed">
-            Course Creator Academy is launching soon! Join our waitlist to be the first to access our creator-powered platform where you can learn, collaborate, grow your network, and take your skills to the next level.
+            Creator Collective is launching soon! Join our waitlist to be the first to access our creator-powered platform where you can learn, collaborate, grow your network, and take your skills to the next level.
           </p>
 
           {/* Success Message */}
