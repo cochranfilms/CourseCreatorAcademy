@@ -240,7 +240,7 @@ export default function WaitlistPage() {
       {/* Platform Overview - Enhanced Section */}
       <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-16 sm:py-20 md:py-32 w-full">
         <div className="text-center mb-12 sm:mb-16 md:mb-20 px-2">
-          <div className="inline-block px-4 py-2 rounded-full bg-ccaBlue/20 border border-ccaBlue/50 text-ccaBlue text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
+          <div className="inline-block px-4 py-2 rounded-full bg-ccaBlue/20 border border-ccaBlue/50 text-white text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
             YOUR CREATIVE HOME BASE
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-4 sm:mb-6 text-white drop-shadow-2xl leading-tight">
