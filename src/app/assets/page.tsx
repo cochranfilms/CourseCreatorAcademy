@@ -5,6 +5,7 @@ import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 
 type AssetCategory = 'All Packs' | 'LUTs & Presets' | 'Overlays & Transitions' | 'SFX & Plugins' | 'Templates';
+type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | 'LUTs' | 'Presets' | null;
 
 interface Asset {
   id: string;
@@ -19,11 +20,45 @@ interface Asset {
 
 const categories: AssetCategory[] = ['All Packs', 'LUTs & Presets', 'Overlays & Transitions', 'SFX & Plugins', 'Templates'];
 
+/**
+ * Gets subcategory from storage path
+ */
+function getSubCategory(asset: Asset): SubCategory {
+  if (!asset.storagePath) return null;
+  
+  const path = asset.storagePath.toLowerCase();
+  const title = asset.title.toLowerCase();
+  
+  // Check storage path first
+  if (path.includes('/overlays/')) return 'Overlays';
+  if (path.includes('/transitions/')) return 'Transitions';
+  if (path.includes('/sfx/')) return 'SFX';
+  if (path.includes('/plugins/')) return 'Plugins';
+  if (path.includes('/luts/')) return 'LUTs';
+  if (path.includes('/presets/')) return 'Presets';
+  
+  // Fallback to title keywords
+  if (title.includes('overlay') || title.includes('flare') || title.includes('light leak')) return 'Overlays';
+  if (title.includes('transition')) return 'Transitions';
+  if (title.includes('sfx') || title.includes('sound') || title.includes('audio')) return 'SFX';
+  if (title.includes('plugin')) return 'Plugins';
+  if (title.includes('lut')) return 'LUTs';
+  if (title.includes('preset')) return 'Presets';
+  
+  return null;
+}
+
 export default function AssetsPage() {
   const [selectedCategory, setSelectedCategory] = useState<AssetCategory>('All Packs');
+  const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategory>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
+  
+  // Reset subcategory when main category changes
+  useEffect(() => {
+    setSelectedSubCategory(null);
+  }, [selectedCategory]);
 
   useEffect(() => {
     const loadAssets = async () => {
@@ -53,9 +88,29 @@ export default function AssetsPage() {
     loadAssets();
   }, []);
 
+  // Get subcategories for the current category
+  const getSubCategories = (category: AssetCategory): SubCategory[] => {
+    if (category === 'Overlays & Transitions') return ['Overlays', 'Transitions'];
+    if (category === 'SFX & Plugins') return ['SFX', 'Plugins'];
+    if (category === 'LUTs & Presets') return ['LUTs', 'Presets'];
+    return [];
+  };
+
+  const subCategories = getSubCategories(selectedCategory);
+  const showSubTabs = subCategories.length > 0;
+
   const filteredAssets = selectedCategory === 'All Packs' 
     ? assets 
-    : assets.filter(asset => asset.category === selectedCategory);
+    : assets.filter(asset => {
+        if (asset.category !== selectedCategory) return false;
+        
+        // If subcategory is selected, filter by it
+        if (selectedSubCategory) {
+          return getSubCategory(asset) === selectedSubCategory;
+        }
+        
+        return true;
+      });
 
   const handleDownload = async (asset: Asset) => {
     if (downloading === asset.id) return;
@@ -89,8 +144,8 @@ export default function AssetsPage() {
 
   return (
     <main className="max-w-7xl mx-auto px-6 py-8">
-      <h1 className="text-3xl md:text-4xl font-bold">Assets</h1>
-      <p className="text-neutral-400">Thousands of premium assets & templates.</p>
+      <h1 className="text-3xl md:text-4xl font-bold text-center">Assets</h1>
+      <p className="text-neutral-400 text-center mt-2">Thousands of premium assets & templates.</p>
 
       <div className="mt-6 flex flex-wrap gap-2">
         {categories.map((category) => (
@@ -108,11 +163,40 @@ export default function AssetsPage() {
         ))}
       </div>
 
+      {/* Sub-category tabs for combined categories */}
+      {showSubTabs && (
+        <div className="mt-6 flex justify-center gap-2">
+          <button
+            onClick={() => setSelectedSubCategory(null)}
+            className={`w-20 h-20 rounded-lg text-sm font-medium transition-colors ${
+              selectedSubCategory === null
+                ? 'bg-ccaBlue text-white'
+                : 'bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800'
+            }`}
+          >
+            All
+          </button>
+          {subCategories.map((subCat) => (
+            <button
+              key={subCat}
+              onClick={() => setSelectedSubCategory(subCat)}
+              className={`w-20 h-20 rounded-lg text-sm font-medium transition-colors ${
+                selectedSubCategory === subCat
+                  ? 'bg-ccaBlue text-white'
+                  : 'bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800'
+              }`}
+            >
+              {subCat}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950">
-              <div className="h-44 bg-neutral-800 animate-pulse"></div>
+              <div className="aspect-square bg-neutral-800 animate-pulse"></div>
               <div className="p-4">
                 <div className="h-5 bg-neutral-800 rounded w-3/4 mb-2 animate-pulse"></div>
                 <div className="h-4 bg-neutral-800 rounded w-1/2 animate-pulse"></div>
@@ -121,7 +205,7 @@ export default function AssetsPage() {
           ))}
         </div>
       ) : filteredAssets.length === 0 ? (
-        <div className="mt-6 text-neutral-400">No assets found in this category.</div>
+        <div className="mt-6 text-neutral-400 text-center">No assets found in this category.</div>
       ) : (
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAssets.map((asset) => (
@@ -130,7 +214,7 @@ export default function AssetsPage() {
               className="rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-ccaBlue/50 transition-colors cursor-pointer group"
               onClick={() => handleDownload(asset)}
             >
-              <div className="h-44 bg-neutral-800 relative overflow-hidden">
+              <div className="aspect-square bg-neutral-800 relative overflow-hidden">
                 {asset.thumbnailUrl && 
                  asset.thumbnailUrl.startsWith('https://') && 
                  !asset.thumbnailUrl.includes('via.placeholder.com') &&
