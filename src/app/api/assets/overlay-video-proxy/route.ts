@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 
 // GET /api/assets/overlay-video-proxy?assetId=xxx&overlayId=xxx
-// Returns a signed URL for video playback (with proper CORS headers)
+// Streams video file with proper range request support for video playback
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
 
     const overlayData = overlayDoc.data();
     const storagePath = overlayData?.storagePath;
+    const fileType = overlayData?.fileType || 'mov';
 
     if (!storagePath) {
       return NextResponse.json({ error: 'Overlay has no storage path' }, { status: 400 });
@@ -52,27 +53,111 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
     
-    // Generate signed URL for video playback (valid for 1 hour)
-    // Use responseType: 'stream' to allow video playback
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 1);
+    // Get file metadata
+    const [metadata] = await file.getMetadata();
+    const fileSize = parseInt(metadata.size || '0');
     
-    try {
-      const [signedUrl] = await file.getSignedUrl({
-        action: 'read',
-        expires: expiresAt,
-        version: 'v4',
+    // Determine content type
+    const contentTypeMap: { [key: string]: string } = {
+      'mov': 'video/quicktime',
+      'mp4': 'video/mp4',
+      'avi': 'video/x-msvideo',
+      'mkv': 'video/x-matroska',
+      'webm': 'video/webm',
+      'm4v': 'video/x-m4v',
+    };
+    
+    const contentType = metadata.contentType || contentTypeMap[fileType.toLowerCase()] || 'video/mp4';
+    
+    // Handle range requests for video seeking
+    const range = req.headers.get('range');
+    
+    if (range) {
+      const rangeMatch = range.match(/bytes=(\d+)-(\d*)/);
+      if (!rangeMatch) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: {
+            'Content-Range': `bytes */${fileSize}`,
+          },
+        });
+      }
+      
+      const start = parseInt(rangeMatch[1], 10);
+      const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+      
+      // Create read stream for the range
+      const stream = file.createReadStream({ start, end });
+      
+      // Convert Node stream to Web ReadableStream
+      const webStream = new ReadableStream({
+        start(controller) {
+          stream.on('data', (chunk: Buffer) => {
+            controller.enqueue(new Uint8Array(chunk));
+          });
+          stream.on('end', () => {
+            controller.close();
+          });
+          stream.on('error', (err: Error) => {
+            controller.error(err);
+          });
+        },
+        cancel() {
+          stream.destroy();
+        },
       });
-
-      // Return the signed URL - Firebase Storage handles CORS if configured
-      return NextResponse.json({ videoUrl: signedUrl });
-    } catch (signError: any) {
-      console.error('Error generating signed URL:', signError);
-      throw signError;
+      
+      return new NextResponse(webStream, {
+        status: 206,
+        headers: {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunkSize.toString(),
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=3600',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': 'Range',
+        },
+      });
+    } else {
+      // Stream entire file
+      const stream = file.createReadStream();
+      
+      // Convert Node stream to Web ReadableStream
+      const webStream = new ReadableStream({
+        start(controller) {
+          stream.on('data', (chunk: Buffer) => {
+            controller.enqueue(new Uint8Array(chunk));
+          });
+          stream.on('end', () => {
+            controller.close();
+          });
+          stream.on('error', (err: Error) => {
+            controller.error(err);
+          });
+        },
+        cancel() {
+          stream.destroy();
+        },
+      });
+      
+      return new NextResponse(webStream, {
+        headers: {
+          'Content-Type': contentType,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': fileSize.toString(),
+          'Cache-Control': 'public, max-age=3600',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': 'Range',
+        },
+      });
     }
   } catch (err: any) {
-    console.error('Error getting video URL:', err);
-    return NextResponse.json({ error: err?.message || 'Failed to get video URL' }, { status: 500 });
+    console.error('Error proxying video:', err);
+    return NextResponse.json({ error: err?.message || 'Failed to proxy video' }, { status: 500 });
   }
 }
 
