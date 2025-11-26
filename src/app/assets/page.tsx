@@ -16,6 +16,8 @@ interface Asset {
   muxPlaybackId?: string;
   fileType?: string;
   description?: string;
+  beforeVideoPath?: string; // Path to "before" video in Firebase Storage
+  afterVideoPath?: string; // Path to "after" video in Firebase Storage
 }
 
 interface SoundEffect {
@@ -89,6 +91,406 @@ function getPublicStorageUrl(storagePath: string): string {
   const encodedPath = encodeURIComponent(storagePath);
   // Use Firebase Storage v0 API format for public files
   return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+}
+
+/**
+ * Side-by-Side Video Slider Component for LUT previews
+ * Shows before/after videos with a draggable slider
+ */
+function SideBySideVideoSlider({ asset }: { asset: Asset }) {
+  const [beforeVideoUrl, setBeforeVideoUrl] = useState<string | null>(null);
+  const [afterVideoUrl, setAfterVideoUrl] = useState<string | null>(null);
+  const [sliderPosition, setSliderPosition] = useState(50); // Percentage (0-100)
+  const [isDragging, setIsDragging] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const beforeVideoRef = useRef<HTMLVideoElement | null>(null);
+  const afterVideoRef = useRef<HTMLVideoElement | null>(null);
+  const sliderRef = useRef<HTMLDivElement | null>(null);
+
+  // Load video URLs
+  useEffect(() => {
+    if (asset.beforeVideoPath) {
+      const url = getPublicStorageUrl(asset.beforeVideoPath);
+      setBeforeVideoUrl(url);
+    }
+    if (asset.afterVideoPath) {
+      const url = getPublicStorageUrl(asset.afterVideoPath);
+      setAfterVideoUrl(url);
+    }
+  }, [asset]);
+
+  // Intersection Observer for lazy loading and pausing videos out of viewport
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            // Resume videos if they're loaded
+            if (beforeVideoRef.current && beforeVideoUrl) {
+              beforeVideoRef.current.play().catch(() => {});
+            }
+            if (afterVideoRef.current && afterVideoUrl) {
+              afterVideoRef.current.play().catch(() => {});
+            }
+          } else {
+            // Pause videos when out of viewport to save resources
+            if (beforeVideoRef.current) {
+              beforeVideoRef.current.pause();
+            }
+            if (afterVideoRef.current) {
+              afterVideoRef.current.pause();
+            }
+          }
+        });
+      },
+      {
+        rootMargin: '200px',
+        threshold: 0.01
+      }
+    );
+
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [beforeVideoUrl, afterVideoUrl]);
+
+  // Setup video elements
+  useEffect(() => {
+    const beforeVideo = beforeVideoRef.current;
+    const afterVideo = afterVideoRef.current;
+
+    if (beforeVideo && beforeVideoUrl) {
+      beforeVideo.loop = true;
+      beforeVideo.muted = true;
+      beforeVideo.playsInline = true;
+      beforeVideo.preload = 'metadata';
+      beforeVideo.crossOrigin = 'anonymous';
+      
+      const handleCanPlay = () => {
+        if (isVisible) {
+          beforeVideo.play().catch(() => {});
+        }
+      };
+      
+      beforeVideo.addEventListener('canplay', handleCanPlay, { once: true });
+      
+      return () => {
+        beforeVideo.removeEventListener('canplay', handleCanPlay);
+      };
+    }
+  }, [beforeVideoUrl, isVisible]);
+
+  useEffect(() => {
+    const afterVideo = afterVideoRef.current;
+
+    if (afterVideo && afterVideoUrl) {
+      afterVideo.loop = true;
+      afterVideo.muted = true;
+      afterVideo.playsInline = true;
+      afterVideo.preload = 'metadata';
+      afterVideo.crossOrigin = 'anonymous';
+      
+      const handleCanPlay = () => {
+        if (isVisible) {
+          afterVideo.play().catch(() => {});
+        }
+      };
+      
+      afterVideo.addEventListener('canplay', handleCanPlay, { once: true });
+      
+      return () => {
+        afterVideo.removeEventListener('canplay', handleCanPlay);
+      };
+    }
+  }, [afterVideoUrl, isVisible]);
+
+  // Sync video playback
+  useEffect(() => {
+    const beforeVideo = beforeVideoRef.current;
+    const afterVideo = afterVideoRef.current;
+
+    if (!beforeVideo || !afterVideo) return;
+
+    const syncVideos = () => {
+      if (beforeVideo.currentTime !== afterVideo.currentTime) {
+        afterVideo.currentTime = beforeVideo.currentTime;
+      }
+    };
+
+    beforeVideo.addEventListener('timeupdate', syncVideos);
+    
+    return () => {
+      beforeVideo.removeEventListener('timeupdate', syncVideos);
+    };
+  }, [beforeVideoUrl, afterVideoUrl]);
+
+  // Handle slider drag
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    setIsDragging(true);
+    e.preventDefault();
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setSliderPosition(percentage);
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  // Handle touch events for mobile
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    setIsDragging(true);
+    e.preventDefault();
+  }, []);
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    
+    const touch = e.touches[0];
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setSliderPosition(percentage);
+  }, [isDragging]);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchend', handleTouchEnd);
+      return () => {
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, [isDragging, handleTouchMove, handleTouchEnd]);
+
+  const handleDownload = async () => {
+    if (downloading) return;
+    
+    setDownloading(true);
+    try {
+      const response = await fetch(`/api/assets/download?assetId=${asset.id}`);
+      if (!response.ok) throw new Error('Failed to get download URL');
+      const data = await response.json();
+      
+      const link = document.createElement('a');
+      link.href = data.downloadUrl;
+      link.download = asset.title.replace(/\s+/g, '_') + (asset.fileType ? `.${asset.fileType}` : '');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download asset. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // If videos aren't available, fall back to thumbnail
+  if (!beforeVideoUrl || !afterVideoUrl) {
+    return (
+      <div 
+        className="border border-neutral-700 bg-black rounded-lg overflow-hidden hover:border-neutral-500 transition-colors cursor-pointer group"
+        onClick={handleDownload}
+      >
+        <div className="aspect-video bg-gradient-to-br from-neutral-900 to-black relative overflow-hidden">
+          {asset.thumbnailUrl && asset.thumbnailUrl.startsWith('https://') ? (
+            <img 
+              src={asset.thumbnailUrl} 
+              alt={asset.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-ccaBlue/50">
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+            {downloading ? (
+              <div className="text-white text-sm">Downloading...</div>
+            ) : (
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium">
+                Click to Download
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="p-3 bg-black">
+          <div className="font-semibold text-white text-sm truncate">{asset.title}</div>
+          <div className="text-xs text-neutral-400 mt-1 truncate">{asset.category}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      ref={containerRef}
+      className="border border-neutral-700 bg-black rounded-lg overflow-hidden hover:border-neutral-500 transition-colors cursor-pointer group"
+      onClick={(e) => {
+        // Don't trigger download when clicking on slider
+        if (e.target === sliderRef.current || sliderRef.current?.contains(e.target as Node)) {
+          return;
+        }
+        handleDownload();
+      }}
+    >
+      {/* Side-by-Side Video Preview */}
+      <div className="aspect-video bg-gradient-to-br from-neutral-900 to-black relative overflow-hidden">
+        {/* Before Video (Left Side) */}
+        <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}>
+          <video
+            ref={beforeVideoRef}
+            src={beforeVideoUrl}
+            className="w-full h-full object-cover"
+            playsInline
+            muted
+            loop
+            preload="metadata"
+            crossOrigin="anonymous"
+            style={{
+              maxWidth: '1280px',
+              maxHeight: '720px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          {/* Before Label */}
+          <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded">
+            Before
+          </div>
+        </div>
+
+        {/* After Video (Right Side) */}
+        <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}>
+          <video
+            ref={afterVideoRef}
+            src={afterVideoUrl}
+            className="w-full h-full object-cover"
+            playsInline
+            muted
+            loop
+            preload="metadata"
+            crossOrigin="anonymous"
+            style={{
+              maxWidth: '1280px',
+              maxHeight: '720px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          {/* After Label */}
+          <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded">
+            After
+          </div>
+        </div>
+
+        {/* Slider Handle */}
+        <div
+          ref={sliderRef}
+          className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize z-10"
+          style={{ left: `${sliderPosition}%` }}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+        >
+          {/* Slider Handle Circle */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center">
+            <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Overlay on hover */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none">
+          {downloading ? (
+            <div className="text-white text-sm">Downloading...</div>
+          ) : (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium">
+              Click to Download
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Info Section */}
+      <div className="p-3 bg-black">
+        <div className="font-semibold text-white text-sm truncate">{asset.title}</div>
+        <div className="text-xs text-neutral-400 mt-1 truncate">{asset.category}</div>
+        {asset.description && (
+          <div className="text-xs text-neutral-500 mt-2 line-clamp-2">{asset.description}</div>
+        )}
+        
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between mt-3">
+          <span className="inline-block px-2 py-1 bg-neutral-900 text-neutral-400 text-xs rounded border border-neutral-800">
+            LUT
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload();
+              }}
+              disabled={downloading}
+              className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-ccaBlue transition-colors"
+              title="Download"
+            >
+              {downloading ? (
+                <svg className="w-4 h-4 animate-spin text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              )}
+            </button>
+            <button
+              className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-pink-500 transition-colors"
+              title="Favorite"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -849,6 +1251,7 @@ export default function AssetsPage() {
   // Show individual sound effects for SFX subcategory
   const showSoundEffects = selectedSubCategory === 'SFX';
   const showOverlays = selectedCategory === 'Overlays & Transitions';
+  const showLUTs = selectedSubCategory === 'LUTs';
   const allSoundEffects: Array<{ soundEffect: SoundEffect; asset: Asset }> = [];
 
   if (showSoundEffects) {
@@ -939,52 +1342,60 @@ export default function AssetsPage() {
           <div className="mt-6 text-neutral-400 text-center">No assets found in this category.</div>
         ) : (
           <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredAssets.map((asset) => (
-              <div 
-                key={asset.id} 
-                className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group"
-                onClick={() => handleDownload(asset)}
-              >
-                <div className="aspect-square bg-neutral-900 relative overflow-hidden">
-                  {asset.thumbnailUrl && 
-                   asset.thumbnailUrl.startsWith('https://') && 
-                   !asset.thumbnailUrl.includes('via.placeholder.com') &&
-                   (asset.thumbnailUrl.includes('firebasestorage.googleapis.com') || 
-                    asset.thumbnailUrl.includes('firebasestorage.app')) ? (
-                    <img 
-                      src={asset.thumbnailUrl} 
-                      alt={asset.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.error('Failed to load thumbnail:', asset.title, asset.thumbnailUrl);
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  ) : null}
-                  <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-900 to-black">
-                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
+            {filteredAssets.map((asset) => {
+              // Use side-by-side slider for LUTs with video previews
+              if (showLUTs && asset.beforeVideoPath && asset.afterVideoPath) {
+                return <SideBySideVideoSlider key={asset.id} asset={asset} />;
+              }
+              
+              // Default asset card
+              return (
+                <div 
+                  key={asset.id} 
+                  className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group"
+                  onClick={() => handleDownload(asset)}
+                >
+                  <div className="aspect-square bg-neutral-900 relative overflow-hidden">
+                    {asset.thumbnailUrl && 
+                     asset.thumbnailUrl.startsWith('https://') && 
+                     !asset.thumbnailUrl.includes('via.placeholder.com') &&
+                     (asset.thumbnailUrl.includes('firebasestorage.googleapis.com') || 
+                      asset.thumbnailUrl.includes('firebasestorage.app')) ? (
+                      <img 
+                        src={asset.thumbnailUrl} 
+                        alt={asset.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.error('Failed to load thumbnail:', asset.title, asset.thumbnailUrl);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                    <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-900 to-black">
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    </div>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      {downloading === asset.id ? (
+                        <div className="text-white text-sm">Downloading...</div>
+                      ) : (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium">
+                          Click to Download
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                    {downloading === asset.id ? (
-                      <div className="text-white text-sm">Downloading...</div>
-                    ) : (
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium">
-                        Click to Download
-                      </div>
+                  <div className="p-3 bg-black">
+                    <div className="font-semibold text-white text-sm">{asset.title}</div>
+                    <div className="text-xs text-neutral-400 mt-1">{asset.category}</div>
+                    {asset.description && (
+                      <div className="text-xs text-neutral-500 mt-2 line-clamp-2">{asset.description}</div>
                     )}
                   </div>
                 </div>
-                <div className="p-3 bg-black">
-                  <div className="font-semibold text-white text-sm">{asset.title}</div>
-                  <div className="text-xs text-neutral-400 mt-1">{asset.category}</div>
-                  {asset.description && (
-                    <div className="text-xs text-neutral-500 mt-2 line-clamp-2">{asset.description}</div>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
