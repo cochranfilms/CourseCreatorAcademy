@@ -107,34 +107,135 @@ export async function POST(req: NextRequest) {
       subscription_proration_behavior: 'always_invoice',
     });
 
-    const prorationAmount = Math.abs(upcomingInvoice.amount_due || 0);
+    // Calculate proration amount
+    // For upgrades: amount_due will be positive (what they owe)
+    // For downgrades: amount_due will be negative (credit to be applied)
+    let prorationAmount = 0;
+    let creditAmount = 0;
+    
+    if (isUpgrade) {
+      // For upgrades, use the total amount due (includes proration charge)
+      prorationAmount = Math.max(0, upcomingInvoice.amount_due || 0);
+      
+      // If amount_due is 0, calculate manually from line items
+      if (prorationAmount === 0 && upcomingInvoice.lines?.data) {
+        for (const line of upcomingInvoice.lines.data) {
+          if (line.proration && line.amount > 0) {
+            prorationAmount += line.amount;
+          }
+        }
+      }
+      
+      // If still 0, calculate based on price difference
+      if (prorationAmount === 0) {
+        const daysInPeriod = subscription.current_period_end - subscription.current_period_start;
+        const daysRemaining = subscription.current_period_end - Math.floor(Date.now() / 1000);
+        const dailyRateCurrent = (currentPlan?.price || 0) / daysInPeriod;
+        const dailyRateNew = newPlan.price / daysInPeriod;
+        const unusedAmount = dailyRateCurrent * daysRemaining;
+        const proratedNewAmount = dailyRateNew * daysRemaining;
+        prorationAmount = Math.max(0, Math.round(proratedNewAmount - unusedAmount));
+      }
+    } else {
+      // For downgrades, calculate the credit amount
+      // Credit = unused portion of current plan - prorated cost of new plan
+      const daysInPeriod = subscription.current_period_end - subscription.current_period_start;
+      const daysRemaining = subscription.current_period_end - Math.floor(Date.now() / 1000);
+      const dailyRateCurrent = (currentPlan?.price || 0) / daysInPeriod;
+      const dailyRateNew = newPlan.price / daysInPeriod;
+      const unusedAmount = dailyRateCurrent * daysRemaining;
+      const proratedNewAmount = dailyRateNew * daysRemaining;
+      creditAmount = Math.max(0, Math.round(unusedAmount - proratedNewAmount));
+      
+      // Also check Stripe's invoice for credit amount
+      if (upcomingInvoice.amount_due < 0) {
+        // Negative amount_due means credit
+        creditAmount = Math.max(creditAmount, Math.abs(upcomingInvoice.amount_due));
+      }
+      
+      // Check invoice line items for proration credits
+      if (upcomingInvoice.lines?.data) {
+        for (const line of upcomingInvoice.lines.data) {
+          if (line.proration && line.amount < 0) {
+            // Negative amount means credit
+            creditAmount = Math.max(creditAmount, Math.abs(line.amount));
+          }
+        }
+      }
+      
+      prorationAmount = 0; // No charge for downgrades
+    }
+
+    console.log('[Plan Change]', {
+      currentPlanType,
+      newPlanType,
+      isUpgrade,
+      prorationAmount,
+      creditAmount: isUpgrade ? 0 : creditAmount,
+      invoiceAmountDue: upcomingInvoice.amount_due,
+      invoiceTotal: upcomingInvoice.total,
+      currentPlanPrice: currentPlan?.price,
+      newPlanPrice: newPlan.price,
+    });
 
     const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || '';
 
     // For downgrades (credit), update subscription immediately
     // For upgrades (charge), create checkout session for prorated amount
-    if (!isUpgrade || prorationAmount === 0) {
-      // Downgrade or no charge - update subscription immediately
-      await stripe.subscriptions.update(subscriptionId, {
+    // Always require payment for upgrades, even if proration is small
+    if (!isUpgrade) {
+      // Downgrade - update subscription immediately
+      // Stripe will automatically create a credit invoice with proration_behavior: 'always_invoice'
+      const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
         items: [{
           id: currentItem.id,
           price: newPrice.id,
         }],
-        proration_behavior: 'always_invoice',
+        proration_behavior: 'always_invoice', // Creates credit invoice immediately
         metadata: {
           planType: newPlanType,
           buyerId: userId,
         },
       });
 
+      // Verify the credit was created by checking the latest invoice
+      let actualCreditAmount = creditAmount;
+      try {
+        const invoices = await stripe.invoices.list({
+          customer: subscription.customer as string,
+          subscription: subscriptionId,
+          limit: 1,
+        });
+        
+        if (invoices.data.length > 0) {
+          const latestInvoice = invoices.data[0];
+          // If invoice has negative amount_due, that's the credit
+          if (latestInvoice.amount_due < 0) {
+            actualCreditAmount = Math.abs(latestInvoice.amount_due);
+          } else if (latestInvoice.amount_paid < 0) {
+            // Or check amount_paid for credits
+            actualCreditAmount = Math.abs(latestInvoice.amount_paid);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking invoice for credit:', err);
+        // Use calculated credit amount as fallback
+      }
+
       return NextResponse.json({
         success: true,
         requiresPayment: false,
-        message: 'Plan downgraded successfully. Credit has been applied to your account.',
+        creditAmount: actualCreditAmount,
+        message: actualCreditAmount > 0
+          ? `Plan downgraded successfully! A credit of $${(actualCreditAmount / 100).toFixed(2)} has been applied to your account and will be used for future charges.`
+          : 'Plan downgraded successfully! Your subscription has been updated.',
       });
     }
 
     // Upgrade requires payment - create checkout session
+    // Ensure minimum charge amount (Stripe requires at least $0.50)
+    const chargeAmount = Math.max(prorationAmount, 50); // Minimum $0.50
+    
     const session = await stripe.checkout.sessions.create({
       mode: 'payment', // One-time payment for proration
       customer: subscription.customer as string,
@@ -143,7 +244,7 @@ export async function POST(req: NextRequest) {
         {
           price_data: {
             currency: 'usd',
-            unit_amount: prorationAmount,
+            unit_amount: chargeAmount,
             product_data: {
               name: `Prorated Upgrade to ${newPlan.name}`,
               description: `Prorated amount for upgrading from ${currentPlan?.name || 'current plan'} to ${newPlan.name}`,
@@ -169,7 +270,7 @@ export async function POST(req: NextRequest) {
         currentPlanType,
         newPlanType,
         buyerId: userId,
-        prorationAmount: String(prorationAmount),
+        prorationAmount: String(chargeAmount),
       },
     });
 
@@ -179,7 +280,7 @@ export async function POST(req: NextRequest) {
       checkoutSessionId: session.id,
       checkoutUrl: session.url,
       prorationAmount,
-      message: `Please complete payment of $${(prorationAmount / 100).toFixed(2)} to upgrade your plan.`,
+      message: `Please complete payment of $${(chargeAmount / 100).toFixed(2)} to upgrade your plan.`,
     });
   } catch (err: any) {
     console.error('Error creating checkout session for plan change:', err);

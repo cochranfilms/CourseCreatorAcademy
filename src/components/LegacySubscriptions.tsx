@@ -220,17 +220,21 @@ export function LegacySubscriptions() {
           // Redirect to Stripe Checkout for payment
           window.location.href = data.checkoutUrl;
         } else {
-          // Downgrade or no payment needed - show success and reload
+          // Downgrade or no payment needed - show success with credit amount
+          const creditMessage = data.creditAmount && data.creditAmount > 0
+            ? `Plan downgraded successfully! A credit of $${(data.creditAmount / 100).toFixed(2)} has been applied to your account.`
+            : data.message || 'Plan changed successfully!';
+          
           setProrationPreview({
-            amount: 0,
+            amount: data.creditAmount || 0,
             isUpgrade: false,
-            message: data.message || 'Plan changed successfully!',
+            message: creditMessage,
             planType: newPlanType,
           });
           // Reload after a short delay to show success message
           setTimeout(() => {
             window.location.reload();
-          }, 2000);
+          }, 3000);
         }
       } else {
         setProrationPreview({
@@ -392,8 +396,13 @@ export function LegacySubscriptions() {
                           {prorationPreview.message}
                         </div>
                         {prorationPreview.amount > 0 && (
-                          <div className="mt-3 text-lg font-semibold text-white">
-                            Amount: ${(prorationPreview.amount / 100).toFixed(2)}
+                          <div className={`mt-3 text-lg font-semibold ${
+                            prorationPreview.isUpgrade ? 'text-white' : 'text-green-400'
+                          }`}>
+                            {prorationPreview.isUpgrade 
+                              ? `Amount to Pay: $${(prorationPreview.amount / 100).toFixed(2)}`
+                              : `Credit Applied: $${(prorationPreview.amount / 100).toFixed(2)}`
+                            }
                           </div>
                         )}
                       </div>
