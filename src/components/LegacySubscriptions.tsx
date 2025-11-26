@@ -234,8 +234,10 @@ export function LegacySubscriptions() {
     }
   };
 
-  const getAvailablePlans = () => {
-    if (!planType) return [];
+  const getAvailablePlans = (): { upgrade: string | null; downgrade: string | null } => {
+    if (!planType) {
+      return { upgrade: null, downgrade: null };
+    }
     
     const currentPlanIndex = ['cca_monthly_37', 'cca_no_fees_60', 'cca_membership_87'].indexOf(planType);
     const plans = ['cca_monthly_37', 'cca_no_fees_60', 'cca_membership_87'];
