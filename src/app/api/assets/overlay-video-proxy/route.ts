@@ -53,10 +53,11 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
     
-    // Use signed URL with very long expiration for public files
+    // Use signed URL with long expiration for public files
     // This ensures proper encoding and CORS headers
+    // Note: v4 signed URLs have a maximum expiration of 7 days
     const expiresAt = new Date();
-    expiresAt.setFullYear(expiresAt.getFullYear() + 10); // 10 years
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days (maximum for v4)
     
     const [publicUrl] = await file.getSignedUrl({
       action: 'read',
