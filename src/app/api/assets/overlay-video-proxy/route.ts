@@ -53,108 +53,13 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
     
-    // Get file metadata
-    const [metadata] = await file.getMetadata();
-    const fileSize = parseInt(metadata.size || '0');
+    // Since overlay files are public, construct the public Firebase Storage URL
+    // Format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encodedPath}?alt=media
+    const encodedPath = encodeURIComponent(storagePath).replace(/%2F/g, '/');
+    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`;
     
-    // Determine content type
-    const contentTypeMap: { [key: string]: string } = {
-      'mov': 'video/quicktime',
-      'mp4': 'video/mp4',
-      'avi': 'video/x-msvideo',
-      'mkv': 'video/x-matroska',
-      'webm': 'video/webm',
-      'm4v': 'video/x-m4v',
-    };
-    
-    const contentType = metadata.contentType || contentTypeMap[fileType.toLowerCase()] || 'video/mp4';
-    
-    // Handle range requests for video seeking
-    const range = req.headers.get('range');
-    
-    if (range) {
-      const rangeMatch = range.match(/bytes=(\d+)-(\d*)/);
-      if (!rangeMatch) {
-        return new NextResponse(null, {
-          status: 416,
-          headers: {
-            'Content-Range': `bytes */${fileSize}`,
-          },
-        });
-      }
-      
-      const start = parseInt(rangeMatch[1], 10);
-      const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : fileSize - 1;
-      const chunkSize = end - start + 1;
-      
-      // Create read stream for the range
-      const stream = file.createReadStream({ start, end });
-      
-      // Convert Node stream to Web ReadableStream
-      const webStream = new ReadableStream({
-        start(controller) {
-          stream.on('data', (chunk: Buffer) => {
-            controller.enqueue(new Uint8Array(chunk));
-          });
-          stream.on('end', () => {
-            controller.close();
-          });
-          stream.on('error', (err: Error) => {
-            controller.error(err);
-          });
-        },
-        cancel() {
-          stream.destroy();
-        },
-      });
-      
-      return new NextResponse(webStream, {
-        status: 206,
-        headers: {
-          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': chunkSize.toString(),
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=3600',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-          'Access-Control-Allow-Headers': 'Range',
-        },
-      });
-    } else {
-      // Stream entire file
-      const stream = file.createReadStream();
-      
-      // Convert Node stream to Web ReadableStream
-      const webStream = new ReadableStream({
-        start(controller) {
-          stream.on('data', (chunk: Buffer) => {
-            controller.enqueue(new Uint8Array(chunk));
-          });
-          stream.on('end', () => {
-            controller.close();
-          });
-          stream.on('error', (err: Error) => {
-            controller.error(err);
-          });
-        },
-        cancel() {
-          stream.destroy();
-        },
-      });
-      
-      return new NextResponse(webStream, {
-        headers: {
-          'Content-Type': contentType,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': fileSize.toString(),
-          'Cache-Control': 'public, max-age=3600',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-          'Access-Control-Allow-Headers': 'Range',
-        },
-      });
-    }
+    // Return the public URL - Firebase Storage handles CORS and range requests
+    return NextResponse.json({ videoUrl: publicUrl });
   } catch (err: any) {
     console.error('Error proxying video:', err);
     return NextResponse.json({ error: err?.message || 'Failed to proxy video' }, { status: 500 });
