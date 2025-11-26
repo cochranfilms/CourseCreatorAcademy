@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { SiteHeader } from '@/components/SiteHeader';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { PasswordGate } from '@/components/PasswordGate';
+import { MembershipGate } from '@/components/MembershipGate';
 
 export const metadata: Metadata = {
   title: 'Creator Collective',
@@ -49,8 +50,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="cca-gradient min-h-screen w-full overflow-x-hidden">
         <AuthProvider>
           <PasswordGate>
-            <SiteHeader />
-            {children}
+            <MembershipGate>
+              <SiteHeader />
+              {children}
+            </MembershipGate>
           </PasswordGate>
         </AuthProvider>
       </body>

@@ -142,6 +142,7 @@ function ClaimFromSessionId() {
 
 export default function HomePage() {
   const { user, loading } = useAuth();
+  const router = useRouter();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userMemberSince, setUserMemberSince] = useState<Date | null>(null);
   const [needsPassword, setNeedsPassword] = useState(false);
@@ -151,6 +152,8 @@ export default function HomePage() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [garrettKing, setGarrettKing] = useState<LegacyCreator | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [hasMembership, setHasMembership] = useState<boolean | null>(null);
+  const [membershipLoading, setMembershipLoading] = useState(true);
   const [showEpisode, setShowEpisode] = useState<{
     title: string;
     description?: string;
@@ -169,6 +172,46 @@ export default function HomePage() {
   const [showWalkthroughVideo, setShowWalkthroughVideo] = useState(false);
 
   // Post-checkout auto sign-in via custom token handled in Suspense-wrapped child
+
+  // Check membership status
+  useEffect(() => {
+    const checkMembership = async () => {
+      if (!user) {
+        setHasMembership(false);
+        setMembershipLoading(false);
+        return;
+      }
+
+      try {
+        const idToken = await user.getIdToken(true);
+        const response = await fetch('/api/auth/check-membership', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setHasMembership(Boolean(data.hasMembership));
+        } else {
+          setHasMembership(null); // Couldn't verify
+        }
+      } catch (error) {
+        console.error('Error checking membership:', error);
+        setHasMembership(null);
+      } finally {
+        setMembershipLoading(false);
+      }
+    };
+
+    if (user && !loading) {
+      checkMembership();
+    } else if (!user && !loading) {
+      setHasMembership(false);
+      setMembershipLoading(false);
+    }
+  }, [user, loading]);
 
   useEffect(() => {
     if (user && firebaseReady && db) {
@@ -498,13 +541,43 @@ export default function HomePage() {
     };
   }, [showEpisode, getMuxThumbnailUrl]);
 
-  if (loading) {
+  if (loading || membershipLoading) {
     return (
       <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 pt-safe">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
             <p className="text-neutral-400">Loading...</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Show upgrade CTA for logged-in users without membership
+  if (user && hasMembership === false) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-black flex items-center justify-center px-6 py-16 pt-safe">
+        <div className="max-w-4xl mx-auto text-center">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4 sm:mb-6">
+            Welcome to Creator Collective!
+          </h1>
+          <p className="text-xl sm:text-2xl text-neutral-400 mb-8 sm:mb-12 max-w-2xl mx-auto">
+            Get access to exclusive content, courses, marketplace, and more.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Link
+              href="/signup"
+              className="inline-block bg-ccaBlue text-white px-8 py-4 rounded-lg font-semibold text-lg hover:opacity-90 transition whitespace-nowrap"
+            >
+              Start Your Membership
+            </Link>
+            <Link
+              href="/"
+              className="inline-block bg-neutral-800 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-neutral-700 transition border border-neutral-700 whitespace-nowrap"
+            >
+              Learn More
+            </Link>
           </div>
         </div>
       </main>

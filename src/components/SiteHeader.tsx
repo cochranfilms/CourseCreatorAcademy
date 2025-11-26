@@ -55,7 +55,7 @@ export function SiteHeader() {
   const portalDropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
 
-  // Fetch user profile from Firestore
+  // Fetch user profile from Firestore and check membership
   useEffect(() => {
     if (user && firebaseReady && db) {
       const fetchProfile = async () => {
@@ -75,7 +75,7 @@ export function SiteHeader() {
               photoURL: data.photoURL || base.photoURL,
             };
             isLegacy = Boolean(data.isLegacyCreator || data.roles?.legacyCreator);
-            // Track membership plan and status
+            // Track membership plan and status from Firestore
             setMembershipPlan(data.membershipPlan || null);
             setMembershipActive(Boolean(data.membershipActive));
           }
@@ -88,6 +88,24 @@ export function SiteHeader() {
             } catch {}
           }
           setProfile({ ...base, isLegacyCreator: isLegacy });
+
+          // Also check membership via API for accuracy
+          try {
+            const idToken = await user.getIdToken(true);
+            const membershipRes = await fetch('/api/auth/check-membership', {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${idToken}`,
+              },
+            });
+            if (membershipRes.ok) {
+              const membershipData = await membershipRes.json();
+              setMembershipActive(Boolean(membershipData.hasMembership));
+            }
+          } catch (error) {
+            // If API check fails, keep Firestore value
+            console.error('Error checking membership via API:', error);
+          }
         } catch (error) {
           console.error('Error fetching profile:', error);
           // Last-resort: treat as non-legacy
@@ -299,52 +317,54 @@ export function SiteHeader() {
                   </button>
                   )}
 
-                  {/* Icons */}
-                  <div className="hidden sm:flex items-center gap-2 md:gap-3">
-                    <button 
-                      onClick={() => setShowSearch(true)}
-                      className="text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
-                      aria-label="Search"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </button>
-                    <a
-                      href="https://www.facebook.com/coursecreatoracademyllc"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
-                      aria-label="Visit our Facebook page"
-                    >
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                      </svg>
-                    </a>
-                    <button 
-                      onClick={() => setShowSavedItems(true)}
-                      className="text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
-                      aria-label="Saved Items"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                    </button>
-                    <button 
-                      onClick={() => setShowMessages(true)}
-                      className="relative text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
-                      aria-label="Open messages"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center min-w-[16px] sm:min-w-[20px]">
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                      )}
-                    </button>
-                  </div>
+                  {/* Icons - Only show for members */}
+                  {membershipActive && (
+                    <div className="hidden sm:flex items-center gap-2 md:gap-3">
+                      <button 
+                        onClick={() => setShowSearch(true)}
+                        className="text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
+                        aria-label="Search"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </button>
+                      <a
+                        href="https://www.facebook.com/coursecreatoracademyllc"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
+                        aria-label="Visit our Facebook page"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
+                      </a>
+                      <button 
+                        onClick={() => setShowSavedItems(true)}
+                        className="text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
+                        aria-label="Saved Items"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                      </button>
+                      <button 
+                        onClick={() => setShowMessages(true)}
+                        className="relative text-neutral-400 active:text-white hover:text-white transition p-1.5 rounded-lg hover:bg-neutral-800 touch-manipulation"
+                        aria-label="Open messages"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center min-w-[16px] sm:min-w-[20px]">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  )}
 
                   {/* Profile Image with Dropdown */}
                   <div className="relative z-[100]" ref={dropdownRef}>
@@ -626,7 +646,7 @@ export function SiteHeader() {
       )}
 
       {/* Navigation Bar Below - Desktop Only */}
-      {user && (
+      {user && membershipActive && (
         <div className="hidden md:block sticky top-[60px] z-40 bg-white/90 backdrop-blur-sm border-b border-neutral-200 w-full overflow-x-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-center gap-2 overflow-x-auto scrollbar-hide">
             {links.map((l) => {
