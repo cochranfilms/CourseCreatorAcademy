@@ -292,7 +292,7 @@ export function LegacySubscriptions() {
         <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-white">Platform Subscription</h2>
         <p className="text-neutral-400 text-sm mb-4">Manage your CCA platform membership</p>
         <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-6">
-        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <div className="font-semibold text-white text-lg">CCA Membership</div>
@@ -445,6 +445,7 @@ export function LegacySubscriptions() {
                 Platform access to courses, community, and marketplace
               </div>
             )}
+          </div>
           </div>
         </div>
       </div>
