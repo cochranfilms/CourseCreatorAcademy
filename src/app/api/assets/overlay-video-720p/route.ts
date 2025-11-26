@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-
-const execAsync = promisify(exec);
 
 // GET /api/assets/overlay-video-720p?assetId=xxx&overlayId=xxx
 // Streams video file transcoded to 720p for faster loading
 export async function GET(req: NextRequest) {
-  let tempDir: string | null = null;
   
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -113,15 +105,6 @@ export async function GET(req: NextRequest) {
   } catch (err: any) {
     console.error('Error proxying video:', err);
     return NextResponse.json({ error: err?.message || 'Failed to proxy video' }, { status: 500 });
-  } finally {
-    // Cleanup temp directory if created
-    if (tempDir && fs.existsSync(tempDir)) {
-      try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      } catch (error) {
-        console.error('Failed to cleanup temp directory:', error);
-      }
-    }
   }
 }
 

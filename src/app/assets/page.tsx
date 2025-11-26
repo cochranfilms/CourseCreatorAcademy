@@ -97,7 +97,6 @@ function getPublicStorageUrl(storagePath: string): string {
 function OverlayPlayer({ overlay }: { overlay: Overlay }) {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const [videoLoaded, setVideoLoaded] = useState(false);
   const [isVideo, setIsVideo] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -117,12 +116,6 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
         // Check if previewStoragePath exists (720p version)
         if (overlay.previewStoragePath) {
           storagePathToUse = overlay.previewStoragePath;
-        } else {
-          // Check if _720p version exists by modifying path
-          const pathWithoutExt = overlay.storagePath.replace(/\.(mp4|mov|avi|mkv|webm|m4v)$/i, '');
-          const potential720pPath = `${pathWithoutExt}_720p.mp4`;
-          // We'll use the original for now, but the transcoding script will create _720p versions
-          // Frontend can check for these in the future
         }
       }
       
@@ -191,10 +184,9 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
 
     // Handle video can play event (fires earlier than loadeddata)
     const handleCanPlay = () => {
-      setVideoLoaded(true);
       // Only autoplay if visible
       if (isVisible) {
-        video.play().catch(err => {
+        video.play().catch(() => {
           // Ignore autoplay errors (browser policy)
         });
       }
@@ -202,10 +194,9 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
 
     // Handle video loaded event
     const handleLoadedData = () => {
-      setVideoLoaded(true);
       // Only autoplay if still visible
       if (isVisible) {
-        video.play().catch(err => {
+        video.play().catch(() => {
           // Ignore autoplay errors
         });
       }

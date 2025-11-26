@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 
     // Create a map of assetId -> asset title for quick lookup
     const assetMap = new Map<string, string>();
-    overlayAssetsSnap.docs.forEach((doc) => {
+    overlayAssetsSnap.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
       assetMap.set(doc.id, doc.data().title || 'Untitled');
     });
 
