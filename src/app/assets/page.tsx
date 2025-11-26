@@ -185,16 +185,25 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
     
     setDownloading(true);
     try {
-      const response = await fetch(`/api/assets/sound-effect-download?assetId=${soundEffect.assetId}&soundEffectId=${soundEffect.id}`);
-      if (!response.ok) throw new Error('Failed to get download URL');
-      const data = await response.json();
+      // Use proxy endpoint that streams file with Content-Disposition header
+      const response = await fetch(`/api/assets/sound-effect-download-proxy?assetId=${soundEffect.assetId}&soundEffectId=${soundEffect.id}`);
+      if (!response.ok) throw new Error('Failed to download file');
       
+      // Get the blob from response
+      const blob = await response.blob();
+      
+      // Create blob URL and trigger download
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = data.downloadUrl;
+      link.href = blobUrl;
       link.download = soundEffect.fileName;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      // Clean up blob URL after a short delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
     } catch (error) {
       console.error('Download error:', error);
       alert('Failed to download sound effect. Please try again.');
