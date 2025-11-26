@@ -7,14 +7,14 @@ import { auth } from '@/lib/firebaseClient';
 
 export default function SignupPage() {
   const [open, setOpen] = useState(false);
-  const [plan, setPlan] = useState<'membership87' | 'monthly37' | null>(null);
+  const [plan, setPlan] = useState<'membership87' | 'monthly37' | 'noFees60' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleStartCheckout = async (selectedPlan: 'membership87' | 'monthly37') => {
+  const handleStartCheckout = async (selectedPlan: 'membership87' | 'monthly37' | 'noFees60') => {
     setError('');
     
     // Validate form
@@ -139,7 +139,14 @@ export default function SignupPage() {
               disabled={loading}
               className="w-full bg-ccaBlue text-white py-3 font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating Account...' : 'Start Membership — $87/mo'}
+              {loading ? 'Creating Account...' : 'Start All-Access — $87/mo'}
+            </button>
+            <button
+              onClick={() => handleStartCheckout('noFees60')}
+              disabled={loading}
+              className="w-full bg-green-600 text-white py-3 font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Creating Account...' : 'Start No-Fees — $60/mo'}
             </button>
             <button
               onClick={() => handleStartCheckout('monthly37')}

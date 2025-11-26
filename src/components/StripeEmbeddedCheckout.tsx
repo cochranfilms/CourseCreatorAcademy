@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
 
-type PlanKey = 'membership87' | 'monthly37';
+type PlanKey = 'membership87' | 'monthly37' | 'noFees60';
 
 export function StripeEmbeddedCheckout({
   plan,
@@ -26,7 +26,12 @@ export function StripeEmbeddedCheckout({
         const userId = typeof window !== 'undefined' ? sessionStorage.getItem('signup_userId') : null;
         const customerEmail = typeof window !== 'undefined' ? sessionStorage.getItem('signup_email') : null;
         
-        const endpoint = plan === 'membership87' ? '/api/subscribe/membership' : '/api/subscribe/monthly';
+        let endpoint = '/api/subscribe/monthly';
+        if (plan === 'membership87') {
+          endpoint = '/api/subscribe/membership';
+        } else if (plan === 'noFees60') {
+          endpoint = '/api/subscribe/no-fees';
+        }
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

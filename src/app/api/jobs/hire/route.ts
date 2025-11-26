@@ -59,7 +59,8 @@ export async function POST(req: NextRequest) {
 
     // Calculate deposit (25% of total)
     const depositAmount = Math.round(totalAmount * 0.25);
-    const platformFee = computeApplicationFeeAmount(depositAmount); // 3% of deposit
+    // Check if poster has a no-fees plan (poster pays the platform fee on deposit)
+    const platformFee = await computeApplicationFeeAmount(depositAmount, undefined, userId);
     const depositAfterFee = depositAmount - platformFee;
 
     // Ensure poster has a Stripe Customer (used in later flows)

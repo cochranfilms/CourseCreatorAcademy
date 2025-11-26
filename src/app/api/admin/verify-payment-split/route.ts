@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { computeApplicationFeeAmount } from '@/lib/fees';
+import { computeApplicationFeeAmountSync } from '@/lib/fees';
 
 /**
  * Verify payment split for a marketplace order
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
     // Calculate expected values
     const totalAmount = order?.amount || session?.amount_total || paymentIntent?.amount || 0;
     const expectedApplicationFee = order?.application_fee_amount || 
-      (totalAmount > 0 ? computeApplicationFeeAmount(totalAmount) : 0);
+      (totalAmount > 0 ? computeApplicationFeeAmountSync(totalAmount) : 0);
     const expectedSellerAmount = totalAmount - expectedApplicationFee;
     const expectedPlatformFeePercent = (expectedApplicationFee / totalAmount) * 100;
     const expectedSellerPercent = (expectedSellerAmount / totalAmount) * 100;

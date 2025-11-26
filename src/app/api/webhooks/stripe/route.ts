@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
           // Membership plan: mark user as active member and save subscription mapping
           const planType = session.metadata?.planType || null;
           const memberBuyerId = buyerId || session.client_reference_id || null;
-          if ((planType === 'cca_membership_87' || planType === 'cca_monthly_37') && memberBuyerId) {
+          if ((planType === 'cca_membership_87' || planType === 'cca_monthly_37' || planType === 'cca_no_fees_60') && memberBuyerId) {
             try {
               await adminDb
                 .collection('users')
@@ -179,7 +179,7 @@ export async function POST(req: NextRequest) {
             } catch (e) {
               console.error('Failed to persist membership status on checkout.session.completed', e);
             }
-          } else if ((planType === 'cca_membership_87' || planType === 'cca_monthly_37')) {
+          } else if ((planType === 'cca_membership_87' || planType === 'cca_monthly_37' || planType === 'cca_no_fees_60')) {
             // Guest checkout (no buyerId). Try to link by email, else record a pending membership.
             try {
               const email = (session.customer_details && session.customer_details.email) || session.customer_email || null;
@@ -223,7 +223,7 @@ export async function POST(req: NextRequest) {
           // Send welcome email (idempotent by session)
           try {
             const email = (session.customer_details && session.customer_details.email) || session.customer_email || null;
-            if (email && (planType === 'cca_membership_87' || planType === 'cca_monthly_37') && adminDb && adminAuth) {
+            if (email && (planType === 'cca_membership_87' || planType === 'cca_monthly_37' || planType === 'cca_no_fees_60') && adminDb && adminAuth) {
               const docRef = adminDb.collection('emails').doc(`welcome_${String(session.id)}`);
               const sent = await docRef.get();
               if (!sent.exists) {
@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
                   user_name: session.customer_details?.name || '',
                   customer_email: String(email),
                   reset_url: resetUrl,
-                  plan_name: planType === 'cca_membership_87' ? 'CCA All‑Access Membership' : 'CCA Monthly Membership',
+                  plan_name: planType === 'cca_membership_87' ? 'CCA All‑Access Membership' : planType === 'cca_no_fees_60' ? 'CCA No-Fees Membership' : 'CCA Monthly Membership',
                   year: new Date().getFullYear().toString(),
                   // Common aliases some templates expect
                   to_email: String(email),
@@ -510,7 +510,7 @@ export async function POST(req: NextRequest) {
           const planType = (sub.metadata && (sub.metadata as any).planType) || null;
           const buyerId = (sub.metadata && (sub.metadata as any).buyerId) || null;
           const active = ['active', 'trialing'].includes(String(sub.status || ''));
-          if (planType === 'cca_membership_87' || planType === 'cca_monthly_37') {
+          if (planType === 'cca_membership_87' || planType === 'cca_monthly_37' || planType === 'cca_no_fees_60') {
             let userIdToUpdate: string | null = buyerId ? String(buyerId) : null;
             if (!userIdToUpdate) {
               try {
@@ -556,7 +556,7 @@ export async function POST(req: NextRequest) {
           // Deactivate membership for CCA Membership plan
           const planType = (sub.metadata && (sub.metadata as any).planType) || null;
           const buyerId = (sub.metadata && (sub.metadata as any).buyerId) || null;
-          if (planType === 'cca_membership_87' || planType === 'cca_monthly_37') {
+          if (planType === 'cca_membership_87' || planType === 'cca_monthly_37' || planType === 'cca_no_fees_60') {
             let userIdToUpdate: string | null = buyerId ? String(buyerId) : null;
             if (!userIdToUpdate) {
               try {

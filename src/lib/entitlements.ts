@@ -59,6 +59,24 @@ export async function hasCreatorSubscription(userId: string, creatorId: string):
 }
 
 /**
+ * Returns true if the user has a plan that skips platform fees.
+ * Plans that skip fees: 'cca_no_fees_60' ($60/month) and 'cca_membership_87' ($87/month).
+ */
+export async function hasNoFeesPlan(userId: string): Promise<boolean> {
+	if (!adminDb || !userId) return false;
+	try {
+		const userDoc = await adminDb.collection('users').doc(String(userId)).get();
+		const data = userDoc.exists ? (userDoc.data() as any) : null;
+		const active = Boolean(data?.membershipActive);
+		const plan = String(data?.membershipPlan || '');
+		const noFeesPlans = ['cca_no_fees_60', 'cca_membership_87'];
+		return active && noFeesPlans.includes(plan);
+	} catch {
+		return false;
+	}
+}
+
+/**
  * Main entitlement helper: user has access to a creator if:
  * - They have an all‑access CCA membership plan, OR
  * - They have an active Legacy+ subscription to that creator.

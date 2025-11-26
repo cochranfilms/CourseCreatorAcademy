@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        if (planType === 'cca_membership_87' || planType === 'cca_monthly_37') {
+        if (planType === 'cca_membership_87' || planType === 'cca_monthly_37' || planType === 'cca_no_fees_60') {
           await adminDb.collection('users').doc(uid).set(
             {
               membershipActive: true,

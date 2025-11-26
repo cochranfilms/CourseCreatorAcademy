@@ -4,11 +4,11 @@ import { StripeEmbeddedCheckout } from './StripeEmbeddedCheckout';
 
 export function PricingModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [loading, setLoading] = useState<string | null>(null);
-  const [checkoutPlan, setCheckoutPlan] = useState<null | 'monthly37' | 'membership87'>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<null | 'monthly37' | 'noFees60' | 'membership87'>(null);
 
   if (!isOpen) return null;
 
-  const startCheckout = async (plan: 'monthly37' | 'membership87') => {
+  const startCheckout = async (plan: 'monthly37' | 'noFees60' | 'membership87') => {
     setLoading(plan);
     setCheckoutPlan(plan);
     setLoading(null);
@@ -28,7 +28,7 @@ export function PricingModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           </button>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
           {/* Monthly */}
           <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl border border-neutral-800 p-6 sm:p-8 h-full flex flex-col">
             <div className="text-neutral-400 text-sm font-semibold mb-2">MONTHLY MEMBERSHIP</div>
@@ -45,6 +45,25 @@ export function PricingModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
             >{loading === 'monthly37' ? 'Redirecting...' : 'Join Now'}</button>
           </div>
 
+          {/* No-Fees */}
+          <div className="bg-gradient-to-br from-green-500/20 via-emerald-500/20 to-teal-500/20 rounded-2xl border-2 border-green-500/50 p-6 sm:p-8 relative overflow-hidden h-full flex flex-col">
+            <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-green-500 text-white text-xs font-bold">BEST VALUE</div>
+            <div className="text-neutral-300 text-sm font-semibold mb-2">NO-FEES MEMBERSHIP</div>
+            <div className="text-5xl sm:text-6xl font-extrabold mt-2">$60<span className="text-2xl font-semibold">/month</span></div>
+            <div className="text-neutral-400 text-sm mt-2 mb-6">Skip all platform fees</div>
+            <div className="text-neutral-200 space-y-3 flex-1">
+              <div className="flex items-center gap-3"><svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>Includes everything in Monthly Membership</div>
+              <div className="flex items-center gap-3"><svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg><span className="font-semibold">0% platform fee</span> on marketplace sales</div>
+              <div className="flex items-center gap-3"><svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg><span className="font-semibold">0% platform fee</span> on job listings</div>
+              <div className="flex items-center gap-3 text-xs text-neutral-400 mt-2"><svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>You still pay Stripe processing fees (~2.9% + $0.30)</div>
+            </div>
+            <button
+              className="cta-button mt-8 w-full text-lg py-4 bg-green-600 hover:bg-green-700"
+              onClick={() => startCheckout('noFees60')}
+              disabled={loading !== null}
+            >{loading === 'noFees60' ? 'Redirecting...' : 'Join No-Fees'}</button>
+          </div>
+
           {/* All-Access */}
           <div className="bg-gradient-to-br from-ccaBlue/20 via-purple-500/20 to-pink-500/20 rounded-2xl border-2 border-ccaBlue p-6 sm:p-8 relative overflow-hidden h-full flex flex-col">
             <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-ccaBlue text-white text-xs font-bold">POPULAR</div>
@@ -53,6 +72,7 @@ export function PricingModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
             <div className="text-neutral-400 text-sm mt-2 mb-6">Site‑wide access to every Legacy+ creator</div>
             <div className="text-neutral-200 space-y-3 flex-1">
               <div className="flex items-center gap-3"><svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>Complete access to all Legacy Creator profiles</div>
+              <div className="flex items-center gap-3"><svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg><span className="font-semibold">0% platform fee</span> on marketplace & job listings</div>
               <div className="flex items-center gap-3"><svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>All assets, job opportunities, and marketplace access</div>
               <div className="flex items-center gap-3"><svg className="w-5 h-5 text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>Includes everything in Monthly Membership</div>
             </div>

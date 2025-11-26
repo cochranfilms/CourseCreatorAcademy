@@ -24,7 +24,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'buyerId is required' }, { status: 400 });
     }
 
-    const applicationFeeAmount = computeApplicationFeeAmount(Number(amount));
+    // Check if seller has a no-fees plan (seller pays the platform fee)
+    let applicationFeeAmount = 0;
+    if (sellerId && adminDb) {
+      applicationFeeAmount = await computeApplicationFeeAmount(Number(amount), undefined, String(sellerId));
+    } else {
+      // Fallback to sync version if sellerId not provided (backwards compatibility)
+      const { computeApplicationFeeAmountSync } = await import('@/lib/fees');
+      applicationFeeAmount = computeApplicationFeeAmountSync(Number(amount));
+    }
 
     // Verify the connected account can take payments before starting Checkout
     // In test mode, allow restricted accounts to accept test payments

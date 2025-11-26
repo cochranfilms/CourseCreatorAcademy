@@ -12,11 +12,13 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState<'learn' | 'community' | 'opportunities' | 'marketplace'>('learn');
   const { user } = useAuth();
   const [showPricing, setShowPricing] = useState(false);
-  const [checkoutPlan, setCheckoutPlan] = useState<null | 'monthly37' | 'membership87'>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<null | 'monthly37' | 'noFees60' | 'membership87'>(null);
 
   const openPricing = () => setShowPricing(true);
 
   const startMonthly = () => setCheckoutPlan('monthly37');
+
+  const startNoFees = () => setCheckoutPlan('noFees60');
 
   const startAllAccess = () => setCheckoutPlan('membership87');
 
@@ -260,7 +262,7 @@ export default function Page() {
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 items-stretch px-2">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 items-stretch px-2">
           <div className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-5 sm:p-6 md:p-8 h-full flex flex-col">
             <div className="text-neutral-400 text-xs sm:text-sm font-semibold mb-2">MONTHLY MEMBERSHIP</div>
             <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold mt-2">$37<span className="text-lg sm:text-xl md:text-2xl font-semibold">/month</span></div>
@@ -288,6 +290,40 @@ export default function Page() {
           <button className="cta-button mt-6 sm:mt-8 w-full text-base sm:text-lg py-3 sm:py-4 touch-manipulation" onClick={startMonthly}>Join Now</button>
           </div>
 
+          <div className="bg-gradient-to-br from-green-500/20 via-emerald-500/20 to-teal-500/20 rounded-xl sm:rounded-2xl border-2 border-green-500/50 p-5 sm:p-6 md:p-8 relative overflow-hidden h-full flex flex-col">
+            <div className="absolute top-3 sm:top-4 right-3 sm:right-4 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-green-500 text-white text-[10px] sm:text-xs font-bold">BEST VALUE</div>
+            <div className="text-neutral-300 text-xs sm:text-sm font-semibold mb-2">NO-FEES MEMBERSHIP</div>
+            <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold mt-2">$60<span className="text-lg sm:text-xl md:text-2xl font-semibold">/month</span></div>
+            <div className="text-neutral-400 text-xs sm:text-sm mt-2 mb-4 sm:mb-6">Skip all platform fees</div>
+            <ul className="text-neutral-200 space-y-2 sm:space-y-3 flex-1 text-sm sm:text-base">
+              <li className="flex items-start gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Includes everything in Monthly Membership
+              </li>
+              <li className="flex items-start gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-semibold">0% platform fee</span> on marketplace sales
+              </li>
+              <li className="flex items-start gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-semibold">0% platform fee</span> on job listings
+              </li>
+              <li className="flex items-start gap-2 sm:gap-3 text-xs text-neutral-400 mt-2">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-neutral-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                You still pay Stripe processing fees (~2.9% + $0.30)
+              </li>
+            </ul>
+            <button className="cta-button mt-6 sm:mt-8 w-full text-base sm:text-lg py-3 sm:py-4 touch-manipulation bg-green-600 hover:bg-green-700" onClick={startNoFees}>Join No-Fees</button>
+          </div>
+
           <div className="bg-gradient-to-br from-ccaBlue/20 via-purple-500/20 to-pink-500/20 rounded-xl sm:rounded-2xl border-2 border-ccaBlue p-5 sm:p-6 md:p-8 relative overflow-hidden h-full flex flex-col">
             <div className="absolute top-3 sm:top-4 right-3 sm:right-4 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-ccaBlue text-white text-[10px] sm:text-xs font-bold">POPULAR</div>
             <div className="text-neutral-300 text-xs sm:text-sm font-semibold mb-2">ALL‑ACCESS MEMBERSHIP</div>
@@ -299,6 +335,12 @@ export default function Page() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Complete access to all Legacy Creator profiles
+              </li>
+              <li className="flex items-start gap-2 sm:gap-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ccaBlue flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-semibold">0% platform fee</span> on marketplace & job listings
               </li>
               <li className="flex items-start gap-2 sm:gap-3">
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ccaBlue flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
