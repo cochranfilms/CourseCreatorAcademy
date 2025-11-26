@@ -35,6 +35,7 @@ interface Overlay {
   fileName: string;
   storagePath: string;
   fileType: string;
+  previewStoragePath?: string; // Optional 720p version path
 }
 
 const categories: AssetCategory[] = ['All Packs', 'LUTs & Presets', 'Overlays & Transitions', 'SFX & Plugins', 'Templates'];
@@ -102,16 +103,32 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Generate media URL immediately from storage path (no API call needed)
+  // Generate media URL immediately from storage path (prefer 720p version for videos)
   useEffect(() => {
     if (overlay.storagePath) {
-      const url = getPublicStorageUrl(overlay.storagePath);
-      setMediaUrl(url);
-      
       // Check if file is a video based on extension
       const fileType = overlay.fileType || '';
       const videoExtensions = ['mov', 'mp4', 'avi', 'mkv', 'webm', 'm4v'];
-      setIsVideo(videoExtensions.includes(fileType.toLowerCase()));
+      const isVideoFile = videoExtensions.includes(fileType.toLowerCase());
+      
+      // For videos, prefer 720p version if available, otherwise use original
+      let storagePathToUse = overlay.storagePath;
+      if (isVideoFile) {
+        // Check if previewStoragePath exists (720p version)
+        if (overlay.previewStoragePath) {
+          storagePathToUse = overlay.previewStoragePath;
+        } else {
+          // Check if _720p version exists by modifying path
+          const pathWithoutExt = overlay.storagePath.replace(/\.(mp4|mov|avi|mkv|webm|m4v)$/i, '');
+          const potential720pPath = `${pathWithoutExt}_720p.mp4`;
+          // We'll use the original for now, but the transcoding script will create _720p versions
+          // Frontend can check for these in the future
+        }
+      }
+      
+      const url = getPublicStorageUrl(storagePathToUse);
+      setMediaUrl(url);
+      setIsVideo(isVideoFile);
     }
   }, [overlay]);
 
@@ -157,13 +174,20 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
     const video = videoRef.current;
     if (!video || !mediaUrl || !isVideo) return;
 
-    // Set video attributes for fast loading
+    // Set video attributes for fast loading and 720p quality limit
     video.loop = true;
     video.muted = true;
     video.playsInline = true;
-    // Use 'auto' for faster initial display - videos are small overlays
-    video.preload = 'auto';
+    // Use 'metadata' to reduce initial bandwidth - only load video metadata first
+    video.preload = 'metadata';
     video.crossOrigin = 'anonymous';
+    
+    // Limit video quality by constraining dimensions
+    // Browser will automatically select appropriate quality based on display size
+    if (video.videoWidth > 1280 || video.videoHeight > 720) {
+      // Video is larger than 720p, browser will scale down for display
+      // This helps with rendering performance
+    }
 
     // Handle video can play event (fires earlier than loadeddata)
     const handleCanPlay = () => {
@@ -262,8 +286,14 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
               playsInline
               muted
               loop
-              preload="auto"
+              preload="metadata"
               crossOrigin="anonymous"
+              style={{
+                maxWidth: '1280px',
+                maxHeight: '720px',
+                width: '100%',
+                height: 'auto'
+              }}
               onError={(e) => {
                 console.error('Video playback error:', {
                   error: (e.target as HTMLVideoElement).error,

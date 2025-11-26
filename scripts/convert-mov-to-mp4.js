@@ -162,10 +162,118 @@ async function convertOverlay(overlayDoc, assetId, deleteOriginal = false, stora
   }
 
   console.log(`\nConverting: ${fileName}${overlayId ? ` (${overlayId})` : ' (from Storage)'}`);
+  if (!overlayId) {
+    console.log(`  Asset ID: ${assetId}`);
+  }
 
   if (!storagePath) {
     console.error(`  Error: No storage path found`);
     return { success: false, reason: 'no_storage_path' };
+  }
+  
+  // Verify asset exists
+  const assetDoc = await db.collection('assets').doc(assetId).get();
+  if (!assetDoc.exists) {
+    console.error(`  ✗ Error: Asset ${assetId} not found in Firestore`);
+    return { success: false, reason: 'asset_not_found' };
+  }
+
+  // Create new storage path with .mp4 extension
+  const newStoragePath = storagePath.replace(/\.mov$/i, '.mp4');
+  const newFileName = fileName.replace(/\.mov$/i, '.mp4');
+
+  // Check if .mp4 file already exists in Firebase Storage
+  const mp4File = bucket.file(newStoragePath);
+  const [mp4Exists] = await mp4File.exists();
+  
+  if (mp4Exists) {
+    console.log(`  ⏭ Skipping: .mp4 file already exists at ${newStoragePath}`);
+    
+    // Check if Firestore document exists and update it if needed
+    if (overlayId) {
+      // Try subcollection first
+      const overlayDocSub = await db
+        .collection('assets')
+        .doc(assetId)
+        .collection('overlays')
+        .doc(overlayId)
+        .get();
+      
+      if (overlayDocSub.exists) {
+        const currentData = overlayDocSub.data();
+        // Update if it's still pointing to .mov file
+        if (currentData.storagePath?.toLowerCase().endsWith('.mov') || 
+            currentData.fileType?.toLowerCase() === 'mov') {
+          await db
+            .collection('assets')
+            .doc(assetId)
+            .collection('overlays')
+            .doc(overlayId)
+            .update({
+              storagePath: newStoragePath,
+              fileName: newFileName,
+              fileType: 'mp4',
+              convertedFromMov: true,
+            });
+          console.log(`  ✓ Updated Firestore document in subcollection to point to existing .mp4 file`);
+        }
+      } else {
+        // Try flat overlays collection
+        const overlayDocFlat = await db.collection('overlays').doc(overlayId).get();
+        if (overlayDocFlat.exists) {
+          const currentData = overlayDocFlat.data();
+          if (currentData.storagePath?.toLowerCase().endsWith('.mov') || 
+              currentData.fileType?.toLowerCase() === 'mov') {
+            await db.collection('overlays').doc(overlayId).update({
+              storagePath: newStoragePath,
+              fileName: newFileName,
+              fileType: 'mp4',
+              convertedFromMov: true,
+            });
+            console.log(`  ✓ Updated Firestore document in overlays collection to point to existing .mp4 file`);
+          }
+        }
+      }
+    } else {
+      // Check if Firestore document exists for this storage path (check both structures)
+      const existingOverlaysSub = await db
+        .collection('assets')
+        .doc(assetId)
+        .collection('overlays')
+        .where('storagePath', '==', newStoragePath)
+        .get();
+      
+      const existingOverlaysFlat = await db
+        .collection('overlays')
+        .where('storagePath', '==', newStoragePath)
+        .get();
+      
+      if (existingOverlaysSub.empty && existingOverlaysFlat.empty) {
+        // Create Firestore document for existing .mp4 file in flat overlays collection
+        const assetDoc = await db.collection('assets').doc(assetId).get();
+        if (assetDoc.exists) {
+          const assetData = assetDoc.data();
+          const overlayRef = await db
+            .collection('overlays')
+            .add({
+              assetId: assetId,
+              assetTitle: assetData.title || 'Untitled',
+              fileName: newFileName,
+              storagePath: newStoragePath,
+              fileType: 'mp4',
+              convertedFromMov: true,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          console.log(`  ✓ Created Firestore document for existing .mp4 file`);
+          console.log(`    Location: overlays/${overlayRef.id}`);
+          console.log(`    Asset: ${assetData.title || 'Untitled'} (${assetId})`);
+        } else {
+          console.error(`  ✗ Error: Asset ${assetId} not found in Firestore`);
+        }
+      }
+    }
+    
+    return { success: true, reason: 'already_exists' };
   }
 
   // Create temporary directory for conversion
@@ -195,36 +303,56 @@ async function convertOverlay(overlayDoc, assetId, deleteOriginal = false, stora
     const stats = await fs.stat(outputPath);
     console.log(`  Converted: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
 
-    // Create new storage path with .mp4 extension
-    const newStoragePath = storagePath.replace(/\.mov$/i, '.mp4');
-    const newFileName = fileName.replace(/\.mov$/i, '.mp4');
-
     // Upload converted file
     await uploadFile(outputPath, newStoragePath, 'video/mp4');
 
     // Update Firestore document if it exists
     if (overlayId) {
-      await db
+      // Try subcollection first (for backward compatibility)
+      const subcollectionDoc = await db
         .collection('assets')
         .doc(assetId)
         .collection('overlays')
         .doc(overlayId)
-        .update({
-          storagePath: newStoragePath,
-          fileName: newFileName,
-          fileType: 'mp4',
-          convertedFromMov: true,
-          convertedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      console.log(`  ✓ Updated Firestore document`);
+        .get();
+      
+      if (subcollectionDoc.exists) {
+        await db
+          .collection('assets')
+          .doc(assetId)
+          .collection('overlays')
+          .doc(overlayId)
+          .update({
+            storagePath: newStoragePath,
+            fileName: newFileName,
+            fileType: 'mp4',
+            convertedFromMov: true,
+            convertedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        console.log(`  ✓ Updated Firestore document in subcollection`);
+      } else {
+        // Try flat overlays collection
+        const flatDoc = await db.collection('overlays').doc(overlayId).get();
+        if (flatDoc.exists) {
+          await db.collection('overlays').doc(overlayId).update({
+            storagePath: newStoragePath,
+            fileName: newFileName,
+            fileType: 'mp4',
+            convertedFromMov: true,
+            convertedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          console.log(`  ✓ Updated Firestore document in overlays collection`);
+        } else {
+          console.log(`  ⚠ No existing Firestore document found, will create new one`);
+        }
+      }
     } else {
       // Create new Firestore document if it doesn't exist
       const assetDoc = await db.collection('assets').doc(assetId).get();
       if (assetDoc.exists) {
         const assetData = assetDoc.data();
-        await db
-          .collection('assets')
-          .doc(assetId)
+        // Create document in flat overlays collection
+        const overlayRef = await db
           .collection('overlays')
           .add({
             assetId: assetId,
@@ -237,6 +365,11 @@ async function convertOverlay(overlayDoc, assetId, deleteOriginal = false, stora
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
           });
         console.log(`  ✓ Created Firestore document`);
+        console.log(`    Location: overlays/${overlayRef.id}`);
+        console.log(`    Asset: ${assetData.title || 'Untitled'} (${assetId})`);
+      } else {
+        console.error(`  ✗ Error: Asset ${assetId} not found in Firestore`);
+        return { success: false, reason: 'asset_not_found' };
       }
     }
 
@@ -325,7 +458,11 @@ async function main() {
       results.total = 1;
       const result = await convertOverlay(null, assetId, deleteOriginal, storagePath);
       if (result.success) {
-        results.converted++;
+        if (result.reason === 'already_exists') {
+          results.skipped++;
+        } else {
+          results.converted++;
+        }
       } else {
         results.failed++;
         results.errors.push({ storagePath, reason: result.reason });
@@ -335,6 +472,7 @@ async function main() {
       console.log('\n=== Conversion Summary ===');
       console.log(`Total: ${results.total}`);
       console.log(`Converted: ${results.converted}`);
+      console.log(`Skipped: ${results.skipped}`);
       console.log(`Failed: ${results.failed}`);
       process.exit(results.failed > 0 ? 1 : 0);
     } catch (error) {
@@ -361,7 +499,11 @@ async function main() {
       results.total = 1;
       const result = await convertOverlay(overlayDoc, assetId, deleteOriginal);
       if (result.success) {
-        results.converted++;
+        if (result.reason === 'already_exists') {
+          results.skipped++;
+        } else {
+          results.converted++;
+        }
       } else {
         results.failed++;
         results.errors.push({ overlayId, reason: result.reason });
@@ -394,7 +536,11 @@ async function main() {
       for (const overlayDoc of movOverlays) {
         const result = await convertOverlay(overlayDoc, assetId, deleteOriginal);
         if (result.success) {
-          results.converted++;
+          if (result.reason === 'already_exists') {
+            results.skipped++;
+          } else {
+            results.converted++;
+          }
         } else if (result.reason === 'not_mov') {
           results.skipped++;
         } else {
@@ -549,10 +695,14 @@ async function main() {
       console.log(`Found ${results.total} .mov overlay(s) across ${overlayAssetsSnap.size} asset(s)\n`);
 
       for (const { overlayDoc, assetId: aid, assetTitle, storagePath: sp } of movOverlays) {
-        console.log(`\n[${assetTitle}]`);
+        console.log(`\n[${assetTitle}] (Asset ID: ${aid})`);
         const result = await convertOverlay(overlayDoc, aid, deleteOriginal, sp);
         if (result.success) {
-          results.converted++;
+          if (result.reason === 'already_exists') {
+            results.skipped++;
+          } else {
+            results.converted++;
+          }
         } else if (result.reason === 'not_mov') {
           results.skipped++;
         } else {
