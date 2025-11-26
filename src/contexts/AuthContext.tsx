@@ -274,22 +274,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       // Check membership immediately after sign-in using server-side API
-      const membershipCheck = await checkMembershipStatus(result.user);
-      
-      // Only block if we definitively confirmed NO membership
-      if (membershipCheck === false) {
-        // Sign out immediately if we confirmed no membership
-        await signOut(auth);
-        throw new Error('Membership required. Please purchase a membership to access your account.');
+      // Wrap in try-catch so membership check failures don't block valid logins
+      try {
+        const membershipCheck = await checkMembershipStatus(result.user);
+        
+        // Only block if we definitively confirmed NO membership
+        if (membershipCheck === false) {
+          // Sign out immediately if we confirmed no membership
+          await signOut(auth);
+          throw new Error('Membership required. Please purchase a membership to access your account.');
+        }
+        
+        // If membershipCheck is null (couldn't verify), allow access to avoid blocking legitimate users
+      } catch (membershipError: any) {
+        // If membership check fails, log but don't block the login
+        // Only block if it's a definitive "no membership" error
+        if (membershipError.message?.includes('Membership required')) {
+          throw membershipError;
+        }
+        // Otherwise, log the error but allow login to proceed
+        console.warn('[Sign In] Membership check failed, allowing login:', membershipError);
       }
-      
-      // If membershipCheck is null (couldn't verify), allow access to avoid blocking legitimate users
     } catch (error: any) {
-      // Re-throw membership errors
-      if (error.message?.includes('Membership required')) {
-        throw error;
+      // Log Firebase Auth errors for debugging
+      if (error.code) {
+        console.error('[Sign In] Firebase Auth error:', {
+          code: error.code,
+          message: error.message,
+          email: email
+        });
       }
-      // Re-throw other errors (like wrong password, user not found, etc.)
+      
+      // Re-throw all errors (Firebase Auth errors and membership errors)
       throw error;
     }
   };

@@ -26,7 +26,40 @@ export default function LoginPage() {
       await signIn(email, password);
       router.push('/');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in. Please check your credentials.');
+      console.error('Login error:', err);
+      
+      // Provide user-friendly error messages based on Firebase error codes
+      let errorMessage = 'Failed to sign in. Please check your credentials.';
+      
+      if (err.code) {
+        switch (err.code) {
+          case 'auth/user-not-found':
+            errorMessage = 'No account found with this email address.';
+            break;
+          case 'auth/wrong-password':
+            errorMessage = 'Incorrect password. Please try again or use "Forgot password?"';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'Invalid email address format.';
+            break;
+          case 'auth/user-disabled':
+            errorMessage = 'This account has been disabled. Please contact support.';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'Too many failed login attempts. Please try again later.';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = 'Network error. Please check your connection and try again.';
+            break;
+          default:
+            // Use the error message if available, otherwise use default
+            errorMessage = err.message || errorMessage;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
