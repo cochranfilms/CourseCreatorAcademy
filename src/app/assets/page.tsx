@@ -560,11 +560,20 @@ function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { as
                   return;
                 }
                 const targetId = previewId || asset.id;
+                // Generate thumbnail URL - prefer asset thumbnail, or generate from video paths for LUT previews
+                let thumbnailUrl = asset.thumbnailUrl;
+                if (!thumbnailUrl && asset.beforeVideoPath) {
+                  // For LUT previews, use the before video as thumbnail
+                  thumbnailUrl = getPublicStorageUrl(asset.beforeVideoPath);
+                }
                 const nowFavorited = await toggleSaved(user.uid, 'asset', targetId, {
                   assetId: asset.id,
                   title: asset.title,
                   category: asset.category,
                   previewId: previewId || undefined,
+                  thumbnailUrl: thumbnailUrl || undefined,
+                  beforeVideoPath: asset.beforeVideoPath || undefined,
+                  afterVideoPath: asset.afterVideoPath || undefined,
                 });
                 setIsFavorited(nowFavorited);
               }}
@@ -888,11 +897,19 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
                   alert('Please sign in to favorite assets');
                   return;
                 }
+                // Generate thumbnail URL from overlay preview
+                const overlayThumbnailUrl = overlay.previewStoragePath 
+                  ? getPublicStorageUrl(overlay.previewStoragePath)
+                  : overlay.storagePath 
+                    ? getPublicStorageUrl(overlay.storagePath)
+                    : undefined;
                 const nowFavorited = await toggleSaved(user.uid, 'asset', overlay.id, {
                   assetId: overlay.assetId,
                   title: overlay.fileName,
                   overlayId: overlay.id,
                   fileName: overlay.fileName,
+                  thumbnailUrl: overlayThumbnailUrl,
+                  storagePath: overlay.storagePath,
                 });
                 setIsFavorited(nowFavorited);
               }}
@@ -1199,11 +1216,14 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
               alert('Please sign in to favorite assets');
               return;
             }
+            // Get asset thumbnail for sound effect
+            const assetThumbnailUrl = asset.thumbnailUrl;
             const nowFavorited = await toggleSaved(user.uid, 'asset', soundEffect.id, {
               assetId: soundEffect.assetId,
               title: soundEffect.fileName,
               soundEffectId: soundEffect.id,
               fileName: soundEffect.fileName,
+              thumbnailUrl: assetThumbnailUrl || undefined,
             });
             setIsFavorited(nowFavorited);
           }}
@@ -1748,6 +1768,7 @@ export default function AssetsPage() {
                             assetId: asset.id,
                             title: asset.title,
                             category: asset.category,
+                            thumbnailUrl: asset.thumbnailUrl || undefined,
                           });
                           setFavoritedAssets(prev => {
                             const newSet = new Set(prev);

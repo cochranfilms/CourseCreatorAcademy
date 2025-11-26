@@ -20,8 +20,12 @@ type SavedItem = {
   lessonId?: string;
   price?: number;
   image?: string;
+  thumbnailUrl?: string;
   muxPlaybackId?: string;
   durationSec?: number;
+  assetId?: string;
+  beforeVideoPath?: string;
+  afterVideoPath?: string;
   createdAt?: any;
   [key: string]: any;
 };
@@ -98,6 +102,32 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
             }
           }
           
+          // If it's an asset and missing thumbnailUrl, try to fetch from asset document
+          if (item.type === 'asset' && !item.thumbnailUrl && item.assetId) {
+            try {
+              const assetRef = doc(currentDb, `assets/${item.assetId}`);
+              const assetSnap = await getDoc(assetRef);
+              if (assetSnap.exists()) {
+                const assetData = assetSnap.data();
+                // Use saved thumbnailUrl, or generate from beforeVideoPath if available
+                if (assetData.thumbnailUrl) {
+                  item.thumbnailUrl = assetData.thumbnailUrl;
+                } else if (item.beforeVideoPath) {
+                  // Generate public URL from storage path
+                  const bucket = 'course-creator-academy-866d6.firebasestorage.app';
+                  const encodedPath = encodeURIComponent(item.beforeVideoPath);
+                  item.thumbnailUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+                } else if (assetData.beforeVideoPath) {
+                  const bucket = 'course-creator-academy-866d6.firebasestorage.app';
+                  const encodedPath = encodeURIComponent(assetData.beforeVideoPath);
+                  item.thumbnailUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+                }
+              }
+            } catch (err) {
+              console.warn('Failed to fetch asset thumbnail data:', err);
+            }
+          }
+          
           items.push(item);
         }
         
@@ -148,13 +178,19 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
   };
 
   const getItemImage = (item: SavedItem): string | undefined => {
-    if (item.image) return item.image;
-    if (item.type === 'video' || item.type === 'lesson') {
-      return item.muxPlaybackId 
-        ? getMuxThumbnailUrl(item.muxPlaybackId, item.durationSec)
-        : undefined;
+    // For market listings, use image field
+    if (item.type === 'market' && item.image) return item.image;
+    
+    // For assets, use thumbnailUrl (photo or video thumbnail)
+    if (item.type === 'asset' && item.thumbnailUrl) return item.thumbnailUrl;
+    
+    // For videos/lessons, use Mux thumbnail
+    if ((item.type === 'video' || item.type === 'lesson') && item.muxPlaybackId) {
+      return getMuxThumbnailUrl(item.muxPlaybackId, item.durationSec);
     }
-    return undefined;
+    
+    // Fallback to image field for other types
+    return item.image;
   };
 
   if (!isOpen) return null;
@@ -226,15 +262,31 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
                     className="border border-neutral-800 rounded-lg bg-neutral-950/60 overflow-hidden hover:border-neutral-700 transition group"
                   >
                     <Link href={getItemHref(item) as any} className="block">
-                      <div className="relative h-40 bg-neutral-800">
+                      <div className="relative h-40 bg-neutral-800 overflow-hidden">
                         {getItemImage(item) ? (
-                          <Image
-                            src={getItemImage(item)!}
-                            alt={getItemTitle(item)}
-                            fill
-                            sizes="(max-width: 640px) 100vw, 50vw"
-                            className="object-cover"
-                          />
+                          <>
+                            {/* Use img tag for better video file support (Firebase Storage URLs) */}
+                            <img
+                              src={getItemImage(item)!}
+                              alt={getItemTitle(item)}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                // Fallback to placeholder if image/video fails
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                            {/* Play icon overlay for video thumbnails (LUT previews) */}
+                            {item.type === 'asset' && (item.beforeVideoPath || item.afterVideoPath) && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                                <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
+                                  <svg className="w-6 h-6 text-black ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"/>
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-neutral-600">
                             <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
