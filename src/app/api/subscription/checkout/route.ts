@@ -232,12 +232,74 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Upgrade requires payment - create checkout session
+    // Upgrade requires payment
+    // First, update the subscription to create the proration invoice
+    const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
+      items: [{
+        id: currentItem.id,
+        price: newPrice.id,
+      }],
+      proration_behavior: 'always_invoice', // Creates proration invoice
+      metadata: {
+        planType: newPlanType,
+        buyerId: userId,
+      },
+    });
+
+    // Get the proration invoice that was just created
+    let prorationInvoice;
+    try {
+      const invoices = await stripe.invoices.list({
+        customer: subscription.customer as string,
+        subscription: subscriptionId,
+        status: 'open',
+        limit: 1,
+      });
+
+      if (invoices.data.length > 0) {
+        prorationInvoice = invoices.data[0];
+        // Finalize the invoice if it's a draft
+        if (prorationInvoice.status === 'draft') {
+          prorationInvoice = await stripe.invoices.finalizeInvoice(prorationInvoice.id);
+        }
+      } else {
+        // If no invoice found, wait a moment and try again (Stripe might need a moment to create it)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const retryInvoices = await stripe.invoices.list({
+          customer: subscription.customer as string,
+          subscription: subscriptionId,
+          status: 'open',
+          limit: 1,
+        });
+        if (retryInvoices.data.length > 0) {
+          prorationInvoice = retryInvoices.data[0];
+          if (prorationInvoice.status === 'draft') {
+            prorationInvoice = await stripe.invoices.finalizeInvoice(prorationInvoice.id);
+          }
+        }
+      }
+
+      if (!prorationInvoice) {
+        return NextResponse.json(
+          { error: 'Failed to create proration invoice. Please try again.' },
+          { status: 500 }
+        );
+      }
+    } catch (invoiceErr: any) {
+      console.error('Error creating/finalizing proration invoice:', invoiceErr);
+      return NextResponse.json(
+        { error: 'Failed to create proration invoice. Please try again.' },
+        { status: 500 }
+      );
+    }
+
     // Ensure minimum charge amount (Stripe requires at least $0.50)
-    const chargeAmount = Math.max(prorationAmount, 50); // Minimum $0.50
+    const chargeAmount = Math.max(Math.abs(prorationInvoice.amount_due || prorationAmount), 50);
     
+    // Create checkout session for the proration amount
+    // After payment succeeds, we'll pay the invoice in the webhook
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment', // One-time payment for proration
+      mode: 'payment',
       customer: subscription.customer as string,
       client_reference_id: userId,
       line_items: [
@@ -260,6 +322,7 @@ export async function POST(req: NextRequest) {
           currentPlanType,
           newPlanType,
           buyerId: userId,
+          invoiceId: prorationInvoice.id,
         },
       },
       success_url: `${origin}/dashboard?plan_change=success&new_plan=${newPlanType}`,
@@ -270,6 +333,7 @@ export async function POST(req: NextRequest) {
         currentPlanType,
         newPlanType,
         buyerId: userId,
+        invoiceId: prorationInvoice.id,
         prorationAmount: String(chargeAmount),
       },
     });

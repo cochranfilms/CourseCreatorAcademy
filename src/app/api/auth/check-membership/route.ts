@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     const userDoc = await adminDb.collection('users').doc(userId).get();
     let hasMembership = false;
 
-    if (userDoc.exists()) {
+    if (userDoc.exists) {
       const userData = userDoc.data();
       hasMembership = Boolean(userData?.membershipActive);
     }

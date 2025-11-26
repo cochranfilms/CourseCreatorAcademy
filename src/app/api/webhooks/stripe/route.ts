@@ -653,17 +653,38 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          // Update subscription to new plan
-          await stripe.subscriptions.update(subscriptionId, {
-            items: [{
-              id: currentItem.id,
-              price: price.id,
-            }],
-            metadata: {
-              planType: newPlanType,
-              buyerId: buyerId || '',
-            },
-          });
+          // The subscription was already updated when checkout session was created
+          // Now pay the proration invoice using the payment intent
+          const invoiceId = pi.metadata?.invoiceId;
+          
+          if (invoiceId) {
+            try {
+              // Pay the proration invoice using the payment intent
+              const invoice = await stripe.invoices.retrieve(invoiceId);
+              if (invoice.status !== 'paid' && invoice.amount_due > 0) {
+                // Pay the invoice using the payment intent
+                await stripe.invoices.pay(invoiceId, {
+                  payment_method: subscription.default_payment_method as string,
+                });
+                console.log('Proration invoice paid:', invoiceId, 'Amount:', invoice.amount_due);
+              } else if (invoice.status === 'paid') {
+                console.log('Proration invoice already paid:', invoiceId);
+              }
+            } catch (invoiceErr: any) {
+              console.error('Error paying proration invoice:', invoiceErr);
+              // Try alternative: apply payment intent to invoice
+              try {
+                if (pi.id) {
+                  await stripe.invoices.pay(invoiceId, {
+                    payment_intent: pi.id,
+                  });
+                  console.log('Proration invoice paid via payment intent:', invoiceId);
+                }
+              } catch (altErr: any) {
+                console.error('Alternative payment method also failed:', altErr);
+              }
+            }
+          }
 
           console.log('Subscription upgraded successfully:', { subscriptionId, newPlanType });
         } catch (err: any) {
