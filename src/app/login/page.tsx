@@ -39,6 +39,10 @@ export default function LoginPage() {
           case 'auth/wrong-password':
             errorMessage = 'Incorrect password. Please try again or use "Forgot password?"';
             break;
+          case 'auth/invalid-credential':
+            // This usually means the account was created with Google/Facebook OAuth, not email/password
+            errorMessage = 'This account was created with Google or Facebook sign-in. Please use the "Sign in with Google" or "Sign in with Facebook" button instead.';
+            break;
           case 'auth/invalid-email':
             errorMessage = 'Invalid email address format.';
             break;
