@@ -653,31 +653,24 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          // The subscription was already updated when checkout session was created
-          // Now pay the proration invoice using the payment from checkout
-          const invoiceId = pi.metadata?.invoiceId;
-          
-          if (invoiceId) {
-            try {
-              // Pay the proration invoice
-              const invoice = await stripe.invoices.retrieve(invoiceId);
-              if (invoice.status !== 'paid' && invoice.amount_due > 0) {
-                // Pay the invoice using the customer's default payment method
-                // Stripe will automatically use the payment from the checkout session
-                await stripe.invoices.pay(invoiceId, {
-                  payment_method: subscription.default_payment_method as string,
-                });
-                console.log('Proration invoice paid:', invoiceId, 'Amount:', invoice.amount_due);
-              } else if (invoice.status === 'paid') {
-                console.log('Proration invoice already paid:', invoiceId);
-              }
-            } catch (invoiceErr: any) {
-              console.error('Error paying proration invoice:', invoiceErr);
-              // The payment intent from checkout may have already paid the invoice
-              // or Stripe may handle it automatically, so we don't fail the operation
-            }
-          }
+          // Now update the subscription to the new plan
+          // This will create a proration invoice automatically
+          const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
+            items: [{
+              id: currentItem.id,
+              price: price.id,
+            }],
+            proration_behavior: 'always_invoice', // Creates proration invoice
+            metadata: {
+              planType: newPlanType,
+              buyerId: buyerId || '',
+            },
+          });
 
+          // The proration invoice will be created automatically
+          // Stripe will attempt to charge it using the customer's default payment method
+          // Since we already collected payment via checkout, the invoice should be paid
+          // If not, it will be charged on the next billing cycle
           console.log('Subscription upgraded successfully:', { subscriptionId, newPlanType });
         } catch (err: any) {
           console.error('Failed to upgrade subscription after payment:', err);
