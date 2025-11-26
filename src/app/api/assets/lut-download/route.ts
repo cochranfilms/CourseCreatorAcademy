@@ -33,7 +33,15 @@ export async function GET(req: NextRequest) {
     const lutFilePath = previewData?.lutFilePath;
     const fileName = previewData?.fileName || 'lut.cube';
 
+    console.log('[LUT Download API] Preview data:', {
+      previewId,
+      assetId,
+      lutFilePath,
+      fileName,
+    });
+
     if (!lutFilePath) {
+      console.log('[LUT Download API] No lutFilePath found in preview document');
       // Fallback to full pack download if no individual file
       return NextResponse.json({ 
         error: 'Individual LUT file not available, use pack download',
@@ -49,7 +57,10 @@ export async function GET(req: NextRequest) {
     
     // Check if file exists
     const [exists] = await file.exists();
+    console.log('[LUT Download API] File exists check:', { exists, path: lutFilePath });
+    
     if (!exists) {
+      console.error('[LUT Download API] File not found in storage:', lutFilePath);
       return NextResponse.json({ 
         error: 'LUT file not found in storage',
         details: `Path: ${lutFilePath}`
@@ -64,6 +75,8 @@ export async function GET(req: NextRequest) {
       action: 'read',
       expires: expiresAt,
     });
+
+    console.log('[LUT Download API] Generated download URL successfully');
 
     return NextResponse.json({ 
       downloadUrl,

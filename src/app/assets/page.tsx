@@ -322,19 +322,32 @@ function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { as
     
     setDownloading(true);
     try {
+      // Debug logging
+      console.log('[LUT Download] Checking download options:', {
+        lutFilePath,
+        previewId,
+        assetId: asset.id,
+        fileName,
+      });
+      
       // If this is a LUT preview with individual file, use that endpoint
       if (lutFilePath && previewId) {
+        console.log('[LUT Download] Using individual file download:', lutFilePath);
         const response = await fetch(`/api/assets/lut-download?assetId=${asset.id}&previewId=${previewId}`);
+        
         if (!response.ok) {
           const error = await response.json();
+          console.error('[LUT Download] API error:', error);
           if (error.fallback) {
             // Fallback to pack download
+            console.log('[LUT Download] Falling back to pack download');
             await handlePackDownload();
             return;
           }
           throw new Error('Failed to get download URL');
         }
         const data = await response.json();
+        console.log('[LUT Download] Got download URL:', data);
         
         const link = document.createElement('a');
         link.href = data.downloadUrl;
@@ -344,6 +357,8 @@ function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { as
         document.body.removeChild(link);
       } else {
         // Fallback to pack download
+        console.log('[LUT Download] No individual file, using pack download');
+        console.log('[LUT Download] Missing:', { lutFilePath: !lutFilePath, previewId: !previewId });
         await handlePackDownload();
       }
     } catch (error) {
@@ -1227,7 +1242,12 @@ export default function AssetsPage() {
             console.log(`[LUT Previews] Loaded ${previews.length} preview(s) for "${asset.title}" (${asset.id})`);
             if (previews.length > 0) {
               previews.forEach((preview: LUTPreview) => {
-                console.log(`  - ${preview.lutName}: ${preview.beforeVideoPath} / ${preview.afterVideoPath}`);
+                console.log(`  - ${preview.lutName}:`, {
+                  beforeVideo: preview.beforeVideoPath,
+                  afterVideo: preview.afterVideoPath,
+                  lutFilePath: preview.lutFilePath || 'NOT SET',
+                  fileName: preview.fileName || 'NOT SET',
+                });
               });
             }
           } else {
