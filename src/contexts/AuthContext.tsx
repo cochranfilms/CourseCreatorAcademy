@@ -291,21 +291,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     
     try {
+      console.log('[Google Sign-In] Starting popup sign-in...');
+      console.log('[Google Sign-In] Current origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A');
+      
       // Try popup first (better UX)
       const result = await signInWithPopup(auth, provider);
+      
+      console.log('[Google Sign-In] Popup successful, user:', result.user.email);
       
       // Check membership immediately after sign-in
       const hasMembership = await checkMembershipStatus(result.user.uid, result.user.email || '');
       
       if (!hasMembership) {
+        console.log('[Google Sign-In] User does not have membership, signing out...');
         // Sign out immediately if no membership
         await signOut(auth);
         throw new Error('Membership required. Please purchase a membership to access your account.');
       }
       
+      console.log('[Google Sign-In] Membership verified, ensuring profile...');
       // Ensure profile is created/updated
       await ensureUserProfile(result.user);
     } catch (error: any) {
+      console.error('[Google Sign-In] Error details:', {
+        code: error.code,
+        message: error.message,
+        email: error.email,
+        credential: error.credential
+      });
+      
       // Re-throw membership errors
       if (error.message?.includes('Membership required')) {
         throw error;
@@ -314,12 +328,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If popup was closed unexpectedly, provide helpful error
       if (error.code === 'auth/popup-closed-by-user') {
         // This usually means the popup closed due to configuration issues
-        // Provide detailed error message
+        // Provide detailed error message with troubleshooting steps
+        const troubleshootingSteps = `
+Troubleshooting steps:
+1. Go to Google Cloud Console → APIs & Services → Credentials
+2. Find your OAuth 2.0 Client ID (used by Firebase)
+3. Under "Authorized JavaScript origins", ensure you have:
+   - https://coursecreatoracademy.vercel.app
+   - https://course-creator-academy-866d6.firebaseapp.com
+4. Save and wait 2-3 minutes for changes to propagate
+5. Clear browser cache and try again
+
+If the issue persists, try using email/password sign-in instead.`;
+        
         throw new Error(
           'Google sign-in popup closed unexpectedly. ' +
-          'This may be due to OAuth configuration. ' +
-          'Please ensure coursecreatoracademy.vercel.app is added to Google Cloud Console ' +
-          'Authorized JavaScript origins, or try using email/password sign-in.'
+          'This is usually due to OAuth configuration. ' +
+          troubleshootingSteps
         );
       }
       
@@ -329,7 +354,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       // Re-throw other errors with more context
-      console.error('Google sign-in error:', error);
       throw error;
     }
   };
