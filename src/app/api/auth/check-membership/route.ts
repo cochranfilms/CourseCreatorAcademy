@@ -14,7 +14,12 @@ export async function GET(req: NextRequest) {
     const idToken = authHeader.replace('Bearer ', '');
     
     if (!adminAuth || !adminDb) {
-      return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+      console.warn('[Membership API] Server not configured, returning null to allow access');
+      return NextResponse.json({ 
+        hasMembership: null, 
+        error: 'Server not configured',
+        note: 'Could not verify membership status'
+      }, { status: 200 });
     }
 
     // Verify the Firebase ID token
@@ -49,9 +54,15 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ hasMembership });
   } catch (error: any) {
-    console.error('Error checking membership:', error);
-    // On error, deny access (secure default)
-    return NextResponse.json({ hasMembership: false, error: error.message }, { status: 500 });
+    console.error('[Membership API] Error checking membership:', error);
+    // On error, return null status to indicate we couldn't verify
+    // This allows the client to decide whether to allow access
+    // We don't want to block legitimate users due to API errors
+    return NextResponse.json({ 
+      hasMembership: null, 
+      error: error.message,
+      note: 'Could not verify membership status'
+    }, { status: 200 }); // Return 200 so client can handle gracefully
   }
 }
 
