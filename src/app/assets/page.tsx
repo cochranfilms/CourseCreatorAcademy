@@ -78,11 +78,12 @@ function formatDuration(seconds: number): string {
 }
 
 /**
- * Overlay Player Component - Shows looping video preview
+ * Overlay Player Component - Shows looping video preview in 16:9 format
  */
 function OverlayPlayer({ overlay }: { overlay: Overlay }) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -101,19 +102,52 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
     loadVideoUrl();
   }, [overlay]);
 
-  // Auto-play and loop video when URL is loaded
+  // Setup video element and auto-play when URL is loaded
   useEffect(() => {
-    if (videoRef.current && videoUrl) {
-      videoRef.current.loop = true;
-      videoRef.current.muted = true;
-      videoRef.current.play().catch(err => {
+    const video = videoRef.current;
+    if (!video || !videoUrl) return;
+
+    // Set video attributes
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+
+    // Handle video loaded event
+    const handleLoadedData = () => {
+      setVideoLoaded(true);
+      video.play().catch(err => {
+        console.error('Error auto-playing video:', err);
+      });
+    };
+
+    // Handle video can play event
+    const handleCanPlay = () => {
+      video.play().catch(err => {
+        console.error('Error auto-playing video:', err);
+      });
+    };
+
+    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('canplay', handleCanPlay);
+
+    // Try to play immediately if video is already loaded
+    if (video.readyState >= 2) {
+      video.play().catch(err => {
         console.error('Error auto-playing video:', err);
       });
     }
+
+    return () => {
+      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('canplay', handleCanPlay);
+    };
   }, [videoUrl]);
 
-  const handleDownload = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDownload = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
     if (downloading) return;
     
     setDownloading(true);
@@ -138,68 +172,92 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
   };
 
   return (
-    <div className="border border-ccaBlue/30 bg-black/80 backdrop-blur-sm rounded-lg p-4 hover:border-ccaBlue/60 hover:bg-black/90 transition-all duration-300 shadow-lg shadow-ccaBlue/10 hover:shadow-ccaBlue/20">
-      <div className="flex items-center gap-4">
-        {/* Video Thumbnail Preview */}
-        <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-neutral-900 via-neutral-800 to-black flex-shrink-0 overflow-hidden border border-ccaBlue/20 shadow-lg shadow-black/50 relative group">
-          {videoUrl ? (
-            <video
-              ref={videoRef}
-              src={videoUrl}
-              className="w-full h-full object-cover"
-              playsInline
-              muted
-              loop
-            />
+    <div 
+      className="border border-neutral-700 bg-black rounded-lg overflow-hidden hover:border-neutral-500 transition-colors cursor-pointer group"
+      onClick={() => handleDownload()}
+    >
+      {/* 16:9 Video Preview */}
+      <div className="aspect-video bg-gradient-to-br from-neutral-900 to-black relative overflow-hidden">
+        {videoUrl ? (
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            className="w-full h-full object-cover"
+            playsInline
+            muted
+            loop
+            preload="auto"
+            onError={(e) => {
+              console.error('Video error:', e);
+              const video = e.currentTarget;
+              console.error('Video error details:', {
+                error: video.error,
+                networkState: video.networkState,
+                readyState: video.readyState,
+                src: video.src
+              });
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-ccaBlue/50">
+            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+        {/* Overlay on hover */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+          {downloading ? (
+            <div className="text-white text-sm">Downloading...</div>
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-ccaBlue/50 bg-gradient-to-br from-neutral-900 to-black">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium">
+              Click to Download
             </div>
           )}
         </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="text-white text-sm font-semibold truncate drop-shadow-lg">{overlay.fileName.replace(/\.[^/.]+$/, '')}</div>
-          <div className="text-xs text-ccaBlue/70 mt-0.5 font-medium">{overlay.assetTitle}</div>
-        </div>
-
-        {/* Download Button */}
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-ccaBlue transition-all duration-300 flex-shrink-0 rounded-lg hover:bg-ccaBlue/10 hover:border hover:border-ccaBlue/30 group"
-          title="Download"
-        >
-          {downloading ? (
-            <svg className="w-5 h-5 animate-spin text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-          )}
-        </button>
-
-        {/* Favorite Button */}
-        <button
-          className="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-pink-500 transition-all duration-300 flex-shrink-0 rounded-lg hover:bg-pink-500/10 hover:border hover:border-pink-500/30 group"
-          title="Favorite"
-        >
-          <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        </button>
       </div>
-
-      {/* Tag */}
-      <div className="mt-3">
-        <span className="inline-block px-3 py-1 bg-gradient-to-r from-neutral-900/80 to-black/80 backdrop-blur-sm text-ccaBlue/80 text-xs rounded-md border border-ccaBlue/20 font-medium shadow-lg shadow-black/30">
-          overlay
-        </span>
+      
+      {/* Info Section */}
+      <div className="p-3 bg-black">
+        <div className="font-semibold text-white text-sm truncate">{overlay.fileName.replace(/\.[^/.]+$/, '')}</div>
+        <div className="text-xs text-neutral-400 mt-1 truncate">By {overlay.assetTitle}</div>
+        
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between mt-3">
+          <span className="inline-block px-2 py-1 bg-neutral-900 text-neutral-400 text-xs rounded border border-neutral-800">
+            overlay
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload(e);
+              }}
+              disabled={downloading}
+              className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-ccaBlue transition-colors"
+              title="Download"
+            >
+              {downloading ? (
+                <svg className="w-4 h-4 animate-spin text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              )}
+            </button>
+            <span className="text-neutral-500 text-xs">1</span>
+            <button
+              className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-pink-500 transition-colors"
+              title="Favorite"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -638,6 +696,30 @@ export default function AssetsPage() {
     }
   };
 
+  const handleOverlayDownload = async (overlay: Overlay) => {
+    if (downloading === overlay.id) return;
+    
+    setDownloading(overlay.id);
+    try {
+      const response = await fetch(`/api/assets/overlay-download?assetId=${overlay.assetId}&overlayId=${overlay.id}`);
+      if (!response.ok) throw new Error('Failed to get download URL');
+      const data = await response.json();
+      
+      const link = document.createElement('a');
+      link.href = data.downloadUrl;
+      link.download = overlay.fileName;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download overlay. Please try again.');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   // Show individual sound effects for SFX subcategory
   const showSoundEffects = selectedSubCategory === 'SFX';
   const showOverlays = selectedCategory === 'Overlays & Transitions';
@@ -716,7 +798,7 @@ export default function AssetsPage() {
             ))}
           </div>
         ) : showOverlays && overlays.length > 0 ? (
-          <div className="mt-6 space-y-2">
+          <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {overlays.map((overlay) => (
               <OverlayPlayer key={overlay.id} overlay={overlay} />
             ))}
