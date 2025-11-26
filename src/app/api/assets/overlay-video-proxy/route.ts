@@ -53,13 +53,6 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
     
-    // For public files, construct the public Firebase Storage URL
-    // Format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encodedPath}?alt=media&token={token}
-    // Firebase Storage requires each path segment to be encoded separately
-    const pathSegments = storagePath.split('/');
-    const encodedSegments = pathSegments.map(segment => encodeURIComponent(segment));
-    const encodedPath = encodedSegments.join('/');
-    
     // Use signed URL with very long expiration for public files
     // This ensures proper encoding and CORS headers
     const expiresAt = new Date();
