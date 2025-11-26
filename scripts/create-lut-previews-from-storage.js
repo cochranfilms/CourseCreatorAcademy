@@ -1,12 +1,21 @@
 #!/usr/bin/env node
 /*
-  Create Firestore documents for LUT preview videos in Storage
+  Create Firestore documents for LUT preview videos in Storage and extract .cube files from ZIPs
   
   This script:
   1. Scans Firebase Storage for LUT preview videos in assets/luts folders
   2. Groups videos by LUT name (folder structure: assets/luts/{pack}/{lut}/before.mp4 and after.mp4)
   3. Finds matching asset documents in Firestore
   4. Creates lutPreviews documents with beforeVideoPath and afterVideoPath
+  5. Extracts .cube files from ZIP files (only from CUBE folders)
+  6. Matches .cube files to preview documents by LUT name
+  7. Updates preview documents with lutFilePath and fileName for individual downloads
+  
+  Requirements:
+  - FIREBASE_ADMIN_PROJECT_ID
+  - FIREBASE_ADMIN_CLIENT_EMAIL
+  - FIREBASE_ADMIN_PRIVATE_KEY
+  - npm packages: yauzl, fs-extra
   
   Usage:
     node scripts/create-lut-previews-from-storage.js [--assetId=xxx] [--all] [--dry-run]
@@ -25,6 +34,9 @@ require('dotenv').config();
 
 const admin = require('firebase-admin');
 const path = require('path');
+const yauzl = require('yauzl');
+const fs = require('fs-extra');
+const os = require('os');
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -176,6 +188,241 @@ async function lutPreviewExists(assetId, lutName) {
   }
 
   return { exists: false };
+}
+
+/**
+ * Normalize LUT name for matching (remove special chars, normalize separators)
+ */
+function normalizeLUTName(name) {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')  // Replace underscores and spaces with dashes
+    .replace(/-+/g, '-')      // Replace multiple dashes with single dash
+    .replace(/^-|-$/g, '');  // Remove leading/trailing dashes
+}
+
+/**
+ * Extract .cube files from ZIP, only from CUBE folders
+ */
+function unzipCubeFiles(zipPath, extractTo) {
+  return new Promise((resolve, reject) => {
+    yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
+      if (err) return reject(err);
+      
+      const cubeFiles = [];
+      
+      zipfile.readEntry();
+      
+      zipfile.on('entry', (entry) => {
+        const entryPath = entry.fileName;
+        
+        // Skip directories
+        if (/\/$/.test(entryPath)) {
+          zipfile.readEntry();
+          return;
+        }
+        
+        // Skip macOS metadata files
+        if (entryPath.includes('/._') || path.basename(entryPath).startsWith('._')) {
+          zipfile.readEntry();
+          return;
+        }
+        
+        // Only process files in folders containing "CUBE" (case-insensitive)
+        const pathParts = entryPath.split('/');
+        const isInCubeFolder = pathParts.some(part => 
+          part.toLowerCase().includes('cube') && part.toLowerCase() !== '.cube'
+        );
+        
+        if (!isInCubeFolder) {
+          zipfile.readEntry();
+          return;
+        }
+        
+        // Only extract .cube files
+        const ext = path.extname(entryPath).toLowerCase();
+        if (ext !== '.cube') {
+          zipfile.readEntry();
+          return;
+        }
+        
+        const fileName = path.basename(entryPath);
+        const extractPath = path.join(extractTo, fileName);
+        
+        zipfile.openReadStream(entry, (err, readStream) => {
+          if (err) {
+            zipfile.readEntry();
+            return;
+          }
+          
+          fs.ensureDirSync(path.dirname(extractPath));
+          const writeStream = fs.createWriteStream(extractPath);
+          readStream.pipe(writeStream);
+          
+          writeStream.on('close', () => {
+            cubeFiles.push({
+              fileName,
+              localPath: extractPath,
+              normalizedName: normalizeLUTName(fileName.replace('.cube', '')),
+            });
+            zipfile.readEntry();
+          });
+        });
+      });
+      
+      zipfile.on('end', () => resolve(cubeFiles));
+      zipfile.on('error', reject);
+    });
+  });
+}
+
+/**
+ * Match .cube file to preview document by LUT name
+ */
+function findMatchingPreview(cubeFile, previews) {
+  const cubeName = cubeFile.normalizedName;
+  
+  // Try exact match first
+  for (const preview of previews) {
+    const previewName = normalizeLUTName(preview.lutName);
+    if (previewName === cubeName) {
+      return preview;
+    }
+  }
+  
+  // Try partial match (cube file contains preview name or vice versa)
+  for (const preview of previews) {
+    const previewName = normalizeLUTName(preview.lutName);
+    if (cubeName.includes(previewName) || previewName.includes(cubeName)) {
+      return preview;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Process ZIP file and extract .cube files, then update preview documents
+ */
+async function processLUTZipFile(asset, packName, dryRun = false) {
+  const zipPath = `assets/luts/${packName}.zip`;
+  const zipFile = bucket.file(zipPath);
+  const [zipExists] = await zipFile.exists();
+  
+  if (!zipExists) {
+    console.log(`  ℹ No ZIP file found at ${zipPath}, skipping extraction`);
+    return { extracted: 0, matched: 0, updated: 0 };
+  }
+  
+  console.log(`  📦 Found ZIP file, extracting .cube files from CUBE folder...`);
+  
+  const tempDir = path.join(os.tmpdir(), `lut-extract-${Date.now()}`);
+  const zipLocalPath = path.join(tempDir, 'asset.zip');
+  const extractDir = path.join(tempDir, 'extracted');
+  
+  try {
+    // Download ZIP
+    await fs.ensureDir(path.dirname(zipLocalPath));
+    await zipFile.download({ destination: zipLocalPath });
+    
+    // Extract .cube files (only from CUBE folders)
+    const cubeFiles = await unzipCubeFiles(zipLocalPath, extractDir);
+    
+    if (cubeFiles.length === 0) {
+      console.log(`  ⚠ No .cube files found in CUBE folder`);
+      return { extracted: 0, matched: 0, updated: 0 };
+    }
+    
+    console.log(`  Found ${cubeFiles.length} .cube file(s) in CUBE folder`);
+    
+    // Get existing preview documents
+    const previewsSnap = await db
+      .collection('assets')
+      .doc(asset.id)
+      .collection('lutPreviews')
+      .get();
+    
+    const previews = previewsSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    
+    if (previews.length === 0) {
+      console.log(`  ⚠ No preview documents found, create previews first`);
+      return { extracted: cubeFiles.length, matched: 0, updated: 0 };
+    }
+    
+    // Upload .cube files and match to previews
+    let matched = 0;
+    let updated = 0;
+    
+    for (const cubeFile of cubeFiles) {
+      const storagePath = `assets/luts/${packName}/${cubeFile.fileName}`;
+      
+      // Check if file already exists in Storage
+      const existingFile = bucket.file(storagePath);
+      const [exists] = await existingFile.exists();
+      
+      if (!exists) {
+        if (dryRun) {
+          console.log(`    [DRY RUN] Would upload: ${storagePath}`);
+        } else {
+          // Upload .cube file to Storage
+          await existingFile.save(await fs.readFile(cubeFile.localPath), {
+            metadata: {
+              contentType: 'application/octet-stream',
+            },
+          });
+          console.log(`    ✓ Uploaded: ${cubeFile.fileName}`);
+        }
+      } else {
+        console.log(`    ⏭ Already exists: ${cubeFile.fileName}`);
+      }
+      
+      // Find matching preview document
+      const matchingPreview = findMatchingPreview(cubeFile, previews);
+      
+      if (matchingPreview) {
+        // Check if preview already has lutFilePath
+        if (matchingPreview.lutFilePath && matchingPreview.lutFilePath === storagePath) {
+          console.log(`    ⏭ Preview "${matchingPreview.lutName}" already has correct file path`);
+          matched++;
+          continue;
+        }
+        
+        if (dryRun) {
+          console.log(`    [DRY RUN] Would update preview "${matchingPreview.lutName}" with file: ${cubeFile.fileName}`);
+        } else {
+          // Update preview document
+          await db
+            .collection('assets')
+            .doc(asset.id)
+            .collection('lutPreviews')
+            .doc(matchingPreview.id)
+            .update({
+              lutFilePath: storagePath,
+              fileName: cubeFile.fileName,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          console.log(`    ✓ Matched "${matchingPreview.lutName}" → ${cubeFile.fileName}`);
+        }
+        matched++;
+        updated++;
+      } else {
+        console.log(`    ⚠ No matching preview found for: ${cubeFile.fileName}`);
+      }
+    }
+    
+    return { extracted: cubeFiles.length, matched, updated };
+    
+  } catch (error) {
+    console.error(`  ✗ Error processing ZIP:`, error);
+    return { extracted: 0, matched: 0, updated: 0 };
+  } finally {
+    // Cleanup temp directory
+    await fs.remove(tempDir).catch(() => {});
+  }
 }
 
 /**
@@ -412,7 +659,17 @@ async function processPackFolder(packName, dryRun = false) {
     }
   }
 
-  return { processed, created, skipped };
+  // After creating/updating preview documents, process ZIP file
+  const zipResult = await processLUTZipFile(asset, packName, dryRun);
+  
+  return { 
+    processed, 
+    created, 
+    skipped,
+    extracted: zipResult.extracted,
+    matched: zipResult.matched,
+    updated: zipResult.updated,
+  };
 }
 
 /**
@@ -481,11 +738,25 @@ async function processAllAssets(dryRun = false) {
     if (packNames.size > 0) {
       console.log(`Found ${packNames.size} pack folder(s) in Storage\n`);
       
+      let totalExtracted = 0;
+      let totalMatched = 0;
+      let totalUpdated = 0;
+      
       for (const packName of packNames) {
         const result = await processPackFolder(packName, dryRun);
         totalProcessed += result.processed;
         totalCreated += result.created;
         totalSkipped += result.skipped;
+        totalExtracted += result.extracted || 0;
+        totalMatched += result.matched || 0;
+        totalUpdated += result.updated || 0;
+      }
+      
+      if (totalExtracted > 0 || totalMatched > 0) {
+        console.log(`\n=== ZIP Processing Summary ===`);
+        console.log(`Extracted .cube files: ${totalExtracted}`);
+        console.log(`Matched to previews: ${totalMatched}`);
+        console.log(`Updated preview documents: ${totalUpdated}`);
       }
     }
   }

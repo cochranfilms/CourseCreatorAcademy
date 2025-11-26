@@ -47,6 +47,8 @@ interface LUTPreview {
   lutName: string; // Name of the specific LUT (e.g., "Warm Ivory", "Elegant Taupe")
   beforeVideoPath: string; // Path to "before" video in Firebase Storage
   afterVideoPath: string; // Path to "after" video in Firebase Storage
+  lutFilePath?: string; // Path to the .cube file in Firebase Storage (for individual downloads)
+  fileName?: string; // Original filename of the .cube file
 }
 
 const categories: AssetCategory[] = ['All Packs', 'LUTs & Presets', 'Overlays & Transitions', 'SFX & Plugins', 'Templates'];
@@ -106,7 +108,7 @@ function getPublicStorageUrl(storagePath: string): string {
  * Side-by-Side Video Slider Component for LUT previews
  * Shows before/after videos with a draggable slider
  */
-function SideBySideVideoSlider({ asset }: { asset: Asset }) {
+function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { asset: Asset; previewId?: string; lutFilePath?: string; fileName?: string }) {
   const [beforeVideoUrl, setBeforeVideoUrl] = useState<string | null>(null);
   const [afterVideoUrl, setAfterVideoUrl] = useState<string | null>(null);
   const [sliderPosition, setSliderPosition] = useState(50); // Percentage (0-100)
@@ -302,24 +304,51 @@ function SideBySideVideoSlider({ asset }: { asset: Asset }) {
     }
   }, [isDragging, handleTouchMove, handleTouchEnd]);
 
+  const handlePackDownload = async () => {
+    const response = await fetch(`/api/assets/download?assetId=${asset.id}`);
+    if (!response.ok) throw new Error('Failed to get download URL');
+    const data = await response.json();
+    
+    const link = document.createElement('a');
+    link.href = data.downloadUrl;
+    link.download = asset.title.replace(/\s+/g, '_') + (asset.fileType ? `.${asset.fileType}` : '');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleDownload = async () => {
     if (downloading) return;
     
     setDownloading(true);
     try {
-      const response = await fetch(`/api/assets/download?assetId=${asset.id}`);
-      if (!response.ok) throw new Error('Failed to get download URL');
-      const data = await response.json();
-      
-      const link = document.createElement('a');
-      link.href = data.downloadUrl;
-      link.download = asset.title.replace(/\s+/g, '_') + (asset.fileType ? `.${asset.fileType}` : '');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // If this is a LUT preview with individual file, use that endpoint
+      if (lutFilePath && previewId) {
+        const response = await fetch(`/api/assets/lut-download?assetId=${asset.id}&previewId=${previewId}`);
+        if (!response.ok) {
+          const error = await response.json();
+          if (error.fallback) {
+            // Fallback to pack download
+            await handlePackDownload();
+            return;
+          }
+          throw new Error('Failed to get download URL');
+        }
+        const data = await response.json();
+        
+        const link = document.createElement('a');
+        link.href = data.downloadUrl;
+        link.download = data.fileName || fileName || asset.title.replace(/\s+/g, '_') + '.cube';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Fallback to pack download
+        await handlePackDownload();
+      }
     } catch (error) {
       console.error('Download error:', error);
-      alert('Failed to download asset. Please try again.');
+      alert('Failed to download LUT. Please try again.');
     } finally {
       setDownloading(false);
     }
@@ -1442,16 +1471,24 @@ export default function AssetsPage() {
             </div>
           ) : allLUTPreviews.length > 0 ? (
             <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {allLUTPreviews.map(({ preview, asset }) => {
-                // Create a temporary asset object with preview video paths for the slider component
-                const previewAsset: Asset = {
-                  ...asset,
-                  beforeVideoPath: preview.beforeVideoPath,
-                  afterVideoPath: preview.afterVideoPath,
-                  title: `${asset.title} - ${preview.lutName}`, // Show pack name + LUT name
-                };
-                return <SideBySideVideoSlider key={preview.id} asset={previewAsset} />;
-              })}
+            {allLUTPreviews.map(({ preview, asset }) => {
+              // Create a temporary asset object with preview video paths for the slider component
+              const previewAsset: Asset = {
+                ...asset,
+                beforeVideoPath: preview.beforeVideoPath,
+                afterVideoPath: preview.afterVideoPath,
+                title: preview.assetTitle || `${asset.title} - ${preview.lutName}`, // Use assetTitle from document, fallback to pack name + LUT name
+              };
+              return (
+                <SideBySideVideoSlider 
+                  key={preview.id} 
+                  asset={previewAsset}
+                  previewId={preview.id}
+                  lutFilePath={preview.lutFilePath}
+                  fileName={preview.fileName}
+                />
+              );
+            })}
             </div>
           ) : (
             <div className="mt-6 text-neutral-400 text-center">
