@@ -18,32 +18,68 @@ export async function GET(req: NextRequest) {
     }
 
     // Get LUT previews from subcollection (preferred location)
-    const lutPreviewsSnap = await adminDb
-      .collection('assets')
-      .doc(assetId)
-      .collection('lutPreviews')
-      .orderBy('lutName', 'asc')
-      .get();
+    // Try with orderBy first, fallback to no ordering if it fails (missing index or field)
+    let lutPreviewsSnap;
+    try {
+      lutPreviewsSnap = await adminDb
+        .collection('assets')
+        .doc(assetId)
+        .collection('lutPreviews')
+        .orderBy('lutName', 'asc')
+        .get();
+    } catch (orderByError: any) {
+      // If orderBy fails (missing index or field), try without ordering
+      console.warn(`[LUT Previews] orderBy failed for asset ${assetId}, fetching without order:`, orderByError?.message);
+      lutPreviewsSnap = await adminDb
+        .collection('assets')
+        .doc(assetId)
+        .collection('lutPreviews')
+        .get();
+    }
 
-    const lutPreviews = lutPreviewsSnap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
+    let lutPreviews = lutPreviewsSnap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
+    // Sort manually if orderBy failed
+    lutPreviews.sort((a: any, b: any) => {
+      const nameA = (a.lutName || '').toLowerCase();
+      const nameB = (b.lutName || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
     // If no previews found in subcollection, check flat collection for legacy documents
     if (lutPreviews.length === 0) {
-      const flatSnap = await adminDb
-        .collection('lutPreviews')
-        .where('assetId', '==', assetId)
-        .orderBy('lutName', 'asc')
-        .get();
+      let flatSnap;
+      try {
+        flatSnap = await adminDb
+          .collection('lutPreviews')
+          .where('assetId', '==', assetId)
+          .orderBy('lutName', 'asc')
+          .get();
+      } catch (orderByError: any) {
+        // If orderBy fails, try without ordering
+        console.warn(`[LUT Previews] orderBy failed for flat collection, fetching without order:`, orderByError?.message);
+        flatSnap = await adminDb
+          .collection('lutPreviews')
+          .where('assetId', '==', assetId)
+          .get();
+      }
 
-      flatSnap.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
-        lutPreviews.push({
-          id: doc.id,
-          ...doc.data(),
-        });
+      const flatPreviews = flatSnap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Sort manually
+      flatPreviews.sort((a: any, b: any) => {
+        const nameA = (a.lutName || '').toLowerCase();
+        const nameB = (b.lutName || '').toLowerCase();
+        return nameA.localeCompare(nameB);
       });
+
+      lutPreviews.push(...flatPreviews);
     }
 
     return NextResponse.json({ lutPreviews });
