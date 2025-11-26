@@ -447,7 +447,6 @@ export function LegacySubscriptions() {
             )}
           </div>
         </div>
-        </div>
       </div>
 
       {/* Legacy+ Subscriptions Section */}
@@ -461,7 +460,7 @@ export function LegacySubscriptions() {
           </div>
         ) : (
           <div className="space-y-4">
-          {subscriptions.map((sub) => (
+            {subscriptions.map((sub) => (
             <div
               key={sub.id}
               className="bg-neutral-950 border border-neutral-800 rounded-lg p-4 flex items-center justify-between"

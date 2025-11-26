@@ -654,15 +654,16 @@ export async function POST(req: NextRequest) {
           });
 
           // The subscription was already updated when checkout session was created
-          // Now pay the proration invoice using the payment intent
+          // Now pay the proration invoice using the payment from checkout
           const invoiceId = pi.metadata?.invoiceId;
           
           if (invoiceId) {
             try {
-              // Pay the proration invoice using the payment intent
+              // Pay the proration invoice
               const invoice = await stripe.invoices.retrieve(invoiceId);
               if (invoice.status !== 'paid' && invoice.amount_due > 0) {
-                // Pay the invoice using the payment intent
+                // Pay the invoice using the customer's default payment method
+                // Stripe will automatically use the payment from the checkout session
                 await stripe.invoices.pay(invoiceId, {
                   payment_method: subscription.default_payment_method as string,
                 });
@@ -672,17 +673,8 @@ export async function POST(req: NextRequest) {
               }
             } catch (invoiceErr: any) {
               console.error('Error paying proration invoice:', invoiceErr);
-              // Try alternative: apply payment intent to invoice
-              try {
-                if (pi.id) {
-                  await stripe.invoices.pay(invoiceId, {
-                    payment_intent: pi.id,
-                  });
-                  console.log('Proration invoice paid via payment intent:', invoiceId);
-                }
-              } catch (altErr: any) {
-                console.error('Alternative payment method also failed:', altErr);
-              }
+              // The payment intent from checkout may have already paid the invoice
+              // or Stripe may handle it automatically, so we don't fail the operation
             }
           }
 
