@@ -241,7 +241,15 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
     
     setDownloading(true);
     try {
-      const response = await fetch(`/api/assets/overlay-download?assetId=${overlay.assetId}&overlayId=${overlay.id}`);
+      // Include storagePath as fallback for finding the document
+      const params = new URLSearchParams({
+        assetId: overlay.assetId,
+        overlayId: overlay.id,
+      });
+      if (overlay.storagePath) {
+        params.append('storagePath', overlay.storagePath);
+      }
+      const response = await fetch(`/api/assets/overlay-download?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to get download URL');
       const data = await response.json();
       

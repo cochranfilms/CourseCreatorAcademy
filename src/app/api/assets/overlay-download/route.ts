@@ -33,22 +33,22 @@ export async function GET(req: NextRequest) {
         .get();
     }
 
-    // If still not found, try finding by assetId and overlayId combination
-    if (!overlayDoc.exists) {
-      const foundByAsset = await adminDb
+    // If still not found, try finding by storagePath if provided as query param
+    const storagePathParam = searchParams.get('storagePath');
+    if (!overlayDoc.exists && storagePathParam) {
+      const foundByPath = await adminDb
         .collection('overlays')
-        .where('assetId', '==', assetId)
-        .where('id', '==', overlayId)
+        .where('storagePath', '==', storagePathParam)
         .limit(1)
         .get();
       
-      if (!foundByAsset.empty) {
-        overlayDoc = foundByAsset.docs[0];
+      if (!foundByPath.empty) {
+        overlayDoc = foundByPath.docs[0];
       }
     }
 
     if (!overlayDoc.exists) {
-      console.error(`Overlay not found: assetId=${assetId}, overlayId=${overlayId}`);
+      console.error(`Overlay not found: assetId=${assetId}, overlayId=${overlayId}, storagePath=${storagePathParam || 'not provided'}`);
       return NextResponse.json({ error: 'Overlay not found' }, { status: 404 });
     }
 
