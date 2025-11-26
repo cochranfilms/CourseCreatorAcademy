@@ -500,6 +500,7 @@ export function LegacySubscriptions() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
