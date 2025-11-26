@@ -36,6 +36,47 @@ const AuthContext = createContext<AuthContextType>({
   resetPassword: async () => {}
 });
 
+// Helper function to check if user has active membership or pending membership to claim
+async function checkMembershipStatus(userId: string, email: string): Promise<boolean> {
+  if (!firebaseReady || !db) return false;
+  
+  try {
+    // Check if user has active membership
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      if (userData?.membershipActive === true) {
+        return true;
+      }
+    }
+    
+    // Check if user has pending membership to claim
+    if (email) {
+      const normalizedEmail = email.toLowerCase().trim();
+      const claimsQ = query(
+        collection(db, 'pendingMemberships'), 
+        where('email', '==', normalizedEmail), 
+        where('claimed', '==', false)
+      );
+      
+      const snap = await getDocs(claimsQ);
+      if (!snap.empty) {
+        // User has pending membership - allow them to sign in to claim it
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error checking membership status:', error);
+    // On error, be permissive to avoid blocking legitimate users
+    // This prevents false positives from blocking access
+    return true;
+  }
+}
+
 // Helper function to create/update user profile in Firestore
 async function ensureUserProfile(user: User) {
   if (!firebaseReady || !db) return;
@@ -103,12 +144,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      setLoading(false);
-      
-      // Ensure user profile exists in Firestore when user signs in
       if (user) {
+        // Check membership status before allowing sign-in
+        const hasMembership = await checkMembershipStatus(user.uid, user.email || '');
+        
+        if (!hasMembership) {
+          // Sign out user immediately if they don't have membership
+          console.log('User does not have active membership, signing out...');
+          try {
+            await signOut(auth);
+          } catch (signOutError) {
+            console.error('Error signing out user:', signOutError);
+          }
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        
+        // User has membership, proceed with normal flow
+        setUser(user);
+        setLoading(false);
+        
+        // Ensure user profile exists in Firestore when user signs in
         await ensureUserProfile(user);
+        
         // Attempt to auto-claim any guest purchases made with this email
         // Wrap in try-catch and handle errors gracefully to prevent app crashes
         try {
@@ -183,6 +242,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error('Failed to claim pending membership for user', e);
           }
         }
+      } else {
+        setUser(null);
+        setLoading(false);
       }
     });
 
@@ -191,7 +253,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     if (!auth) throw new Error('Firebase Auth not initialized');
-    await signInWithEmailAndPassword(auth, email, password);
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Check membership immediately after sign-in
+      const hasMembership = await checkMembershipStatus(result.user.uid, result.user.email || '');
+      
+      if (!hasMembership) {
+        // Sign out immediately if no membership
+        await signOut(auth);
+        throw new Error('Membership required. Please purchase a membership to access your account.');
+      }
+    } catch (error: any) {
+      // Re-throw membership errors
+      if (error.message?.includes('Membership required')) {
+        throw error;
+      }
+      // Re-throw other errors (like wrong password, user not found, etc.)
+      throw error;
+    }
   };
 
   const signUp = async (email: string, password: string) => {
@@ -202,26 +282,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     if (!auth) throw new Error('Firebase Auth not initialized');
     const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    // Ensure profile is created/updated
     try {
+      const result = await signInWithPopup(auth, provider);
+      
+      // Check membership immediately after sign-in
+      const hasMembership = await checkMembershipStatus(result.user.uid, result.user.email || '');
+      
+      if (!hasMembership) {
+        // Sign out immediately if no membership
+        await signOut(auth);
+        throw new Error('Membership required. Please purchase a membership to access your account.');
+      }
+      
+      // Ensure profile is created/updated
       await ensureUserProfile(result.user);
-    } catch (error) {
-      // Profile creation failure shouldn't block sign-in
-      console.error('Failed to ensure user profile after Google sign-in:', error);
+    } catch (error: any) {
+      // Re-throw membership errors
+      if (error.message?.includes('Membership required')) {
+        throw error;
+      }
+      // Re-throw other errors (like popup closed, network errors, etc.)
+      throw error;
     }
   };
 
   const signInWithFacebook = async () => {
     if (!auth) throw new Error('Firebase Auth not initialized');
     const provider = new FacebookAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    // Ensure profile is created/updated
     try {
+      const result = await signInWithPopup(auth, provider);
+      
+      // Check membership immediately after sign-in
+      const hasMembership = await checkMembershipStatus(result.user.uid, result.user.email || '');
+      
+      if (!hasMembership) {
+        // Sign out immediately if no membership
+        await signOut(auth);
+        throw new Error('Membership required. Please purchase a membership to access your account.');
+      }
+      
+      // Ensure profile is created/updated
       await ensureUserProfile(result.user);
-    } catch (error) {
-      // Profile creation failure shouldn't block sign-in
-      console.error('Failed to ensure user profile after Facebook sign-in:', error);
+    } catch (error: any) {
+      // Re-throw membership errors
+      if (error.message?.includes('Membership required')) {
+        throw error;
+      }
+      // Re-throw other errors (like popup closed, network errors, etc.)
+      throw error;
     }
   };
 
