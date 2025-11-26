@@ -111,12 +111,18 @@ function ClaimFromSessionId() {
             sessionStorage.removeItem('signup_email');
             sessionStorage.removeItem('signup_password');
             sessionStorage.removeItem('signup_userId');
+            sessionStorage.removeItem('signup_checkout_flow');
             router.replace('/home');
             return;
           } catch (signInError: any) {
             console.error('Failed to sign in with password:', signInError);
             // Fall through to custom token method if password sign-in fails
           }
+        }
+        
+        // Also clear checkout flow flag if present
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('signup_checkout_flow');
         }
         
         // Fallback: use custom token method (for OAuth accounts or legacy flow)

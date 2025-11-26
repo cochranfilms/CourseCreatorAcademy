@@ -97,6 +97,11 @@ export default function SignupPage() {
     setError('');
     setLoading(true);
     try {
+      // Set flag to allow checkout flow even without membership
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('signup_checkout_flow', 'true');
+      }
+      
       await signInWithGoogle();
       // After Google sign-in, user will be authenticated
       // Open checkout with the pending plan
@@ -104,8 +109,18 @@ export default function SignupPage() {
       setOpen(true);
       setIsGoogleOnlyAccount(false);
       setPendingPlan(null);
+      
+      // Clear the flag after successful sign-in
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('signup_checkout_flow');
+      }
     } catch (err: any) {
       console.error('Google sign-in error:', err);
+      // Clear flag on error
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('signup_checkout_flow');
+      }
+      
       if (err.message?.includes('Membership required')) {
         // User signed in but doesn't have membership - that's fine, proceed to checkout
         setPlan(pendingPlan);
@@ -255,6 +270,7 @@ export default function SignupPage() {
           sessionStorage.removeItem('signup_email');
           sessionStorage.removeItem('signup_password');
           sessionStorage.removeItem('signup_userId');
+          sessionStorage.removeItem('signup_checkout_flow');
         }}
       />
     </div>
