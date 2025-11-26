@@ -389,7 +389,7 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
         return `/marketplace`;
       case 'job':
         return `/opportunities`;
-      case 'asset':
+      case 'asset': {
         // Navigate to the correct category/subcategory using URL hash or query params
         // We'll use a hash to preserve the category state
         let href = '/assets';
@@ -423,6 +423,7 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
           }
         }
         return href;
+      }
       case 'video':
         return item.courseSlug 
           ? `/learn/${item.courseSlug}/module/${item.moduleId}/lesson/${item.lessonId}`
