@@ -65,10 +65,24 @@ export default function SignupPage() {
           const hasPasswordProvider = signInMethods.includes('password');
           
           if (hasGoogleProvider && !hasPasswordProvider) {
-            // Account exists with Google only - offer to sign in with Google
+            // Account exists with Google only - automatically sign in with Google
             setIsGoogleOnlyAccount(true);
             setPendingPlan(selectedPlan);
-            setError('This email is already registered with Google. Please sign in with Google to continue with your purchase.');
+            setError('This email is registered with Google. Signing you in...');
+            
+            // Automatically sign in with Google and proceed to checkout
+            // Pass the plan directly to avoid React state timing issues
+            // Use setTimeout to allow error state to update UI first
+            setTimeout(async () => {
+              try {
+                await handleGoogleSignInForCheckout(selectedPlan);
+              } catch (autoSignInError: any) {
+                console.error('Auto sign-in error:', autoSignInError);
+                // If auto sign-in fails, show the manual button option
+                setError('This email is already registered with Google. Please sign in with Google to continue with your purchase.');
+              }
+            }, 100);
+            return; // Exit early, checkout will open via handleGoogleSignInForCheckout
           } else {
             // Account exists with password or other providers
             setError('An account with this email already exists. Please sign in instead.');
@@ -91,8 +105,9 @@ export default function SignupPage() {
   };
 
   // Handle Google sign-in for existing Google-only accounts
-  const handleGoogleSignInForCheckout = async () => {
-    if (!pendingPlan) return;
+  const handleGoogleSignInForCheckout = async (planToUse?: 'membership87' | 'monthly37' | 'noFees60') => {
+    const plan = planToUse || pendingPlan;
+    if (!plan) return;
     
     setError('');
     setLoading(true);
@@ -106,8 +121,8 @@ export default function SignupPage() {
       
       await signInWithGoogle(true); // Pass true to allow checkout flow
       // After Google sign-in, user will be authenticated
-      // Open checkout with the pending plan
-      setPlan(pendingPlan);
+      // Open checkout with the plan
+      setPlan(plan);
       setOpen(true);
       setIsGoogleOnlyAccount(false);
       setPendingPlan(null);
@@ -120,7 +135,7 @@ export default function SignupPage() {
       if (err.message?.includes('Membership required')) {
         // User signed in but doesn't have membership - that's fine, proceed to checkout
         // The flag should still be set, so checkout can proceed
-        setPlan(pendingPlan);
+        setPlan(plan);
         setOpen(true);
         setIsGoogleOnlyAccount(false);
         setPendingPlan(null);
