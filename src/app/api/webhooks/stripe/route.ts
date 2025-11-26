@@ -136,6 +136,111 @@ export async function POST(req: NextRequest) {
           console.error('Error processing job final payment checkout:', err);
         }
       }
+
+      // Handle plan upgrade checkout completion (payment mode, not subscription mode)
+      // This is a backup handler - payment_intent.succeeded should also handle this
+      if (session.metadata?.action === 'upgrade_plan' && session.metadata?.subscriptionId && session.metadata?.newPlanType && adminDb) {
+        try {
+          const subscriptionId = session.metadata.subscriptionId;
+          const newPlanType = session.metadata.newPlanType;
+          const buyerId = session.metadata.buyerId || session.client_reference_id;
+
+          console.log('[checkout.session.completed] Processing plan upgrade:', {
+            subscriptionId,
+            newPlanType,
+            buyerId,
+            paymentIntent: session.payment_intent,
+          });
+
+          // Update subscription in Stripe
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const currentItem = subscription.items.data[0];
+          
+          if (!currentItem) {
+            console.error('[checkout.session.completed] No subscription items found for upgrade');
+            break;
+          }
+
+          // Create or find product
+          let product;
+          const products = await stripe.products.list({ limit: 100 });
+          product = products.data.find((p) => p.name === 'CCA Membership' || p.name?.includes('CCA'));
+          
+          if (!product) {
+            product = await stripe.products.create({
+              name: 'CCA Membership',
+              description: 'Course Creator Academy membership plans',
+            });
+          }
+
+          // Get plan price
+          const planPrices: Record<string, number> = {
+            cca_monthly_37: 3700,
+            cca_no_fees_60: 6000,
+            cca_membership_87: 8700,
+          };
+          const newPrice = planPrices[newPlanType];
+          
+          if (!newPrice) {
+            console.error('[checkout.session.completed] Invalid plan type for upgrade:', newPlanType);
+            break;
+          }
+
+          // Create new price
+          const price = await stripe.prices.create({
+            currency: 'usd',
+            unit_amount: newPrice,
+            recurring: { interval: 'month' },
+            product: product.id,
+            metadata: {
+              planType: newPlanType,
+            },
+          });
+
+          // Update the subscription to the new plan
+          const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
+            items: [{
+              id: currentItem.id,
+              price: price.id,
+            }],
+            proration_behavior: 'always_invoice',
+            metadata: {
+              planType: newPlanType,
+              buyerId: buyerId || '',
+            },
+          });
+
+          console.log('[checkout.session.completed] Subscription updated in Stripe:', {
+            subscriptionId,
+            newPlanType,
+            updatedSubscriptionId: updatedSubscription.id,
+          });
+
+          // Immediately update Firebase
+          if (buyerId) {
+            try {
+              await adminDb
+                .collection('users')
+                .doc(String(buyerId))
+                .set(
+                  {
+                    membershipActive: true,
+                    membershipPlan: newPlanType,
+                    membershipSubscriptionId: String(subscriptionId),
+                    updatedAt: FieldValue.serverTimestamp(),
+                  },
+                  { merge: true }
+                );
+              console.log('[checkout.session.completed] Firebase updated with new plan:', { buyerId, newPlanType });
+            } catch (firebaseErr: any) {
+              console.error('[checkout.session.completed] Failed to update Firebase after upgrade:', firebaseErr);
+            }
+          }
+        } catch (err: any) {
+          console.error('[checkout.session.completed] Failed to process plan upgrade:', err);
+          // Don't break - let payment_intent.succeeded handle it as backup
+        }
+      }
       try {
         if (isSubscription && adminDb) {
           // Legacy+ subscription flow (created on platform account)
@@ -598,22 +703,86 @@ export async function POST(req: NextRequest) {
         amount: pi.amount,
         currency: pi.currency,
         application_fee_amount: pi.application_fee_amount,
-        metadata: pi.metadata
+        metadata: pi.metadata,
+        // Also check if metadata exists but is empty
+        hasMetadata: !!pi.metadata,
+        metadataKeys: pi.metadata ? Object.keys(pi.metadata) : [],
       });
 
       // Handle plan upgrade payment
-      if (pi.metadata && pi.metadata.action === 'upgrade_plan' && pi.metadata.subscriptionId && pi.metadata.newPlanType) {
+      // Check both payment intent metadata and try to retrieve from checkout session if needed
+      let upgradeMetadata = pi.metadata;
+      
+      // If metadata is missing but we have a checkout session, try to get it from there
+      if ((!upgradeMetadata || !upgradeMetadata.action) && pi.id) {
         try {
-          const subscriptionId = pi.metadata.subscriptionId;
-          const newPlanType = pi.metadata.newPlanType;
-          const buyerId = pi.metadata.buyerId;
+          // Try to find the checkout session that created this payment intent
+          const sessions = await stripe.checkout.sessions.list({
+            payment_intent: pi.id,
+            limit: 1,
+          });
+          if (sessions.data.length > 0) {
+            const session = sessions.data[0];
+            if (session.metadata?.action === 'upgrade_plan') {
+              upgradeMetadata = session.metadata;
+              console.log('[payment_intent.succeeded] Retrieved metadata from checkout session:', upgradeMetadata);
+            }
+          }
+        } catch (sessionErr: any) {
+          console.error('[payment_intent.succeeded] Failed to retrieve checkout session:', sessionErr);
+        }
+      }
+
+      if (upgradeMetadata && upgradeMetadata.action === 'upgrade_plan' && upgradeMetadata.subscriptionId && upgradeMetadata.newPlanType) {
+        try {
+          const subscriptionId = upgradeMetadata.subscriptionId;
+          const newPlanType = upgradeMetadata.newPlanType;
+          const buyerId = upgradeMetadata.buyerId;
+
+          console.log('[payment_intent.succeeded] Processing plan upgrade:', {
+            subscriptionId,
+            newPlanType,
+            buyerId,
+            paymentIntentId: pi.id,
+            amount: pi.amount,
+          });
 
           // Get the subscription
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           const currentItem = subscription.items.data[0];
           
           if (!currentItem) {
-            console.error('No subscription items found for upgrade');
+            console.error('[payment_intent.succeeded] No subscription items found for upgrade');
+            break;
+          }
+
+          // Check if subscription is already on the new plan (idempotency)
+          const currentPlanType = subscription.metadata?.planType;
+          if (currentPlanType === newPlanType) {
+            console.log('[payment_intent.succeeded] Subscription already on target plan, skipping update:', {
+              subscriptionId,
+              newPlanType,
+            });
+            // Still update Firebase to ensure sync
+            if (adminDb && buyerId) {
+              try {
+                await adminDb
+                  .collection('users')
+                  .doc(String(buyerId))
+                  .set(
+                    {
+                      membershipActive: true,
+                      membershipPlan: newPlanType,
+                      membershipSubscriptionId: String(subscriptionId),
+                      updatedAt: FieldValue.serverTimestamp(),
+                    },
+                    { merge: true }
+                  );
+                console.log('[payment_intent.succeeded] Firebase synced (already on target plan):', { buyerId, newPlanType });
+              } catch (firebaseErr: any) {
+                console.error('[payment_intent.succeeded] Failed to sync Firebase:', firebaseErr);
+              }
+            }
             break;
           }
 
@@ -695,9 +864,20 @@ export async function POST(req: NextRequest) {
           // Stripe will attempt to charge it using the customer's default payment method
           // Since we already collected payment via checkout, the invoice should be paid
           // If not, it will be charged on the next billing cycle
-          console.log('Subscription upgraded successfully:', { subscriptionId, newPlanType });
+          console.log('[payment_intent.succeeded] Subscription upgraded successfully:', {
+            subscriptionId,
+            newPlanType,
+            updatedSubscriptionId: updatedSubscription.id,
+            buyerId,
+          });
         } catch (err: any) {
-          console.error('Failed to upgrade subscription after payment:', err);
+          console.error('[payment_intent.succeeded] Failed to upgrade subscription after payment:', {
+            error: err.message,
+            stack: err.stack,
+            subscriptionId: pi.metadata?.subscriptionId,
+            newPlanType: pi.metadata?.newPlanType,
+            buyerId: pi.metadata?.buyerId,
+          });
         }
       }
 
