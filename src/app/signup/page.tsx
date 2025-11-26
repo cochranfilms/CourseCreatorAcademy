@@ -104,7 +104,7 @@ export default function SignupPage() {
         console.log('[Signup] Set signup_checkout_flow flag to true');
       }
       
-      await signInWithGoogle();
+      await signInWithGoogle(true); // Pass true to allow checkout flow
       // After Google sign-in, user will be authenticated
       // Open checkout with the pending plan
       setPlan(pendingPlan);

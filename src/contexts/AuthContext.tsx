@@ -21,7 +21,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (allowCheckoutFlow?: boolean) => Promise<void>;
   signInWithFacebook: () => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -335,7 +335,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     throw new Error('Direct signup is disabled. Start a membership to create your account.');
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (allowCheckoutFlow: boolean = false) => {
     if (!auth) throw new Error('Firebase Auth not initialized');
     const provider = new GoogleAuthProvider();
     
@@ -362,11 +362,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Only block if we definitively confirmed NO membership
       if (membershipCheck === false) {
         // Don't sign out if user is in signup checkout flow (they're trying to purchase membership)
-        const isInCheckoutFlow = typeof window !== 'undefined' && sessionStorage.getItem('signup_checkout_flow') === 'true';
+        const isInCheckoutFlow = allowCheckoutFlow || (typeof window !== 'undefined' && sessionStorage.getItem('signup_checkout_flow') === 'true');
         const isOnSignupPage = typeof window !== 'undefined' && window.location.pathname === '/signup';
         
         console.log('[Google Sign-In] Membership check:', { 
           hasMembership: false, 
+          allowCheckoutFlow,
           isInCheckoutFlow, 
           isOnSignupPage,
           pathname: typeof window !== 'undefined' ? window.location.pathname : 'N/A',
