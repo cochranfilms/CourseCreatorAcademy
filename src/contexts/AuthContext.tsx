@@ -8,6 +8,8 @@ import {
   signOut, 
   sendPasswordResetEmail,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   FacebookAuthProvider
 } from 'firebase/auth';
@@ -309,16 +311,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
       
-      // If popup was blocked or failed, try redirect as fallback
-      if (error.code === 'auth/popup-blocked' || 
-          error.code === 'auth/popup-closed-by-user' ||
-          error.message?.includes('popup') ||
-          error.message?.includes('blocked')) {
-        // Use redirect instead
+      // If popup was closed unexpectedly, provide helpful error
+      if (error.code === 'auth/popup-closed-by-user') {
+        // This usually means the popup closed due to configuration issues
+        // Provide detailed error message
+        throw new Error(
+          'Google sign-in popup closed unexpectedly. ' +
+          'This may be due to OAuth configuration. ' +
+          'Please ensure coursecreatoracademy.vercel.app is added to Google Cloud Console ' +
+          'Authorized JavaScript origins, or try using email/password sign-in.'
+        );
+      }
+      
+      // If popup was blocked
+      if (error.code === 'auth/popup-blocked') {
         throw new Error('Popup blocked. Please allow popups for this site or use email/password sign-in.');
       }
       
-      // Re-throw other errors
+      // Re-throw other errors with more context
+      console.error('Google sign-in error:', error);
       throw error;
     }
   };

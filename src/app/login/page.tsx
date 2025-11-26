@@ -39,7 +39,18 @@ export default function LoginPage() {
       await signInWithGoogle();
       router.push('/');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google. Please try again.');
+      console.error('Google sign-in error:', err);
+      // Provide more helpful error messages
+      let errorMessage = err.message || 'Failed to sign in with Google. Please try again.';
+      
+      // If popup closed, provide specific guidance
+      if (err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup closed')) {
+        errorMessage = err.message || 
+          'Google sign-in popup closed. This may be a configuration issue. ' +
+          'Please try email/password sign-in or contact support.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setSocialLoading(null);
     }

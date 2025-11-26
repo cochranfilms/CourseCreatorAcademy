@@ -28,22 +28,26 @@ Google sign-in popup redirects to `course-creator-academy-866d6.firebaseapp.com`
    ```
    This is correct - Firebase handles the redirect internally.
 
-### Step 3: Verify Google Cloud Console OAuth Settings
+### Step 3: ⚠️ CRITICAL - Add Vercel Domain to Google Cloud Console OAuth Settings
+
+**This is the most common cause of "popup-closed-by-user" errors!**
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Select project: **course-creator-academy-866d6**
 3. Navigate to **APIs & Services** → **Credentials**
-4. Find your **OAuth 2.0 Client ID** (the one used by Firebase)
-5. Click to edit it
-6. Under **Authorized JavaScript origins**, ensure you have:
-   - `https://coursecreatoracademy.vercel.app`
+4. Find your **OAuth 2.0 Client ID** (look for one with name like "Web client" or "Firebase")
+   - If you see multiple, check which one Firebase is using in Firebase Console → Authentication → Sign-in method → Google
+5. Click to **edit** the OAuth client
+6. Under **Authorized JavaScript origins**, click **+ ADD URI** and add:
+   - `https://coursecreatoracademy.vercel.app` ⚠️ **MUST ADD THIS**
    - `https://www.coursecreatoracademy.vercel.app` (if using www)
-   - `https://course-creator-academy-866d6.firebaseapp.com` (Firebase default)
+   - `https://course-creator-academy-866d6.firebaseapp.com` (should already be there)
    - Your custom domain if applicable
 7. Under **Authorized redirect URIs**, ensure you have:
    - `https://course-creator-academy-866d6.firebaseapp.com/__/auth/handler`
    - (This is the Firebase handler - don't add your Vercel domain here)
 8. Click **Save**
+9. **Wait 1-2 minutes** for changes to propagate
 
 ### Step 4: Test the Fix
 
@@ -70,9 +74,18 @@ Firebase Auth uses the `authDomain` from your config (`course-creator-academy-86
 
 ### Common Errors:
 
+- **"auth/popup-closed-by-user"**: ⚠️ **Most common cause**: Vercel domain not added to Google Cloud Console "Authorized JavaScript origins". See Step 3 above.
 - **"Popup blocked"**: Browser is blocking popups - allow popups for your site
 - **"Redirect URI mismatch"**: Check Google Cloud Console authorized redirect URIs
 - **"Unauthorized domain"**: Domain not added to Firebase authorized domains
+
+### ⚠️ If you're still getting "popup-closed-by-user" error:
+
+1. **Double-check Google Cloud Console** - Go to APIs & Services → Credentials → Edit your OAuth client
+2. **Verify** `https://coursecreatoracademy.vercel.app` is in "Authorized JavaScript origins" (NOT redirect URIs)
+3. **Save and wait 2-3 minutes** for changes to propagate
+4. **Clear browser cache** and try again
+5. **Check browser console** for any additional error messages
 
 ## Alternative: Use Redirect Instead of Popup
 
