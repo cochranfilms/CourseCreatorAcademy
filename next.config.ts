@@ -26,7 +26,8 @@ const nextConfig: NextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-XSS-Protection', value: '0' },
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          // Use 'same-origin-allow-popups' to allow OAuth popups while maintaining security
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
           { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
         ],
       },
