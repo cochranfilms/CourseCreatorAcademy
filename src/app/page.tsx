@@ -397,15 +397,96 @@ export default function Page() {
       </section>
 
       {/* What's Inside Section */}
-      <section id="curriculum" className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
-        <div className="text-center mb-6 sm:mb-8 md:mb-12 px-2">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">WHAT'S INSIDE</h2>
-          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 leading-relaxed">A complete curriculum for creators.</p>
+      <section id="curriculum" className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full overflow-hidden">
+        {/* Background gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ccaBlue/5 to-transparent pointer-events-none" />
+        
+        <div className="relative z-10 text-center mb-8 sm:mb-12 md:mb-16 px-2">
+          <div className="inline-block px-4 py-1.5 rounded-full bg-ccaBlue/10 border border-ccaBlue/30 text-ccaBlue text-xs sm:text-sm font-semibold mb-4 sm:mb-6">
+            COMPREHENSIVE CURRICULUM
+          </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-4 sm:mb-6 text-white drop-shadow-2xl leading-tight">
+            WHAT'S INSIDE
+          </h2>
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-300 max-w-3xl mx-auto leading-relaxed">
+            A complete curriculum for creators. Master every aspect of professional filmmaking and content creation.
+          </p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 px-2">
-          {categories.map((c) => (
-            <div key={c} className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-neutral-800 bg-gradient-to-br from-neutral-950 to-neutral-900 text-xs sm:text-sm font-medium active:border-ccaBlue/50 hover:border-ccaBlue/50 active:bg-neutral-900 hover:bg-neutral-900 transition touch-manipulation text-center">
-              {c}
+
+        {/* Enhanced Category Grid */}
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 px-2">
+          {categories.map((category, index) => {
+            // Assign icons/colors to categories for visual interest
+            const categoryIcons: { [key: string]: string } = {
+              'Lighting': '💡',
+              'Composition': '🎨',
+              'Cinematography': '🎬',
+              'Editing': '✂️',
+              'Audio': '🎵',
+              'Business': '💼',
+              'YouTube': '📺',
+              'Weddings': '💒',
+              'Real Estate': '🏠',
+              'Commercial': '📊',
+              'Travel': '✈️',
+              'Photo': '📸',
+              'Color': '🌈',
+              'FPV': '🚁',
+              'After Effects': '⚡',
+              'Gear': '📷'
+            };
+
+            const icon = categoryIcons[category] || '🎯';
+            
+            return (
+              <div
+                key={category}
+                className="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-neutral-800 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 p-4 sm:p-5 md:p-6 transition-all duration-300 hover:border-ccaBlue/60 hover:shadow-lg hover:shadow-ccaBlue/20 hover:-translate-y-1 active:scale-95 touch-manipulation cursor-pointer"
+              >
+                {/* Animated background gradient on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-ccaBlue/0 via-ccaBlue/0 to-purple-500/0 group-hover:from-ccaBlue/10 group-hover:via-purple-500/5 group-hover:to-pink-500/5 transition-all duration-300 opacity-0 group-hover:opacity-100" />
+                
+                {/* Content */}
+                <div className="relative z-10 flex flex-col items-center justify-center text-center min-h-[100px] sm:min-h-[120px]">
+                  {/* Icon */}
+                  <div className="text-3xl sm:text-4xl md:text-5xl mb-2 sm:mb-3 transform group-hover:scale-110 transition-transform duration-300">
+                    {icon}
+                  </div>
+                  
+                  {/* Category Name */}
+                  <div className="text-xs sm:text-sm md:text-base font-semibold text-white group-hover:text-ccaBlue transition-colors duration-300">
+                    {category}
+                  </div>
+                  
+                  {/* Subtle accent line */}
+                  <div className="mt-2 sm:mt-3 w-8 h-0.5 bg-gradient-to-r from-transparent via-ccaBlue/0 to-transparent group-hover:via-ccaBlue group-hover:w-12 transition-all duration-300" />
+                </div>
+
+                {/* Shine effect on hover */}
+                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Stats Row */}
+        <div className="relative z-10 mt-8 sm:mt-12 md:mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 px-2">
+          {[
+            { value: '800+', label: 'Video Lessons' },
+            { value: '500+', label: 'Hours of Content' },
+            { value: '16', label: 'Categories' },
+            { value: '100%', label: 'Expert-Led' }
+          ].map((stat, idx) => (
+            <div
+              key={idx}
+              className="bg-gradient-to-br from-neutral-950/80 to-neutral-900/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-neutral-800/50 p-4 sm:p-5 md:p-6 text-center hover:border-ccaBlue/50 transition-all duration-300"
+            >
+              <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-ccaBlue mb-1 sm:mb-2">
+                {stat.value}
+              </div>
+              <div className="text-xs sm:text-sm text-neutral-400 font-medium">
+                {stat.label}
+              </div>
             </div>
           ))}
         </div>
