@@ -163,6 +163,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Only block if we definitively confirmed NO membership
         // null = couldn't verify (allow access), true = has membership (allow), false = no membership (block)
         if (membershipCheck === false) {
+          // Don't sign out if user is on signup page (they're trying to purchase membership)
+          const isOnSignupPage = typeof window !== 'undefined' && window.location.pathname === '/signup';
+          if (isOnSignupPage) {
+            console.log('[Auth] User on signup page without membership - allowing to proceed with checkout');
+            setUser(user);
+            setLoading(false);
+            await ensureUserProfile(user);
+            return;
+          }
+          
           // Sign out user immediately if we confirmed they don't have membership
           console.log('[Auth] User does not have active membership, signing out...');
           try {
@@ -341,6 +351,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Only block if we definitively confirmed NO membership
       if (membershipCheck === false) {
+        // Don't sign out if user is on signup page (they're trying to purchase membership)
+        const isOnSignupPage = typeof window !== 'undefined' && window.location.pathname === '/signup';
+        if (isOnSignupPage) {
+          console.log('[Google Sign-In] User on signup page without membership - allowing to proceed with checkout');
+          await ensureUserProfile(result.user);
+          return; // Don't throw error, allow checkout to proceed
+        }
+        
         console.log('[Google Sign-In] User does not have membership, signing out...');
         // Sign out immediately if we confirmed no membership
         await signOut(auth);

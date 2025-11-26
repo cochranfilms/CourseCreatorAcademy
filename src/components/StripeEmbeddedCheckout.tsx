@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 type PlanKey = 'membership87' | 'monthly37' | 'noFees60';
 
@@ -12,6 +13,7 @@ export function StripeEmbeddedCheckout({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [mounting, setMounting] = useState(false);
 
@@ -22,9 +24,9 @@ export function StripeEmbeddedCheckout({
       if (!isOpen || !plan) return;
       setMounting(true);
       try {
-        // Get Firebase UID from sessionStorage if available (from signup)
-        const userId = typeof window !== 'undefined' ? sessionStorage.getItem('signup_userId') : null;
-        const customerEmail = typeof window !== 'undefined' ? sessionStorage.getItem('signup_email') : null;
+        // Prefer authenticated user info, fallback to sessionStorage (from signup)
+        const userId = user?.uid || (typeof window !== 'undefined' ? sessionStorage.getItem('signup_userId') : null);
+        const customerEmail = user?.email || (typeof window !== 'undefined' ? sessionStorage.getItem('signup_email') : null);
         
         let endpoint = '/api/subscribe/monthly';
         if (plan === 'membership87') {
