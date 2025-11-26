@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import { doc, getDoc, collection, getDocs, query, orderBy, limit, getDocFromCache, getDocsFromCache } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { auth } from '@/lib/firebaseClient';
-import { signInWithCustomToken, fetchSignInMethodsForEmail, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithCustomToken, fetchSignInMethodsForEmail, sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getMuxAnimatedGifUrl } from '@/lib/muxThumbnails';
 
@@ -99,6 +99,27 @@ function ClaimFromSessionId() {
     let cancelled = false;
     const run = async () => {
       try {
+        // Check if we have stored credentials from signup (password was set during signup)
+        const signupEmail = typeof window !== 'undefined' ? sessionStorage.getItem('signup_email') : null;
+        const signupPassword = typeof window !== 'undefined' ? sessionStorage.getItem('signup_password') : null;
+        
+        if (signupEmail && signupPassword) {
+          // Sign in with email/password (account was created with password during signup)
+          try {
+            await signInWithEmailAndPassword(auth, signupEmail, signupPassword);
+            // Clear stored credentials
+            sessionStorage.removeItem('signup_email');
+            sessionStorage.removeItem('signup_password');
+            sessionStorage.removeItem('signup_userId');
+            router.replace('/home');
+            return;
+          } catch (signInError: any) {
+            console.error('Failed to sign in with password:', signInError);
+            // Fall through to custom token method if password sign-in fails
+          }
+        }
+        
+        // Fallback: use custom token method (for OAuth accounts or legacy flow)
         const res = await fetch(`/api/auth/claim?session_id=${encodeURIComponent(sessionId)}`, { method: 'GET' });
         const json = await res.json();
         if (json?.token && !cancelled) {

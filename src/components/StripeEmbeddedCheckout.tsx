@@ -22,11 +22,19 @@ export function StripeEmbeddedCheckout({
       if (!isOpen || !plan) return;
       setMounting(true);
       try {
+        // Get Firebase UID from sessionStorage if available (from signup)
+        const userId = typeof window !== 'undefined' ? sessionStorage.getItem('signup_userId') : null;
+        const customerEmail = typeof window !== 'undefined' ? sessionStorage.getItem('signup_email') : null;
+        
         const endpoint = plan === 'membership87' ? '/api/subscribe/membership' : '/api/subscribe/monthly';
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ embedded: true })
+          body: JSON.stringify({ 
+            embedded: true,
+            buyerId: userId || undefined,
+            customerEmail: customerEmail || undefined
+          })
         });
         const json = await res.json();
         const clientSecret = json?.clientSecret;
