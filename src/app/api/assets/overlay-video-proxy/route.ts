@@ -53,13 +53,29 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
     
-    // Since overlay files are public, construct the public Firebase Storage URL
-    // Format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encodedPath}?alt=media
-    const encodedPath = encodeURIComponent(storagePath).replace(/%2F/g, '/');
-    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media`;
+    // For public files, construct the public Firebase Storage URL
+    // Format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encodedPath}?alt=media&token={token}
+    // Firebase Storage requires each path segment to be encoded separately
+    const pathSegments = storagePath.split('/');
+    const encodedSegments = pathSegments.map(segment => encodeURIComponent(segment));
+    const encodedPath = encodedSegments.join('/');
     
-    // Return the public URL - Firebase Storage handles CORS and range requests
-    return NextResponse.json({ videoUrl: publicUrl });
+    // Use signed URL with very long expiration for public files
+    // This ensures proper encoding and CORS headers
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 10); // 10 years
+    
+    const [publicUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: expiresAt,
+      version: 'v4',
+    });
+    
+    // Return the signed URL (acts as public URL) and file type
+    return NextResponse.json({ 
+      videoUrl: publicUrl,
+      fileType: fileType.toLowerCase()
+    });
   } catch (err: any) {
     console.error('Error proxying video:', err);
     return NextResponse.json({ error: err?.message || 'Failed to proxy video' }, { status: 500 });

@@ -81,31 +81,36 @@ function formatDuration(seconds: number): string {
  * Overlay Player Component - Shows looping video preview in 16:9 format
  */
 function OverlayPlayer({ overlay }: { overlay: Overlay }) {
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const [isVideo, setIsVideo] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    // Load public video URL from proxy endpoint
-    const loadVideoUrl = async () => {
+    // Load public media URL from proxy endpoint
+    const loadMediaUrl = async () => {
       try {
         const response = await fetch(`/api/assets/overlay-video-proxy?assetId=${overlay.assetId}&overlayId=${overlay.id}`);
         if (response.ok) {
           const data = await response.json();
-          setVideoUrl(data.videoUrl);
+          setMediaUrl(data.videoUrl);
+          // Check if file is a video based on extension
+          const fileType = data.fileType || overlay.fileType || '';
+          const videoExtensions = ['mov', 'mp4', 'avi', 'mkv', 'webm', 'm4v'];
+          setIsVideo(videoExtensions.includes(fileType.toLowerCase()));
         }
       } catch (error) {
-        console.error('Error loading video URL:', error);
+        console.error('Error loading media URL:', error);
       }
     };
-    loadVideoUrl();
+    loadMediaUrl();
   }, [overlay]);
 
-  // Setup video element and auto-play when URL is loaded
+  // Setup video element and auto-play when URL is loaded (only for videos)
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoUrl) return;
+    if (!video || !mediaUrl || !isVideo) return;
 
     // Set video attributes
     video.loop = true;
@@ -142,7 +147,7 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
       video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('canplay', handleCanPlay);
     };
-  }, [videoUrl]);
+  }, [mediaUrl, isVideo]);
 
   const handleDownload = async (e?: React.MouseEvent) => {
     if (e) {
@@ -176,28 +181,39 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
       className="border border-neutral-700 bg-black rounded-lg overflow-hidden hover:border-neutral-500 transition-colors cursor-pointer group"
       onClick={() => handleDownload()}
     >
-      {/* 16:9 Video Preview */}
+      {/* 16:9 Media Preview */}
       <div className="aspect-video bg-gradient-to-br from-neutral-900 to-black relative overflow-hidden">
-        {videoUrl ? (
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            className="w-full h-full object-cover"
-            playsInline
-            muted
-            loop
-            preload="auto"
-            onError={(e) => {
-              console.error('Video error:', e);
-              const video = e.currentTarget;
-              console.error('Video error details:', {
-                error: video.error,
-                networkState: video.networkState,
-                readyState: video.readyState,
-                src: video.src
-              });
-            }}
-          />
+        {mediaUrl ? (
+          isVideo ? (
+            <video
+              ref={videoRef}
+              src={mediaUrl}
+              className="w-full h-full object-cover"
+              playsInline
+              muted
+              loop
+              preload="auto"
+              onError={(e) => {
+                console.error('Video error:', e);
+                const video = e.currentTarget;
+                console.error('Video error details:', {
+                  error: video.error,
+                  networkState: video.networkState,
+                  readyState: video.readyState,
+                  src: video.src
+                });
+              }}
+            />
+          ) : (
+            <img
+              src={mediaUrl}
+              alt={overlay.fileName}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                console.error('Image error:', e);
+              }}
+            />
+          )
         ) : (
           <div className="w-full h-full flex items-center justify-center text-ccaBlue/50">
             <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
