@@ -87,9 +87,19 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    // Use proxy endpoint for video playback (supports streaming and range requests)
-    const videoProxyUrl = `/api/assets/overlay-video-proxy?assetId=${overlay.assetId}&overlayId=${overlay.id}`;
-    setVideoUrl(videoProxyUrl);
+    // Load video URL from proxy endpoint
+    const loadVideoUrl = async () => {
+      try {
+        const response = await fetch(`/api/assets/overlay-video-proxy?assetId=${overlay.assetId}&overlayId=${overlay.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setVideoUrl(data.videoUrl);
+        }
+      } catch (error) {
+        console.error('Error loading video URL:', error);
+      }
+    };
+    loadVideoUrl();
   }, [overlay]);
 
   // Setup video element and auto-play when URL is loaded

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 
 // GET /api/assets/overlay-video-proxy?assetId=xxx&overlayId=xxx
-// Streams the video file for playback (not download)
+// Returns a signed URL for video playback (with proper CORS headers)
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -31,8 +31,6 @@ export async function GET(req: NextRequest) {
 
     const overlayData = overlayDoc.data();
     const storagePath = overlayData?.storagePath;
-    const fileName = overlayData?.fileName || 'video';
-    const fileType = overlayData?.fileType || 'mov';
 
     if (!storagePath) {
       return NextResponse.json({ error: 'Overlay has no storage path' }, { status: 400 });
@@ -54,57 +52,27 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
     
-    // Get file metadata
-    const [metadata] = await file.getMetadata();
+    // Generate signed URL for video playback (valid for 1 hour)
+    // Use responseType: 'stream' to allow video playback
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
     
-    // Determine content type based on file extension
-    const contentTypeMap: { [key: string]: string } = {
-      'mov': 'video/quicktime',
-      'mp4': 'video/mp4',
-      'avi': 'video/x-msvideo',
-      'mkv': 'video/x-matroska',
-      'webm': 'video/webm',
-      'm4v': 'video/x-m4v',
-    };
-    
-    const contentType = metadata.contentType || contentTypeMap[fileType.toLowerCase()] || 'video/mp4';
-    
-    // Get range header for video streaming support
-    const range = req.headers.get('range');
-    
-    if (range) {
-      // Handle range requests for video seeking
-      const [start, end] = range.replace(/bytes=/, '').split('-').map(Number);
-      const fileSize = parseInt(metadata.size || '0');
-      const chunkSize = (end || fileSize - 1) - start + 1;
-      
-      const stream = file.createReadStream({ start, end: end || fileSize - 1 });
-      
-      return new NextResponse(stream as any, {
-        status: 206,
-        headers: {
-          'Content-Range': `bytes ${start}-${end || fileSize - 1}/${fileSize}`,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': chunkSize.toString(),
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=3600',
-        },
+    try {
+      const [signedUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: expiresAt,
+        version: 'v4',
       });
-    } else {
-      // Stream entire file
-      const stream = file.createReadStream();
-      
-      return new NextResponse(stream as any, {
-        headers: {
-          'Content-Type': contentType,
-          'Accept-Ranges': 'bytes',
-          'Cache-Control': 'public, max-age=3600',
-        },
-      });
+
+      // Return the signed URL - Firebase Storage handles CORS if configured
+      return NextResponse.json({ videoUrl: signedUrl });
+    } catch (signError: any) {
+      console.error('Error generating signed URL:', signError);
+      throw signError;
     }
   } catch (err: any) {
-    console.error('Error proxying video:', err);
-    return NextResponse.json({ error: err?.message || 'Failed to proxy video' }, { status: 500 });
+    console.error('Error getting video URL:', err);
+    return NextResponse.json({ error: err?.message || 'Failed to get video URL' }, { status: 500 });
   }
 }
 
