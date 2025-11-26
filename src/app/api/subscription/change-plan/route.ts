@@ -76,38 +76,10 @@ export async function POST(req: NextRequest) {
     const currentPlan = PLAN_CONFIG[currentPlanType as keyof typeof PLAN_CONFIG];
     const isUpgrade = newPlan.price > (currentPlan?.price || 0);
 
-    // Calculate proration preview
-    // Calculate days remaining in current period
-    const now = Math.floor(Date.now() / 1000);
-    const periodEnd = subscription.current_period_end;
-    const periodStart = subscription.current_period_start;
-    const daysInPeriod = periodEnd - periodStart;
-    const daysRemaining = periodEnd - now;
-    const daysUsed = daysInPeriod - daysRemaining;
-
-    // Calculate prorated amounts
-    const currentMonthlyPrice = currentPlan?.price || 0;
-    const newMonthlyPrice = newPlan.price;
-    
-    // Prorate based on days remaining
-    const dailyRateCurrent = currentMonthlyPrice / daysInPeriod;
-    const dailyRateNew = newMonthlyPrice / daysInPeriod;
-    const unusedAmount = dailyRateCurrent * daysRemaining;
-    const proratedNewAmount = dailyRateNew * daysRemaining;
-    const prorationAmount = Math.abs(proratedNewAmount - unusedAmount);
-
-    // If preview mode, just return the calculation
-    if (preview) {
-      return NextResponse.json({
-        success: true,
-        preview: true,
-        prorationAmount: Math.round(prorationAmount),
-        isUpgrade,
-        message: isUpgrade 
-          ? `You'll be charged approximately $${(Math.round(prorationAmount) / 100).toFixed(2)} for the prorated upgrade.`
-          : `You'll receive approximately $${(Math.round(prorationAmount) / 100).toFixed(2)} credit for the unused portion.`,
-        daysRemaining: Math.ceil(daysRemaining / 86400), // Convert to days
-      });
+    // Get the current price item (first item in the subscription)
+    const currentItem = subscription.items.data[0];
+    if (!currentItem) {
+      return NextResponse.json({ error: 'Subscription has no items' }, { status: 400 });
     }
 
     // Create or find a product for CCA memberships
@@ -122,8 +94,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Create a new price for this plan
-    const price = await stripe.prices.create({
+    // Create a new price for the new plan
+    const newPrice = await stripe.prices.create({
       currency: 'usd',
       unit_amount: newPlan.price,
       recurring: { interval: 'month' },
@@ -133,12 +105,98 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Use Stripe's API to calculate proration accurately
+    // This gives us the exact amount Stripe will charge/credit
+    const upcomingInvoice = await stripe.invoices.retrieveUpcoming({
+      customer: subscription.customer as string,
+      subscription: subscription.id,
+      subscription_items: [{
+        id: currentItem.id,
+        price: newPrice.id,
+      }],
+      subscription_proration_behavior: 'always_invoice',
+    });
+
+    // Extract proration amounts from Stripe's invoice line items
+    // This is the most accurate method as it uses Stripe's exact calculation
+    let prorationAmount = 0;
+    let creditAmount = 0;
+    
+    if (upcomingInvoice.lines?.data) {
+      for (const line of upcomingInvoice.lines.data) {
+        if (line.proration) {
+          if (line.amount > 0) {
+            // Positive proration = charge for upgrade
+            prorationAmount += line.amount;
+          } else if (line.amount < 0) {
+            // Negative proration = credit for downgrade
+            creditAmount += Math.abs(line.amount);
+          }
+        }
+      }
+    }
+
+    // Fallback: if no proration line items found, use amount_due
+    // For upgrades: amount_due is positive (charge)
+    // For downgrades: amount_due can be negative (credit) or 0
+    if (prorationAmount === 0 && creditAmount === 0) {
+      if (isUpgrade && upcomingInvoice.amount_due > 0) {
+        prorationAmount = upcomingInvoice.amount_due;
+      } else if (!isUpgrade && upcomingInvoice.amount_due < 0) {
+        creditAmount = Math.abs(upcomingInvoice.amount_due);
+      }
+    }
+
+    // Calculate days remaining for display
+    const now = Math.floor(Date.now() / 1000);
+    const periodEnd = subscription.current_period_end;
+    const daysRemaining = Math.ceil((periodEnd - now) / 86400);
+
+    // Enhanced logging for debugging proration calculations
+    const prorationLines = upcomingInvoice.lines?.data.filter(line => line.proration) || [];
+    console.log('[Plan Change Preview] Stripe Proration Calculation', {
+      currentPlanType,
+      newPlanType,
+      isUpgrade,
+      prorationAmount: prorationAmount / 100, // Convert to dollars for readability
+      creditAmount: creditAmount / 100, // Convert to dollars for readability
+      invoiceAmountDue: upcomingInvoice.amount_due / 100,
+      invoiceTotal: upcomingInvoice.total / 100,
+      currentPlanPrice: (currentPlan?.price || 0) / 100,
+      newPlanPrice: newPlan.price / 100,
+      prorationLineItems: prorationLines.map(line => ({
+        description: line.description,
+        amount: line.amount / 100,
+        proration: line.proration,
+      })),
+      periodStart: new Date(subscription.current_period_start * 1000).toISOString(),
+      periodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+      daysRemaining,
+    });
+
+    // If preview mode, just return the calculation
+    if (preview) {
+      const displayAmount = isUpgrade ? prorationAmount : creditAmount;
+      return NextResponse.json({
+        success: true,
+        preview: true,
+        prorationAmount: displayAmount,
+        creditAmount: creditAmount,
+        isUpgrade,
+        message: isUpgrade 
+          ? `You'll be charged $${(prorationAmount / 100).toFixed(2)} for the prorated upgrade.`
+          : `You'll receive a credit of $${(creditAmount / 100).toFixed(2)} for the unused portion.`,
+        daysRemaining,
+      });
+    }
+
     // Update the subscription with the new plan
     // Stripe will automatically prorate the difference
+    // Note: newPrice was already created above for the preview calculation
     const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
       items: [{
         id: currentItem.id,
-        price: price.id,
+        price: newPrice.id,
       }],
       proration_behavior: 'always_invoice', // Always prorate when changing plans
       metadata: {
@@ -147,23 +205,20 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Get the actual proration from Stripe's upcoming invoice
-    const upcomingInvoice = await stripe.invoices.retrieveUpcoming({
-      customer: subscription.customer as string,
-      subscription: subscriptionId,
-    });
-
-    const actualProrationAmount = upcomingInvoice.amount_due - (upcomingInvoice.subtotal || 0);
+    // The proration amounts were already calculated above using retrieveUpcoming
+    // This is the exact amount Stripe will charge/credit
+    const displayAmount = isUpgrade ? prorationAmount : creditAmount;
 
     return NextResponse.json({
       success: true,
       subscriptionId: updatedSubscription.id,
       newPlanType,
-      prorationAmount: Math.abs(actualProrationAmount),
+      prorationAmount: displayAmount,
+      creditAmount: creditAmount,
       isUpgrade,
       message: isUpgrade 
-        ? `Plan upgraded! You've been charged $${(Math.abs(actualProrationAmount) / 100).toFixed(2)} for the prorated upgrade.`
-        : `Plan downgraded! You'll receive a $${(Math.abs(actualProrationAmount) / 100).toFixed(2)} credit for the unused portion.`,
+        ? `Plan upgraded! You've been charged $${(prorationAmount / 100).toFixed(2)} for the prorated upgrade.`
+        : `Plan downgraded! You'll receive a credit of $${(creditAmount / 100).toFixed(2)} for the unused portion.`,
     });
   } catch (err: any) {
     console.error('Error changing plan:', err);

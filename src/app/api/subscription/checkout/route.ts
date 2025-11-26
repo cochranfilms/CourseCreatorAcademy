@@ -107,75 +107,65 @@ export async function POST(req: NextRequest) {
       subscription_proration_behavior: 'always_invoice',
     });
 
-    // Calculate proration amount
-    // For upgrades: amount_due will be positive (what they owe)
-    // For downgrades: amount_due will be negative (credit to be applied)
+    // Calculate proration amount using Stripe's invoice line items
+    // This is the most accurate method as it uses Stripe's exact calculation
+    // Stripe calculates proration based on exact seconds remaining, not days
     let prorationAmount = 0;
     let creditAmount = 0;
     
-    if (isUpgrade) {
-      // For upgrades, use the total amount due (includes proration charge)
-      prorationAmount = Math.max(0, upcomingInvoice.amount_due || 0);
-      
-      // If amount_due is 0, calculate manually from line items
-      if (prorationAmount === 0 && upcomingInvoice.lines?.data) {
-        for (const line of upcomingInvoice.lines.data) {
-          if (line.proration && line.amount > 0) {
+    // Extract proration amounts from Stripe's invoice line items
+    if (upcomingInvoice.lines?.data) {
+      for (const line of upcomingInvoice.lines.data) {
+        if (line.proration) {
+          if (line.amount > 0) {
+            // Positive proration = charge for upgrade
             prorationAmount += line.amount;
+          } else if (line.amount < 0) {
+            // Negative proration = credit for downgrade
+            creditAmount += Math.abs(line.amount);
           }
         }
       }
-      
-      // If still 0, calculate based on price difference
-      if (prorationAmount === 0) {
-        const daysInPeriod = subscription.current_period_end - subscription.current_period_start;
-        const daysRemaining = subscription.current_period_end - Math.floor(Date.now() / 1000);
-        const dailyRateCurrent = (currentPlan?.price || 0) / daysInPeriod;
-        const dailyRateNew = newPlan.price / daysInPeriod;
-        const unusedAmount = dailyRateCurrent * daysRemaining;
-        const proratedNewAmount = dailyRateNew * daysRemaining;
-        prorationAmount = Math.max(0, Math.round(proratedNewAmount - unusedAmount));
+    }
+
+    // Fallback: if no proration line items found, use amount_due
+    // For upgrades: amount_due is positive (charge)
+    // For downgrades: amount_due can be negative (credit) or 0
+    if (prorationAmount === 0 && creditAmount === 0) {
+      if (isUpgrade && upcomingInvoice.amount_due > 0) {
+        prorationAmount = upcomingInvoice.amount_due;
+      } else if (!isUpgrade && upcomingInvoice.amount_due < 0) {
+        creditAmount = Math.abs(upcomingInvoice.amount_due);
       }
+    }
+
+    // Ensure we have the correct amount based on upgrade/downgrade
+    if (isUpgrade) {
+      creditAmount = 0; // No credit for upgrades
     } else {
-      // For downgrades, calculate the credit amount
-      // Credit = unused portion of current plan - prorated cost of new plan
-      const daysInPeriod = subscription.current_period_end - subscription.current_period_start;
-      const daysRemaining = subscription.current_period_end - Math.floor(Date.now() / 1000);
-      const dailyRateCurrent = (currentPlan?.price || 0) / daysInPeriod;
-      const dailyRateNew = newPlan.price / daysInPeriod;
-      const unusedAmount = dailyRateCurrent * daysRemaining;
-      const proratedNewAmount = dailyRateNew * daysRemaining;
-      creditAmount = Math.max(0, Math.round(unusedAmount - proratedNewAmount));
-      
-      // Also check Stripe's invoice for credit amount
-      if (upcomingInvoice.amount_due < 0) {
-        // Negative amount_due means credit
-        creditAmount = Math.max(creditAmount, Math.abs(upcomingInvoice.amount_due));
-      }
-      
-      // Check invoice line items for proration credits
-      if (upcomingInvoice.lines?.data) {
-        for (const line of upcomingInvoice.lines.data) {
-          if (line.proration && line.amount < 0) {
-            // Negative amount means credit
-            creditAmount = Math.max(creditAmount, Math.abs(line.amount));
-          }
-        }
-      }
-      
       prorationAmount = 0; // No charge for downgrades
     }
 
-    console.log('[Plan Change]', {
+    // Enhanced logging for debugging proration calculations
+    const prorationLines = upcomingInvoice.lines?.data.filter(line => line.proration) || [];
+    console.log('[Plan Change] Stripe Proration Calculation', {
       currentPlanType,
       newPlanType,
       isUpgrade,
-      prorationAmount,
-      creditAmount: isUpgrade ? 0 : creditAmount,
-      invoiceAmountDue: upcomingInvoice.amount_due,
-      invoiceTotal: upcomingInvoice.total,
-      currentPlanPrice: currentPlan?.price,
-      newPlanPrice: newPlan.price,
+      prorationAmount: prorationAmount / 100, // Convert to dollars for readability
+      creditAmount: creditAmount / 100, // Convert to dollars for readability
+      invoiceAmountDue: upcomingInvoice.amount_due / 100,
+      invoiceTotal: upcomingInvoice.total / 100,
+      currentPlanPrice: (currentPlan?.price || 0) / 100,
+      newPlanPrice: newPlan.price / 100,
+      prorationLineItems: prorationLines.map(line => ({
+        description: line.description,
+        amount: line.amount / 100,
+        proration: line.proration,
+      })),
+      periodStart: new Date(subscription.current_period_start * 1000).toISOString(),
+      periodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+      daysRemaining: Math.ceil((subscription.current_period_end - Math.floor(Date.now() / 1000)) / 86400),
     });
 
     const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || '';
@@ -199,6 +189,7 @@ export async function POST(req: NextRequest) {
       });
 
       // Verify the credit was created by checking the latest invoice
+      // Use Stripe's actual invoice to get the exact credit amount
       let actualCreditAmount = creditAmount;
       try {
         const invoices = await stripe.invoices.list({
@@ -209,8 +200,21 @@ export async function POST(req: NextRequest) {
         
         if (invoices.data.length > 0) {
           const latestInvoice = invoices.data[0];
-          // If invoice has negative amount_due, that's the credit
-          if (latestInvoice.amount_due < 0) {
+          
+          // Extract credit from invoice line items (most accurate)
+          let invoiceCredit = 0;
+          if (latestInvoice.lines?.data) {
+            for (const line of latestInvoice.lines.data) {
+              if (line.proration && line.amount < 0) {
+                invoiceCredit += Math.abs(line.amount);
+              }
+            }
+          }
+          
+          if (invoiceCredit > 0) {
+            actualCreditAmount = invoiceCredit;
+          } else if (latestInvoice.amount_due < 0) {
+            // Fallback: negative amount_due means credit
             actualCreditAmount = Math.abs(latestInvoice.amount_due);
           } else if (latestInvoice.amount_paid < 0) {
             // Or check amount_paid for credits
@@ -219,7 +223,7 @@ export async function POST(req: NextRequest) {
         }
       } catch (err) {
         console.error('Error checking invoice for credit:', err);
-        // Use calculated credit amount as fallback
+        // Use calculated credit amount from upcoming invoice as fallback
       }
 
       return NextResponse.json({
