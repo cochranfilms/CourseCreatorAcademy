@@ -78,6 +78,19 @@ function formatDuration(seconds: number): string {
 }
 
 /**
+ * Generate direct public URL for Firebase Storage file
+ * Since overlay files are public, we can use direct URLs without API calls
+ * Uses Firebase Storage v0 API format for public files
+ */
+function getPublicStorageUrl(storagePath: string): string {
+  const bucket = 'course-creator-academy-866d6.firebasestorage.app';
+  // Encode the path properly - encodeURIComponent handles special chars, but we need to keep slashes
+  const encodedPath = encodeURIComponent(storagePath);
+  // Use Firebase Storage v0 API format for public files
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+}
+
+/**
  * Overlay Player Component - Shows looping video preview in 16:9 format
  */
 function OverlayPlayer({ overlay }: { overlay: Overlay }) {
@@ -88,6 +101,19 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
   const [isVisible, setIsVisible] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Generate media URL immediately from storage path (no API call needed)
+  useEffect(() => {
+    if (overlay.storagePath) {
+      const url = getPublicStorageUrl(overlay.storagePath);
+      setMediaUrl(url);
+      
+      // Check if file is a video based on extension
+      const fileType = overlay.fileType || '';
+      const videoExtensions = ['mov', 'mp4', 'avi', 'mkv', 'webm', 'm4v'];
+      setIsVideo(videoExtensions.includes(fileType.toLowerCase()));
+    }
+  }, [overlay]);
 
   // Intersection Observer for lazy loading and pausing videos out of viewport
   useEffect(() => {
@@ -114,7 +140,7 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
         });
       },
       {
-        rootMargin: '50px', // Start loading 50px before entering viewport
+        rootMargin: '200px', // Start loading 200px before entering viewport for faster preview
         threshold: 0.01
       }
     );
@@ -126,40 +152,29 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
     };
   }, [isVideo, mediaUrl]);
 
-  // Load media URL only when visible
-  useEffect(() => {
-    if (!isVisible) return;
-
-    // Load public media URL from proxy endpoint
-    const loadMediaUrl = async () => {
-      try {
-        const response = await fetch(`/api/assets/overlay-video-proxy?assetId=${overlay.assetId}&overlayId=${overlay.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setMediaUrl(data.videoUrl);
-          // Check if file is a video based on extension
-          const fileType = data.fileType || overlay.fileType || '';
-          const videoExtensions = ['mov', 'mp4', 'avi', 'mkv', 'webm', 'm4v'];
-          setIsVideo(videoExtensions.includes(fileType.toLowerCase()));
-        }
-      } catch (error) {
-        console.error('Error loading media URL:', error);
-      }
-    };
-    loadMediaUrl();
-  }, [overlay, isVisible]);
-
   // Setup video element and auto-play when URL is loaded (only for videos)
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !mediaUrl || !isVideo || !isVisible) return;
+    if (!video || !mediaUrl || !isVideo) return;
 
-    // Set video attributes
+    // Set video attributes for fast loading
     video.loop = true;
     video.muted = true;
     video.playsInline = true;
-    video.preload = 'metadata'; // Changed from 'auto' to reduce initial load
-    video.crossOrigin = 'anonymous'; // Help with CORS
+    // Use 'auto' for faster initial display - videos are small overlays
+    video.preload = 'auto';
+    video.crossOrigin = 'anonymous';
+
+    // Handle video can play event (fires earlier than loadeddata)
+    const handleCanPlay = () => {
+      setVideoLoaded(true);
+      // Only autoplay if visible
+      if (isVisible) {
+        video.play().catch(err => {
+          // Ignore autoplay errors (browser policy)
+        });
+      }
+    };
 
     // Handle video loaded event
     const handleLoadedData = () => {
@@ -167,22 +182,12 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
       // Only autoplay if still visible
       if (isVisible) {
         video.play().catch(err => {
-          console.error('Error auto-playing video:', err);
+          // Ignore autoplay errors
         });
       }
     };
 
-    // Handle video can play event
-    const handleCanPlay = () => {
-      // Only autoplay if still visible
-      if (isVisible) {
-        video.play().catch(err => {
-          console.error('Error auto-playing video:', err);
-        });
-      }
-    };
-
-    // Handle video errors
+    // Handle video errors - fallback to image if video fails
     const handleError = (e: Event) => {
       const videoEl = e.target as HTMLVideoElement;
       console.error('Video playback error:', {
@@ -191,22 +196,24 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
         readyState: videoEl.readyState,
         src: videoEl.src
       });
+      // If video fails to play (e.g., .mov not supported), try as image
+      setIsVideo(false);
     };
 
-    video.addEventListener('loadeddata', handleLoadedData);
-    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('canplay', handleCanPlay, { once: true });
+    video.addEventListener('loadeddata', handleLoadedData, { once: true });
     video.addEventListener('error', handleError);
 
     // Try to play immediately if video is already loaded and visible
-    if (video.readyState >= 2 && isVisible) {
-      video.play().catch(err => {
-        console.error('Error auto-playing video:', err);
+    if (video.readyState >= 3 && isVisible) {
+      video.play().catch(() => {
+        // Ignore autoplay errors
       });
     }
 
     return () => {
-      video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('error', handleError);
     };
   }, [mediaUrl, isVideo, isVisible]);
@@ -255,7 +262,7 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
               playsInline
               muted
               loop
-              preload="metadata"
+              preload="auto"
               crossOrigin="anonymous"
               onError={(e) => {
                 console.error('Video playback error:', {
@@ -273,7 +280,8 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
               src={mediaUrl}
               alt={overlay.fileName}
               className="w-full h-full object-cover"
-              loading="lazy"
+              loading="eager"
+              decoding="async"
               onError={(e) => {
                 console.error('Image error:', e);
               }}
