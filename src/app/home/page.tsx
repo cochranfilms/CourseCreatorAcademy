@@ -9,6 +9,7 @@ import { db, firebaseReady } from '@/lib/firebaseClient';
 import { auth } from '@/lib/firebaseClient';
 import { signInWithCustomToken, fetchSignInMethodsForEmail, sendPasswordResetEmail } from 'firebase/auth';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { getMuxAnimatedGifUrl } from '@/lib/muxThumbnails';
 
 // Lazy load MuxPlayer - only load when needed
 const MuxPlayer = dynamic(() => import('@mux/mux-player-react').then(mod => mod.default), {
@@ -443,6 +444,19 @@ export default function HomePage() {
     return '';
   }, []);
 
+  // Generate animated GIF thumbnail with varying start times to skip intro
+  // Each video gets a different start time (after the 3-5 second intro) so thumbnails show different content
+  const getVariedAnimatedGifUrl = useCallback((playbackId?: string, index: number = 0): string => {
+    if (!playbackId) return '';
+    
+    // Start after intro (5 seconds) and vary by index
+    // Each video starts at a different point: 5s, 8s, 11s, 14s, 17s, 20s, etc.
+    const startTime = 5 + (index * 3);
+    const endTime = startTime + 3; // 3 second loop
+    
+    return getMuxAnimatedGifUrl(playbackId, 640, startTime, endTime, 15);
+  }, []);
+
   // Featured Show - only use real data from show episode, no fallback (memoized)
   const featuredShow = useMemo(() => {
     if (!showEpisode) return null;
@@ -661,8 +675,11 @@ export default function HomePage() {
               </div>
             ) : recentlyAdded.length > 0 ? (
               <div className="flex gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 overflow-x-auto pb-2 sm:pb-3 md:pb-4 scrollbar-hide -mx-2 sm:-mx-3 md:mx-0 px-2 sm:px-3 md:px-0">
-                {recentlyAdded.map((video) => {
-                  const thumbnailUrl = getMuxThumbnailUrl(video.muxPlaybackId, video.muxAnimatedGifUrl);
+                {recentlyAdded.map((video, index) => {
+                  // Use varied start times for animated GIFs to skip the intro and show different content
+                  const thumbnailUrl = video.muxPlaybackId 
+                    ? getVariedAnimatedGifUrl(video.muxPlaybackId, index)
+                    : getMuxThumbnailUrl(video.muxPlaybackId, video.muxAnimatedGifUrl);
                   const hasValidLink = !!(video.courseSlug && video.moduleId && video.lessonId);
                   
                   const videoContent = (

@@ -19,6 +19,8 @@
   2. Check if Firestore document exists for each ZIP (by storagePath)
   3. Auto-create Firestore documents for missing ones
   4. Generate titles from filenames (e.g., "sleektone-minimal-luts.zip" -> "Sleektone Minimal Luts")
+  5. Create thumbnail folder structure (same name as ZIP, without .zip extension)
+  6. Set thumbnailUrl field if preview.png already exists in the folder
 */
 
 // Load env from .env.local first, then fallback to .env
@@ -145,10 +147,88 @@ async function assetDocumentExists(db, storagePath) {
 }
 
 /**
+ * Gets the thumbnail folder path for an asset
+ * e.g., "assets/luts/sleektone-minimal-luts.zip" -> "assets/luts/sleektone-minimal-luts"
+ */
+function getThumbnailFolderPath(storagePath) {
+  const zipFileName = storagePath.split('/').pop().replace('.zip', '');
+  const folderPath = storagePath.replace(`/${zipFileName}.zip`, '');
+  return `${folderPath}/${zipFileName}`;
+}
+
+/**
+ * Gets the preview image path
+ * e.g., "assets/luts/sleektone-minimal-luts/preview.png"
+ */
+function getPreviewImagePath(storagePath) {
+  const folderPath = getThumbnailFolderPath(storagePath);
+  return `${folderPath}/preview.png`;
+}
+
+/**
+ * Creates the thumbnail folder structure by creating a placeholder file
+ * In Firebase Storage, folders don't exist separately, so we create a .keep file
+ */
+async function createThumbnailFolder(bucket, storagePath) {
+  const folderPath = getThumbnailFolderPath(storagePath);
+  const keepFilePath = `${folderPath}/.keep`;
+  
+  const file = bucket.file(keepFilePath);
+  const [exists] = await file.exists();
+  
+  if (!exists) {
+    // Create a small placeholder file to establish the folder structure
+    await file.save('', {
+      metadata: {
+        contentType: 'text/plain',
+      },
+    });
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Generates a signed URL for the preview image (even if it doesn't exist yet)
+ * Returns null if the file doesn't exist
+ */
+async function getThumbnailUrl(bucket, storagePath) {
+  const previewPath = getPreviewImagePath(storagePath);
+  const file = bucket.file(previewPath);
+  
+  // Check if preview.png exists
+  const [exists] = await file.exists();
+  
+  if (exists) {
+    // Generate signed URL valid for 10 years
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 10);
+    
+    const [signedUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: expiresAt,
+    });
+    
+    return signedUrl;
+  }
+  
+  // If preview.png doesn't exist, return null
+  // The user can upload it later and run update-asset-thumbnails.js
+  return null;
+}
+
+/**
  * Creates a Firestore document for an asset
  */
-async function createAssetDocument(db, zipFile) {
+async function createAssetDocument(db, bucket, zipFile) {
   const title = filenameToTitle(zipFile.fileName);
+  
+  // Create thumbnail folder structure
+  const folderCreated = await createThumbnailFolder(bucket, zipFile.storagePath);
+  
+  // Try to get thumbnail URL if preview.png already exists
+  const thumbnailUrl = await getThumbnailUrl(bucket, zipFile.storagePath);
   
   const assetData = {
     title,
@@ -159,8 +239,13 @@ async function createAssetDocument(db, zipFile) {
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
   
+  // Only add thumbnailUrl if it exists
+  if (thumbnailUrl) {
+    assetData.thumbnailUrl = thumbnailUrl;
+  }
+  
   const docRef = await db.collection('assets').add(assetData);
-  return docRef.id;
+  return { docId: docRef.id, thumbnailUrl, folderCreated };
 }
 
 /**
@@ -199,9 +284,25 @@ async function createAssetDocsFromStorage() {
           console.log(`⏭️  Skipped: "${zipFile.fileName}" (document already exists)`);
           skipped++;
         } else {
-          const docId = await createAssetDocument(db, zipFile);
           const title = filenameToTitle(zipFile.fileName);
-          console.log(`✅ Created: "${title}" (${docId})`);
+          const { docId, thumbnailUrl, folderCreated } = await createAssetDocument(db, bucket, zipFile);
+          
+          const folderPath = getThumbnailFolderPath(zipFile.storagePath);
+          let logMessage = `✅ Created: "${title}" (${docId})`;
+          
+          if (folderCreated) {
+            logMessage += `\n     📁 Created thumbnail folder: ${folderPath}`;
+          } else {
+            logMessage += `\n     📁 Thumbnail folder already exists: ${folderPath}`;
+          }
+          
+          if (thumbnailUrl) {
+            logMessage += `\n     🖼️  Thumbnail URL set (preview.png found)`;
+          } else {
+            logMessage += `\n     ⚠️  No thumbnail yet - upload preview.png to ${folderPath}/ and run update-asset-thumbnails.js`;
+          }
+          
+          console.log(logMessage);
           created++;
         }
       } catch (error) {
