@@ -323,12 +323,13 @@ function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { as
     setDownloading(true);
     try {
       // Debug logging
-      console.log('[LUT Download] Checking download options:', {
-        lutFilePath,
-        previewId,
-        assetId: asset.id,
-        fileName,
-      });
+      console.log('[LUT Download] Checking download options:');
+      console.log('  lutFilePath:', lutFilePath);
+      console.log('  previewId:', previewId);
+      console.log('  assetId:', asset.id);
+      console.log('  fileName:', fileName);
+      console.log('  lutFilePath type:', typeof lutFilePath);
+      console.log('  previewId type:', typeof previewId);
       
       // If this is a LUT preview with individual file, use that endpoint
       if (lutFilePath && previewId) {
@@ -358,7 +359,8 @@ function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { as
       } else {
         // Fallback to pack download
         console.log('[LUT Download] No individual file, using pack download');
-        console.log('[LUT Download] Missing:', { lutFilePath: !lutFilePath, previewId: !previewId });
+        console.log('[LUT Download] Missing lutFilePath:', !lutFilePath, 'value:', lutFilePath);
+        console.log('[LUT Download] Missing previewId:', !previewId, 'value:', previewId);
         await handlePackDownload();
       }
     } catch (error) {
@@ -1242,12 +1244,12 @@ export default function AssetsPage() {
             console.log(`[LUT Previews] Loaded ${previews.length} preview(s) for "${asset.title}" (${asset.id})`);
             if (previews.length > 0) {
               previews.forEach((preview: LUTPreview) => {
-                console.log(`  - ${preview.lutName}:`, {
-                  beforeVideo: preview.beforeVideoPath,
-                  afterVideo: preview.afterVideoPath,
-                  lutFilePath: preview.lutFilePath || 'NOT SET',
-                  fileName: preview.fileName || 'NOT SET',
-                });
+                console.log(`  - ${preview.lutName}:`);
+                console.log(`    beforeVideo: ${preview.beforeVideoPath || 'NOT SET'}`);
+                console.log(`    afterVideo: ${preview.afterVideoPath || 'NOT SET'}`);
+                console.log(`    lutFilePath: ${preview.lutFilePath || 'NOT SET'}`);
+                console.log(`    fileName: ${preview.fileName || 'NOT SET'}`);
+                console.log(`    previewId: ${preview.id || 'NOT SET'}`);
               });
             }
           } else {
@@ -1499,6 +1501,7 @@ export default function AssetsPage() {
                 afterVideoPath: preview.afterVideoPath,
                 title: preview.assetTitle || `${asset.title} - ${preview.lutName}`, // Use assetTitle from document, fallback to pack name + LUT name
               };
+              
               return (
                 <SideBySideVideoSlider 
                   key={preview.id} 
