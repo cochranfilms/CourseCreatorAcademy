@@ -667,6 +667,30 @@ export async function POST(req: NextRequest) {
             },
           });
 
+          // Immediately update Firebase to reflect the new plan
+          // Don't wait for customer.subscription.updated webhook
+          if (adminDb && buyerId) {
+            try {
+              await adminDb
+                .collection('users')
+                .doc(String(buyerId))
+                .set(
+                  {
+                    membershipActive: true,
+                    membershipPlan: newPlanType,
+                    membershipSubscriptionId: String(subscriptionId),
+                    updatedAt: FieldValue.serverTimestamp(),
+                  },
+                  { merge: true }
+                );
+              console.log('Firebase updated with new plan:', { buyerId, newPlanType });
+            } catch (firebaseErr: any) {
+              console.error('Failed to update Firebase after upgrade:', firebaseErr);
+              // Don't fail the whole operation if Firebase update fails
+              // The customer.subscription.updated webhook will sync it eventually
+            }
+          }
+
           // The proration invoice will be created automatically
           // Stripe will attempt to charge it using the customer's default payment method
           // Since we already collected payment via checkout, the invoice should be paid

@@ -14,6 +14,7 @@ import OnboardingTab from './OnboardingTab';
 import { LegacySubscriptions } from '@/components/LegacySubscriptions';
 import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
 import { JobsTab } from '@/components/JobsTab';
+import { PlanChangeSuccessModal } from '@/components/PlanChangeSuccessModal';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 type UserProfile = {
@@ -61,6 +62,13 @@ export default function DashboardPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [planChangeMessage, setPlanChangeMessage] = useState<string | null>(null);
+  const [showPlanChangeModal, setShowPlanChangeModal] = useState(false);
+  const [planChangeData, setPlanChangeData] = useState<{
+    planType: string | null;
+    isUpgrade: boolean;
+    amount?: number;
+    creditAmount?: number;
+  }>({ planType: null, isUpgrade: true });
   
   // Project form state
   const [projectTitle, setProjectTitle] = useState('');
@@ -147,18 +155,18 @@ export default function DashboardPage() {
       const newPlan = params.get('new_plan');
       
       if (planChange === 'success') {
-        const planName = newPlan === 'cca_membership_87' ? 'All-Access Membership' 
-          : newPlan === 'cca_no_fees_60' ? 'No-Fees Membership'
-          : newPlan === 'cca_monthly_37' ? 'Monthly Membership'
-          : 'your new plan';
-        setPlanChangeMessage(`Plan upgraded successfully! You're now on ${planName}.`);
+        // Determine if it's an upgrade or downgrade based on plan type
+        // For now, we'll assume upgrades (can be enhanced later with more context)
+        const isUpgrade = true; // Could be determined from URL params if needed
+        
+        setPlanChangeData({
+          planType: newPlan,
+          isUpgrade,
+        });
+        setShowPlanChangeModal(true);
         setActiveTab('legacy');
-        // Clean up URL
+        // Clean up URL immediately
         router.replace('/dashboard');
-        // Reload after 3 seconds to show updated subscription
-        setTimeout(() => {
-          window.location.reload();
-        }, 3000);
       } else if (planChange === 'canceled') {
         setPlanChangeMessage('Plan change was canceled.');
         router.replace('/dashboard');
@@ -1843,6 +1851,18 @@ export default function DashboardPage() {
         {showLegacyModal && (
           <LegacyUpgradeModal isOpen={showLegacyModal} onClose={() => setShowLegacyModal(false)} />
         )}
+        {/* Plan Change Success Modal */}
+        <PlanChangeSuccessModal
+          isOpen={showPlanChangeModal}
+          onClose={() => {
+            setShowPlanChangeModal(false);
+            window.location.reload();
+          }}
+          planType={planChangeData.planType}
+          isUpgrade={planChangeData.isUpgrade}
+          amount={planChangeData.amount}
+          creditAmount={planChangeData.creditAmount}
+        />
       </main>
     </ProtectedRoute>
   );

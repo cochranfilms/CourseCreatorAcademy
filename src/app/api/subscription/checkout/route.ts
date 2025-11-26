@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getUserIdFromAuthHeader } from '@/lib/api/auth';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Plan configuration
 const PLAN_CONFIG = {
@@ -187,6 +188,30 @@ export async function POST(req: NextRequest) {
           buyerId: userId,
         },
       });
+
+      // Immediately update Firebase to reflect the new plan
+      // Don't wait for customer.subscription.updated webhook
+      if (adminDb && userId) {
+        try {
+          await adminDb
+            .collection('users')
+            .doc(String(userId))
+            .set(
+              {
+                membershipActive: true,
+                membershipPlan: newPlanType,
+                membershipSubscriptionId: String(subscriptionId),
+                updatedAt: FieldValue.serverTimestamp(),
+              },
+              { merge: true }
+            );
+          console.log('Firebase updated with new plan (downgrade):', { userId, newPlanType });
+        } catch (firebaseErr: any) {
+          console.error('Failed to update Firebase after downgrade:', firebaseErr);
+          // Don't fail the whole operation if Firebase update fails
+          // The customer.subscription.updated webhook will sync it eventually
+        }
+      }
 
       // Verify the credit was created by checking the latest invoice
       // Use Stripe's actual invoice to get the exact credit amount
