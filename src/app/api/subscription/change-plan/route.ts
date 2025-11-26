@@ -113,31 +113,46 @@ export async function POST(req: NextRequest) {
 
     // Extract proration amounts from Stripe's invoice line items
     // This is the most accurate method as it uses Stripe's exact calculation
-    let prorationAmount = 0;
-    let creditAmount = 0;
+    let totalPositiveProration = 0; // Charges for new plan
+    let totalNegativeProration = 0; // Credits for old plan
     
     if (upcomingInvoice.lines?.data) {
       for (const line of upcomingInvoice.lines.data) {
         if (line.proration) {
           if (line.amount > 0) {
-            // Positive proration = charge for upgrade
-            prorationAmount += line.amount;
+            // Positive proration = charge for remaining time on new plan
+            totalPositiveProration += line.amount;
           } else if (line.amount < 0) {
-            // Negative proration = credit for downgrade
-            creditAmount += Math.abs(line.amount);
+            // Negative proration = credit for unused time on old plan
+            totalNegativeProration += Math.abs(line.amount);
           }
         }
       }
     }
 
-    // Fallback: if no proration line items found, use amount_due
-    // For upgrades: amount_due is positive (charge)
-    // For downgrades: amount_due can be negative (credit) or 0
-    if (prorationAmount === 0 && creditAmount === 0) {
-      if (isUpgrade && upcomingInvoice.amount_due > 0) {
-        prorationAmount = upcomingInvoice.amount_due;
-      } else if (!isUpgrade && upcomingInvoice.amount_due < 0) {
-        creditAmount = Math.abs(upcomingInvoice.amount_due);
+    // Calculate NET proration amount
+    // For upgrades: net = charge for new plan - credit for old plan
+    // For downgrades: net = credit for old plan - charge for new plan
+    let prorationAmount = 0;
+    let creditAmount = 0;
+
+    if (isUpgrade) {
+      // Net charge = what we charge for new plan minus what we credit for old plan
+      prorationAmount = Math.max(0, totalPositiveProration - totalNegativeProration);
+      creditAmount = 0; // No separate credit for upgrades, it's netted into prorationAmount
+    } else {
+      // Net credit = what we credit for old plan minus what we charge for new plan
+      creditAmount = Math.max(0, totalNegativeProration - totalPositiveProration);
+      prorationAmount = 0; // No charge for downgrades
+    }
+
+    // Fallback: if no proration line items found, use invoice total
+    // The invoice total should already be the net amount
+    if (prorationAmount === 0 && creditAmount === 0 && upcomingInvoice.total !== undefined) {
+      if (isUpgrade && upcomingInvoice.total > 0) {
+        prorationAmount = upcomingInvoice.total;
+      } else if (!isUpgrade && upcomingInvoice.total < 0) {
+        creditAmount = Math.abs(upcomingInvoice.total);
       }
     }
 
@@ -152,8 +167,10 @@ export async function POST(req: NextRequest) {
       currentPlanType,
       newPlanType,
       isUpgrade,
-      prorationAmount: prorationAmount / 100, // Convert to dollars for readability
-      creditAmount: creditAmount / 100, // Convert to dollars for readability
+      totalPositiveProration: totalPositiveProration / 100, // Charges for new plan
+      totalNegativeProration: totalNegativeProration / 100, // Credits for old plan
+      netProrationAmount: prorationAmount / 100, // Net charge (positive - negative)
+      netCreditAmount: creditAmount / 100, // Net credit (negative - positive)
       invoiceAmountDue: upcomingInvoice.amount_due / 100,
       invoiceTotal: upcomingInvoice.total / 100,
       currentPlanPrice: (currentPlan?.price || 0) / 100,
