@@ -7,6 +7,7 @@ import { ListingImageUpload } from '@/components/ListingImageUpload';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Messages } from '@/components/Messages';
+import { toggleSaved, isSaved } from '@/lib/userData';
 
 type Listing = { 
   id: string; 
@@ -43,6 +44,7 @@ export default function MarketplacePage() {
   const [showListingModal, setShowListingModal] = useState(false);
   const [showMessageToSeller, setShowMessageToSeller] = useState(false);
   const [myConnectAccountId, setMyConnectAccountId] = useState<string | null>(null);
+  const [favoritedListings, setFavoritedListings] = useState<Set<string>>(new Set());
 
   // Form state
   const [title, setTitle] = useState('');
@@ -192,6 +194,29 @@ export default function MarketplacePage() {
     };
     loadMyConnect();
   }, [user]);
+
+  // Load favorite status for all listings
+  useEffect(() => {
+    if (!user || listings.length === 0) {
+      setFavoritedListings(new Set());
+      return;
+    }
+
+    const loadFavorites = async () => {
+      const favorites = new Set<string>();
+      await Promise.all(
+        listings.map(async (listing) => {
+          const saved = await isSaved(user.uid, 'market', listing.id);
+          if (saved) {
+            favorites.add(listing.id);
+          }
+        })
+      );
+      setFavoritedListings(favorites);
+    };
+
+    loadFavorites();
+  }, [user, listings]);
 
   // Fetch user's listings
   useEffect(() => {
@@ -686,6 +711,45 @@ export default function MarketplacePage() {
                     <span className="text-neutral-600 text-sm">No Image</span>
                   </div>
                   
+                  {/* Favorite Button */}
+                  {user && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const nowFavorited = await toggleSaved(user.uid, 'market', listing.id, {
+                          listingId: listing.id,
+                          title: listing.title,
+                          price: listing.price,
+                          condition: listing.condition,
+                        });
+                        setFavoritedListings(prev => {
+                          const newSet = new Set(prev);
+                          if (nowFavorited) {
+                            newSet.add(listing.id);
+                          } else {
+                            newSet.delete(listing.id);
+                          }
+                          return newSet;
+                        });
+                      }}
+                      className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-sm transition ${
+                        favoritedListings.has(listing.id)
+                          ? 'bg-pink-500/90 text-white' 
+                          : 'bg-neutral-900/80 text-neutral-400 hover:bg-neutral-800/90'
+                      }`}
+                      title={favoritedListings.has(listing.id) ? 'Unfavorite' : 'Favorite'}
+                    >
+                      <svg 
+                        className={`w-5 h-5 ${favoritedListings.has(listing.id) ? 'fill-current' : ''}`} 
+                        fill={favoritedListings.has(listing.id) ? 'currentColor' : 'none'} 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </button>
+                  )}
+                  
                   {/* Image Navigation Arrows */}
                   {hasMultipleImages && (
                     <>
@@ -833,7 +897,46 @@ export default function MarketplacePage() {
 
               {/* Right: Details */}
               <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto">
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white break-words">{selectedListing.title}</h2>
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white break-words flex-1">{selectedListing.title}</h2>
+                  {user && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const nowFavorited = await toggleSaved(user.uid, 'market', selectedListing.id, {
+                          listingId: selectedListing.id,
+                          title: selectedListing.title,
+                          price: selectedListing.price,
+                          condition: selectedListing.condition,
+                        });
+                        setFavoritedListings(prev => {
+                          const newSet = new Set(prev);
+                          if (nowFavorited) {
+                            newSet.add(selectedListing.id);
+                          } else {
+                            newSet.delete(selectedListing.id);
+                          }
+                          return newSet;
+                        });
+                      }}
+                      className={`p-2 rounded-full backdrop-blur-sm transition flex-shrink-0 ${
+                        favoritedListings.has(selectedListing.id)
+                          ? 'bg-pink-500/90 text-white' 
+                          : 'bg-neutral-900/80 text-neutral-400 hover:bg-neutral-800/90'
+                      }`}
+                      title={favoritedListings.has(selectedListing.id) ? 'Unfavorite' : 'Favorite'}
+                    >
+                      <svg 
+                        className={`w-5 h-5 ${favoritedListings.has(selectedListing.id) ? 'fill-current' : ''}`} 
+                        fill={favoritedListings.has(selectedListing.id) ? 'currentColor' : 'none'} 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-baseline gap-2">
                   <div className="text-3xl sm:text-4xl font-extrabold text-white">${selectedListing.price.toLocaleString()}</div>
                   <div className="text-xs sm:text-sm text-neutral-400">{selectedListing.shipping ? `+$${selectedListing.shipping} shipping` : <span className="text-green-400 font-medium">Free shipping</span>}</div>

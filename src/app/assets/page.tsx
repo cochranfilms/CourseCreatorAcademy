@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { toggleSaved, isSaved } from '@/lib/userData';
 
 type AssetCategory = 'All Packs' | 'LUTs & Presets' | 'Overlays & Transitions' | 'SFX & Plugins' | 'Templates';
 type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | 'LUTs' | 'Presets' | null;
@@ -109,16 +111,33 @@ function getPublicStorageUrl(storagePath: string): string {
  * Shows before/after videos with a draggable slider
  */
 function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { asset: Asset; previewId?: string; lutFilePath?: string; fileName?: string }) {
+  const { user } = useAuth();
   const [beforeVideoUrl, setBeforeVideoUrl] = useState<string | null>(null);
   const [afterVideoUrl, setAfterVideoUrl] = useState<string | null>(null);
   const [sliderPosition, setSliderPosition] = useState(50); // Percentage (0-100)
   const [isDragging, setIsDragging] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const beforeVideoRef = useRef<HTMLVideoElement | null>(null);
   const afterVideoRef = useRef<HTMLVideoElement | null>(null);
   const sliderRef = useRef<HTMLDivElement | null>(null);
+
+  // Load favorite status
+  useEffect(() => {
+    if (!user) {
+      setIsFavorited(false);
+      return;
+    }
+    const checkFavorite = async () => {
+      // For LUT previews, use previewId if available, otherwise use asset.id
+      const targetId = previewId || asset.id;
+      const saved = await isSaved(user.uid, 'asset', targetId);
+      setIsFavorited(saved);
+    };
+    checkFavorite();
+  }, [user, asset.id, previewId]);
 
   // Load video URLs
   useEffect(() => {
@@ -534,10 +553,34 @@ function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { as
               )}
             </button>
             <button
-              className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-pink-500 transition-colors"
-              title="Favorite"
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!user) {
+                  alert('Please sign in to favorite assets');
+                  return;
+                }
+                const targetId = previewId || asset.id;
+                const nowFavorited = await toggleSaved(user.uid, 'asset', targetId, {
+                  assetId: asset.id,
+                  title: asset.title,
+                  category: asset.category,
+                  previewId: previewId || undefined,
+                });
+                setIsFavorited(nowFavorited);
+              }}
+              className={`w-8 h-8 flex items-center justify-center transition-colors ${
+                isFavorited 
+                  ? 'text-pink-500 hover:text-pink-400' 
+                  : 'text-neutral-400 hover:text-pink-500'
+              }`}
+              title={isFavorited ? 'Unfavorite' : 'Favorite'}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg 
+                className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} 
+                fill={isFavorited ? 'currentColor' : 'none'} 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </button>
@@ -552,12 +595,27 @@ function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { as
  * Overlay Player Component - Shows looping video preview in 16:9 format
  */
 function OverlayPlayer({ overlay }: { overlay: Overlay }) {
+  const { user } = useAuth();
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [isVideo, setIsVideo] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Load favorite status
+  useEffect(() => {
+    if (!user) {
+      setIsFavorited(false);
+      return;
+    }
+    const checkFavorite = async () => {
+      const saved = await isSaved(user.uid, 'asset', overlay.id);
+      setIsFavorited(saved);
+    };
+    checkFavorite();
+  }, [user, overlay.id]);
 
   // Generate media URL immediately from storage path (prefer 720p version for videos)
   useEffect(() => {
@@ -824,10 +882,33 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
             </button>
             <span className="text-neutral-500 text-xs">1</span>
             <button
-              className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-pink-500 transition-colors"
-              title="Favorite"
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!user) {
+                  alert('Please sign in to favorite assets');
+                  return;
+                }
+                const nowFavorited = await toggleSaved(user.uid, 'asset', overlay.id, {
+                  assetId: overlay.assetId,
+                  title: overlay.fileName,
+                  overlayId: overlay.id,
+                  fileName: overlay.fileName,
+                });
+                setIsFavorited(nowFavorited);
+              }}
+              className={`w-8 h-8 flex items-center justify-center transition-colors ${
+                isFavorited 
+                  ? 'text-pink-500 hover:text-pink-400' 
+                  : 'text-neutral-400 hover:text-pink-500'
+              }`}
+              title={isFavorited ? 'Unfavorite' : 'Favorite'}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg 
+                className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} 
+                fill={isFavorited ? 'currentColor' : 'none'} 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </button>
@@ -842,6 +923,7 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
  * Sound Effect Player Component
  */
 function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; asset: Asset }) {
+  const { user } = useAuth();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(soundEffect.duration || 0);
@@ -849,9 +931,23 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
   const [downloading, setDownloading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
+  const [isFavorited, setIsFavorited] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const waveformRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
+
+  // Load favorite status
+  useEffect(() => {
+    if (!user) {
+      setIsFavorited(false);
+      return;
+    }
+    const checkFavorite = async () => {
+      const saved = await isSaved(user.uid, 'asset', soundEffect.id);
+      setIsFavorited(saved);
+    };
+    checkFavorite();
+  }, [user, soundEffect.id]);
 
   useEffect(() => {
     // Load audio URL when component mounts
@@ -1097,10 +1193,33 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
 
         {/* Favorite Button */}
         <button
-          className="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-pink-500 transition-colors flex-shrink-0 rounded-lg hover:bg-neutral-900"
-          title="Favorite"
+          onClick={async (e) => {
+            e.stopPropagation();
+            if (!user) {
+              alert('Please sign in to favorite assets');
+              return;
+            }
+            const nowFavorited = await toggleSaved(user.uid, 'asset', soundEffect.id, {
+              assetId: soundEffect.assetId,
+              title: soundEffect.fileName,
+              soundEffectId: soundEffect.id,
+              fileName: soundEffect.fileName,
+            });
+            setIsFavorited(nowFavorited);
+          }}
+          className={`w-10 h-10 flex items-center justify-center transition-colors flex-shrink-0 rounded-lg hover:bg-neutral-900 ${
+            isFavorited 
+              ? 'text-pink-500 hover:text-pink-400' 
+              : 'text-neutral-400 hover:text-pink-500'
+          }`}
+          title={isFavorited ? 'Unfavorite' : 'Favorite'}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg 
+            className={`w-5 h-5 ${isFavorited ? 'fill-current' : ''}`} 
+            fill={isFavorited ? 'currentColor' : 'none'} 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
@@ -1122,6 +1241,7 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
 }
 
 export default function AssetsPage() {
+  const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<AssetCategory>('All Packs');
   const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategory>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -1131,6 +1251,7 @@ export default function AssetsPage() {
   const [loadingLutPreviews, setLoadingLutPreviews] = useState(false);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [favoritedAssets, setFavoritedAssets] = useState<Set<string>>(new Set());
   
   // Reset subcategory when main category changes
   useEffect(() => {
@@ -1164,6 +1285,29 @@ export default function AssetsPage() {
 
     loadAssets();
   }, []);
+
+  // Load favorite status for all assets
+  useEffect(() => {
+    if (!user || assets.length === 0) {
+      setFavoritedAssets(new Set());
+      return;
+    }
+
+    const loadFavorites = async () => {
+      const favorites = new Set<string>();
+      await Promise.all(
+        assets.map(async (asset) => {
+          const saved = await isSaved(user.uid, 'asset', asset.id);
+          if (saved) {
+            favorites.add(asset.id);
+          }
+        })
+      );
+      setFavoritedAssets(favorites);
+    };
+
+    loadFavorites();
+  }, [user, assets]);
 
   // Load sound effects for SFX assets when SFX & Plugins category is selected
   // Prefetch when category is selected, so SFX subcategory loads instantly
@@ -1591,6 +1735,47 @@ export default function AssetsPage() {
                     {asset.description && (
                       <div className="text-xs text-neutral-500 mt-2 line-clamp-2">{asset.description}</div>
                     )}
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-end mt-3">
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!user) {
+                            alert('Please sign in to favorite assets');
+                            return;
+                          }
+                          const nowFavorited = await toggleSaved(user.uid, 'asset', asset.id, {
+                            assetId: asset.id,
+                            title: asset.title,
+                            category: asset.category,
+                          });
+                          setFavoritedAssets(prev => {
+                            const newSet = new Set(prev);
+                            if (nowFavorited) {
+                              newSet.add(asset.id);
+                            } else {
+                              newSet.delete(asset.id);
+                            }
+                            return newSet;
+                          });
+                        }}
+                        className={`w-8 h-8 flex items-center justify-center transition-colors ${
+                          favoritedAssets.has(asset.id)
+                            ? 'text-pink-500 hover:text-pink-400' 
+                            : 'text-neutral-400 hover:text-pink-500'
+                        }`}
+                        title={favoritedAssets.has(asset.id) ? 'Unfavorite' : 'Favorite'}
+                      >
+                        <svg 
+                          className={`w-4 h-4 ${favoritedAssets.has(asset.id) ? 'fill-current' : ''}`} 
+                          fill={favoritedAssets.has(asset.id) ? 'currentColor' : 'none'} 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
