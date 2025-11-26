@@ -110,24 +110,35 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Create or find a product for CCA memberships
+    let product;
+    const products = await stripe.products.list({ limit: 100 });
+    product = products.data.find((p) => p.name === 'CCA Membership' || p.name?.includes('CCA'));
+    
+    if (!product) {
+      product = await stripe.products.create({
+        name: 'CCA Membership',
+        description: 'Course Creator Academy membership plans',
+      });
+    }
+
+    // Create a new price for this plan
+    const price = await stripe.prices.create({
+      currency: 'usd',
+      unit_amount: newPlan.price,
+      recurring: { interval: 'month' },
+      product: product.id,
+      metadata: {
+        planType: newPlanType,
+      },
+    });
+
     // Update the subscription with the new plan
     // Stripe will automatically prorate the difference
     const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
       items: [{
         id: currentItem.id,
-        price_data: {
-          currency: 'usd',
-          unit_amount: newPlan.price,
-          recurring: { interval: 'month' },
-          product_data: {
-            name: newPlan.name,
-            description: newPlan.name === 'All-Access Membership' 
-              ? 'All-access membership with Legacy Creator access and no platform fees'
-              : newPlan.name === 'No-Fees Membership'
-              ? 'Skip all platform fees on marketplace sales and job listings'
-              : 'Platform access to courses, community, and marketplace',
-          },
-        },
+        price: price.id,
       }],
       proration_behavior: 'always_invoice', // Always prorate when changing plans
       metadata: {
