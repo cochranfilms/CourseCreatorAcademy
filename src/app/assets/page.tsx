@@ -985,28 +985,27 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="border border-ccaBlue/30 bg-black/80 backdrop-blur-sm rounded-lg p-4 hover:border-ccaBlue/60 hover:bg-black/90 transition-all duration-300 shadow-lg shadow-ccaBlue/10 hover:shadow-ccaBlue/20">
+    <div className="border border-neutral-700 bg-black rounded-lg p-4 hover:border-neutral-500 transition-all duration-200">
       <div className="flex items-center gap-4">
-        {/* Futuristic Play Button */}
+        {/* Play Button */}
         <button
           onClick={togglePlay}
           disabled={!audioUrl}
-          className="relative w-12 h-12 rounded-full bg-gradient-to-br from-ccaBlue via-purple-600 to-pink-600 hover:from-ccaBlue/90 hover:via-purple-500 hover:to-pink-500 flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg shadow-ccaBlue/50 hover:shadow-ccaBlue/70 hover:scale-110 group"
+          className="w-12 h-12 rounded-full bg-ccaBlue hover:bg-ccaBlue/90 flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
         >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-ccaBlue via-purple-600 to-pink-600 opacity-75 blur-md group-hover:opacity-100 transition-opacity"></div>
           {isPlaying ? (
-            <svg className="w-6 h-6 text-white relative z-10" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
             </svg>
           ) : (
-            <svg className="w-6 h-6 text-white ml-0.5 relative z-10" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z"/>
             </svg>
           )}
         </button>
 
-        {/* Futuristic Thumbnail */}
-        <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-neutral-900 via-neutral-800 to-black flex-shrink-0 overflow-hidden border border-ccaBlue/20 shadow-lg shadow-black/50">
+        {/* Thumbnail */}
+        <div className="w-14 h-14 rounded-lg bg-neutral-900 flex-shrink-0 overflow-hidden border border-neutral-800">
           {asset.thumbnailUrl && asset.thumbnailUrl.startsWith('https://') ? (
             <img 
               src={asset.thumbnailUrl} 
@@ -1014,7 +1013,7 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-ccaBlue/50 bg-gradient-to-br from-neutral-900 to-black">
+            <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-neutral-900">
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
               </svg>
@@ -1024,20 +1023,17 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
 
         {/* Info and Waveform */}
         <div className="flex-1 min-w-0">
-          <div className="text-white text-sm font-semibold truncate drop-shadow-lg">{soundEffect.fileName.replace(/\.[^/.]+$/, '')}</div>
-          <div className="text-xs text-ccaBlue/70 mt-0.5 font-medium">Overlay</div>
+          <div className="text-white text-sm font-semibold truncate">{soundEffect.fileName.replace(/\.[^/.]+$/, '')}</div>
+          <div className="text-xs text-neutral-400 mt-0.5">Overlay</div>
           
-          {/* Futuristic Interactive Waveform */}
+          {/* Interactive Waveform */}
           <div 
             ref={waveformRef}
             onClick={handleWaveformClick}
             onMouseMove={handleWaveformMouseMove}
             onMouseLeave={() => setHoveredBarIndex(null)}
-            className="mt-3 h-10 bg-gradient-to-b from-neutral-900/90 via-black/80 to-neutral-900/90 rounded-lg relative overflow-hidden border border-ccaBlue/20 cursor-pointer group/waveform backdrop-blur-sm"
+            className="mt-3 h-10 bg-neutral-900 rounded-lg relative overflow-hidden border border-neutral-800 cursor-pointer"
           >
-            {/* Animated background gradient */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-ccaBlue/5 to-transparent animate-pulse"></div>
-            
             {/* Waveform bars */}
             <div className="absolute inset-0 flex items-center gap-[2px] px-1.5">
               {waveformBars.map((bar) => {
@@ -1050,10 +1046,10 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
                     key={bar.index}
                     className={`flex-1 rounded-sm transition-all duration-75 ${
                       isActive 
-                        ? 'bg-gradient-to-t from-ccaBlue via-purple-500 to-pink-500 shadow-lg shadow-ccaBlue/50' 
+                        ? 'bg-ccaBlue' 
                         : isHovered || isPastHover
-                        ? 'bg-gradient-to-t from-ccaBlue/40 via-purple-500/40 to-pink-500/40'
-                        : 'bg-neutral-600/50'
+                        ? 'bg-ccaBlue/40'
+                        : 'bg-neutral-700'
                     } ${isHovered ? 'scale-y-110' : ''}`}
                     style={{ 
                       height: `${bar.height}%`,
@@ -1067,25 +1063,25 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
             {/* Progress indicator line */}
             {progress > 0 && (
               <div 
-                className="absolute top-0 bottom-0 w-0.5 bg-gradient-to-b from-ccaBlue via-purple-500 to-pink-500 shadow-lg shadow-ccaBlue/70 transition-all duration-75"
+                className="absolute top-0 bottom-0 w-0.5 bg-ccaBlue transition-all duration-75"
                 style={{ left: `${progress}%` }}
               >
-                <div className="absolute -top-1 -left-1 w-3 h-3 rounded-full bg-ccaBlue shadow-lg shadow-ccaBlue/70 border-2 border-white/50"></div>
+                <div className="absolute -top-1 -left-1 w-3 h-3 rounded-full bg-ccaBlue border-2 border-white"></div>
               </div>
             )}
           </div>
           
-          {/* Duration with futuristic styling */}
-          <div className="text-xs text-ccaBlue/80 mt-2 font-mono font-semibold tracking-wider">
+          {/* Duration */}
+          <div className="text-xs text-neutral-400 mt-2 font-mono">
             {formatDuration(currentTime)}<span className="text-neutral-500">/</span>{formatDuration(duration)}
           </div>
         </div>
 
-        {/* Futuristic Download Button */}
+        {/* Download Button */}
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-ccaBlue transition-all duration-300 flex-shrink-0 rounded-lg hover:bg-ccaBlue/10 hover:border hover:border-ccaBlue/30 group"
+          className="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-ccaBlue transition-colors flex-shrink-0 rounded-lg hover:bg-neutral-900"
           title="Download"
         >
           {downloading ? (
@@ -1093,26 +1089,26 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           ) : (
-            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
           )}
         </button>
 
-        {/* Futuristic Favorite Button */}
+        {/* Favorite Button */}
         <button
-          className="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-pink-500 transition-all duration-300 flex-shrink-0 rounded-lg hover:bg-pink-500/10 hover:border hover:border-pink-500/30 group"
+          className="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-pink-500 transition-colors flex-shrink-0 rounded-lg hover:bg-neutral-900"
           title="Favorite"
         >
-          <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
       </div>
 
-      {/* Futuristic Tag */}
+      {/* Tag */}
       <div className="mt-3">
-        <span className="inline-block px-3 py-1 bg-gradient-to-r from-neutral-900/80 to-black/80 backdrop-blur-sm text-ccaBlue/80 text-xs rounded-md border border-ccaBlue/20 font-medium shadow-lg shadow-black/30">
+        <span className="inline-block px-2 py-1 bg-neutral-900 text-neutral-400 text-xs rounded border border-neutral-800">
           sound effects
         </span>
       </div>
@@ -1169,25 +1165,43 @@ export default function AssetsPage() {
     loadAssets();
   }, []);
 
-  // Load sound effects for SFX assets when SFX subcategory is selected
+  // Load sound effects for SFX assets when SFX & Plugins category is selected
+  // Prefetch when category is selected, so SFX subcategory loads instantly
   useEffect(() => {
-    if (selectedSubCategory !== 'SFX') return;
+    // Load when SFX subcategory is selected OR when SFX & Plugins category is selected (for prefetching)
+    const shouldLoad = selectedSubCategory === 'SFX' || 
+                      (selectedCategory === 'SFX & Plugins' && selectedSubCategory === null);
+    
+    if (!shouldLoad) {
+      // Clear sound effects when leaving SFX category
+      if (selectedCategory !== 'SFX & Plugins') {
+        setSoundEffects({});
+      }
+      return;
+    }
 
     const loadSoundEffects = async () => {
       const sfxAssets = assets.filter(asset => getSubCategory(asset) === 'SFX');
       const effectsMap: { [assetId: string]: SoundEffect[] } = {};
 
-      for (const asset of sfxAssets) {
+      // Parallelize all API calls for instant loading
+      const promises = sfxAssets.map(async (asset) => {
         try {
           const response = await fetch(`/api/assets/sound-effects?assetId=${asset.id}`);
           if (response.ok) {
             const data = await response.json();
-            effectsMap[asset.id] = data.soundEffects || [];
+            return { assetId: asset.id, soundEffects: data.soundEffects || [] };
           }
         } catch (error) {
           console.error(`Error loading sound effects for ${asset.id}:`, error);
         }
-      }
+        return { assetId: asset.id, soundEffects: [] };
+      });
+
+      const results = await Promise.all(promises);
+      results.forEach(({ assetId, soundEffects }) => {
+        effectsMap[assetId] = soundEffects;
+      });
 
       setSoundEffects(effectsMap);
     };
@@ -1195,7 +1209,7 @@ export default function AssetsPage() {
     if (assets.length > 0) {
       loadSoundEffects();
     }
-  }, [selectedSubCategory, assets]);
+  }, [selectedSubCategory, selectedCategory, assets]);
 
   // Load overlays when "Overlays & Transitions" category is selected
   useEffect(() => {
