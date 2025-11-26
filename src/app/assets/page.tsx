@@ -40,6 +40,15 @@ interface Overlay {
   previewStoragePath?: string; // Optional 720p version path
 }
 
+interface LUTPreview {
+  id: string;
+  assetId: string;
+  assetTitle: string;
+  lutName: string; // Name of the specific LUT (e.g., "Warm Ivory", "Elegant Taupe")
+  beforeVideoPath: string; // Path to "before" video in Firebase Storage
+  afterVideoPath: string; // Path to "after" video in Firebase Storage
+}
+
 const categories: AssetCategory[] = ['All Packs', 'LUTs & Presets', 'Overlays & Transitions', 'SFX & Plugins', 'Templates'];
 
 /**
@@ -1076,6 +1085,8 @@ export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [soundEffects, setSoundEffects] = useState<{ [assetId: string]: SoundEffect[] }>({});
   const [overlays, setOverlays] = useState<Overlay[]>([]);
+  const [lutPreviews, setLutPreviews] = useState<{ [assetId: string]: LUTPreview[] }>({});
+  const [loadingLutPreviews, setLoadingLutPreviews] = useState(false);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   
@@ -1161,6 +1172,56 @@ export default function AssetsPage() {
 
     loadOverlays();
   }, [selectedCategory]);
+
+  // Load LUT previews for LUT assets when LUTs subcategory is selected
+  useEffect(() => {
+    if (selectedSubCategory !== 'LUTs') {
+      setLutPreviews({});
+      setLoadingLutPreviews(false);
+      return;
+    }
+
+    const loadLUTPreviews = async () => {
+      setLoadingLutPreviews(true);
+      const lutAssets = assets.filter(asset => getSubCategory(asset) === 'LUTs');
+      const previewsMap: { [assetId: string]: LUTPreview[] } = {};
+
+      console.log(`[LUT Previews] Loading previews for ${lutAssets.length} LUT asset(s)`);
+
+      for (const asset of lutAssets) {
+        try {
+          const response = await fetch(`/api/assets/lut-previews?assetId=${asset.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            const previews = data.lutPreviews || [];
+            previewsMap[asset.id] = previews;
+            console.log(`[LUT Previews] Loaded ${previews.length} preview(s) for "${asset.title}" (${asset.id})`);
+            if (previews.length > 0) {
+              previews.forEach((preview: LUTPreview) => {
+                console.log(`  - ${preview.lutName}: ${preview.beforeVideoPath} / ${preview.afterVideoPath}`);
+              });
+            }
+          } else {
+            console.warn(`[LUT Previews] Failed to load previews for "${asset.title}" (${asset.id}): ${response.status}`);
+          }
+        } catch (error) {
+          console.error(`[LUT Previews] Error loading LUT previews for ${asset.id}:`, error);
+        }
+      }
+
+      const totalPreviews = Object.values(previewsMap).reduce((sum, arr) => sum + arr.length, 0);
+      console.log(`[LUT Previews] Total previews loaded: ${totalPreviews}`);
+
+      setLutPreviews(previewsMap);
+      setLoadingLutPreviews(false);
+    };
+
+    if (assets.length > 0) {
+      loadLUTPreviews();
+    } else {
+      setLoadingLutPreviews(false);
+    }
+  }, [selectedSubCategory, assets]);
 
   // Get subcategories for the current category
   const getSubCategories = (category: AssetCategory): SubCategory[] => {
@@ -1253,6 +1314,7 @@ export default function AssetsPage() {
   const showOverlays = selectedCategory === 'Overlays & Transitions';
   const showLUTs = selectedSubCategory === 'LUTs';
   const allSoundEffects: Array<{ soundEffect: SoundEffect; asset: Asset }> = [];
+  const allLUTPreviews: Array<{ preview: LUTPreview; asset: Asset }> = [];
 
   if (showSoundEffects) {
     filteredAssets.forEach(asset => {
@@ -1260,6 +1322,33 @@ export default function AssetsPage() {
       effects.forEach(effect => {
         allSoundEffects.push({ soundEffect: effect, asset });
       });
+    });
+  }
+
+  // Collect all LUT previews for display
+  if (showLUTs) {
+    filteredAssets.forEach(asset => {
+      const previews = lutPreviews[asset.id] || [];
+      if (previews.length > 0) {
+        previews.forEach(preview => {
+          allLUTPreviews.push({ preview, asset });
+        });
+      }
+      // If no previews exist for this asset but it has legacy video paths, add it as a preview
+      else if (asset.beforeVideoPath && asset.afterVideoPath) {
+        // Create a legacy preview object
+        allLUTPreviews.push({
+          preview: {
+            id: `legacy-${asset.id}`,
+            assetId: asset.id,
+            assetTitle: asset.title,
+            lutName: asset.title, // Use asset title as LUT name for legacy
+            beforeVideoPath: asset.beforeVideoPath,
+            afterVideoPath: asset.afterVideoPath,
+          },
+          asset,
+        });
+      }
     });
   }
 
@@ -1338,12 +1427,48 @@ export default function AssetsPage() {
               <SoundEffectPlayer key={soundEffect.id} soundEffect={soundEffect} asset={asset} />
             ))}
           </div>
+        ) : showLUTs ? (
+          loadingLutPreviews ? (
+            <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="rounded-lg overflow-hidden border border-neutral-700 bg-black">
+                  <div className="aspect-square bg-neutral-900 animate-pulse"></div>
+                  <div className="p-3">
+                    <div className="h-4 bg-neutral-900 rounded w-3/4 mb-2 animate-pulse"></div>
+                    <div className="h-3 bg-neutral-900 rounded w-1/2 animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : allLUTPreviews.length > 0 ? (
+            <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {allLUTPreviews.map(({ preview, asset }) => {
+                // Create a temporary asset object with preview video paths for the slider component
+                const previewAsset: Asset = {
+                  ...asset,
+                  beforeVideoPath: preview.beforeVideoPath,
+                  afterVideoPath: preview.afterVideoPath,
+                  title: `${asset.title} - ${preview.lutName}`, // Show pack name + LUT name
+                };
+                return <SideBySideVideoSlider key={preview.id} asset={previewAsset} />;
+              })}
+            </div>
+          ) : (
+            <div className="mt-6 text-neutral-400 text-center">
+              <p>No LUT previews found.</p>
+              <p className="text-sm text-neutral-500 mt-2">
+                {filteredAssets.length > 0 
+                  ? `${filteredAssets.length} LUT pack(s) found, but no preview videos are available yet.`
+                  : 'No LUT assets found in this category.'}
+              </p>
+            </div>
+          )
         ) : filteredAssets.length === 0 ? (
           <div className="mt-6 text-neutral-400 text-center">No assets found in this category.</div>
         ) : (
           <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredAssets.map((asset) => {
-              // Use side-by-side slider for LUTs with video previews
+              // Use side-by-side slider for LUTs with video previews (legacy support for direct asset videos)
               if (showLUTs && asset.beforeVideoPath && asset.afterVideoPath) {
                 return <SideBySideVideoSlider key={asset.id} asset={asset} />;
               }
