@@ -17,8 +17,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     }
 
-    // Get overlay document
-    const overlayDoc = await adminDb
+    // Get overlay document (try subcollection first, then flat collection)
+    let overlayDoc = await adminDb
       .collection('assets')
       .doc(assetId)
       .collection('overlays')
@@ -26,10 +26,34 @@ export async function GET(req: NextRequest) {
       .get();
 
     if (!overlayDoc.exists) {
+      // Try flat overlays collection
+      overlayDoc = await adminDb
+        .collection('overlays')
+        .doc(overlayId)
+        .get();
+    }
+
+    // If still not found, try finding by assetId and overlayId combination
+    if (!overlayDoc.exists) {
+      const foundByAsset = await adminDb
+        .collection('overlays')
+        .where('assetId', '==', assetId)
+        .where('id', '==', overlayId)
+        .limit(1)
+        .get();
+      
+      if (!foundByAsset.empty) {
+        overlayDoc = foundByAsset.docs[0];
+      }
+    }
+
+    if (!overlayDoc.exists) {
+      console.error(`Overlay not found: assetId=${assetId}, overlayId=${overlayId}`);
       return NextResponse.json({ error: 'Overlay not found' }, { status: 404 });
     }
 
     const overlayData = overlayDoc.data();
+    // Use storagePath for download (not previewStoragePath which is for 720p preview)
     const storagePath = overlayData?.storagePath;
 
     if (!storagePath) {
@@ -46,6 +70,19 @@ export async function GET(req: NextRequest) {
     const [exists] = await file.exists();
     if (!exists) {
       console.error(`File not found at path: ${storagePath}`);
+      console.error(`Overlay data:`, {
+        assetId,
+        overlayId,
+        storagePath,
+        previewStoragePath: overlayData?.previewStoragePath,
+        fileName: overlayData?.fileName
+      });
+      
+      // If storagePath doesn't exist but previewStoragePath does, that's a data issue
+      if (overlayData?.previewStoragePath && !overlayData?.previewStoragePath.includes('_720p')) {
+        console.warn('Warning: previewStoragePath exists but storagePath file not found');
+      }
+      
       return NextResponse.json({ 
         error: 'File not found in storage',
         details: `Path: ${storagePath}`
