@@ -85,9 +85,51 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
   const [downloading, setDownloading] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [isVideo, setIsVideo] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // Intersection Observer for lazy loading and pausing videos out of viewport
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            // Resume video if it's loaded
+            if (videoRef.current && isVideo && mediaUrl) {
+              videoRef.current.play().catch(() => {
+                // Ignore autoplay errors
+              });
+            }
+          } else {
+            // Pause video when out of viewport to save resources
+            if (videoRef.current && isVideo) {
+              videoRef.current.pause();
+            }
+          }
+        });
+      },
+      {
+        rootMargin: '50px', // Start loading 50px before entering viewport
+        threshold: 0.01
+      }
+    );
+
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isVideo, mediaUrl]);
+
+  // Load media URL only when visible
+  useEffect(() => {
+    if (!isVisible) return;
+
     // Load public media URL from proxy endpoint
     const loadMediaUrl = async () => {
       try {
@@ -105,39 +147,58 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
       }
     };
     loadMediaUrl();
-  }, [overlay]);
+  }, [overlay, isVisible]);
 
   // Setup video element and auto-play when URL is loaded (only for videos)
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !mediaUrl || !isVideo) return;
+    if (!video || !mediaUrl || !isVideo || !isVisible) return;
 
     // Set video attributes
     video.loop = true;
     video.muted = true;
     video.playsInline = true;
-    video.preload = 'auto';
+    video.preload = 'metadata'; // Changed from 'auto' to reduce initial load
+    video.crossOrigin = 'anonymous'; // Help with CORS
 
     // Handle video loaded event
     const handleLoadedData = () => {
       setVideoLoaded(true);
-      video.play().catch(err => {
-        console.error('Error auto-playing video:', err);
-      });
+      // Only autoplay if still visible
+      if (isVisible) {
+        video.play().catch(err => {
+          console.error('Error auto-playing video:', err);
+        });
+      }
     };
 
     // Handle video can play event
     const handleCanPlay = () => {
-      video.play().catch(err => {
-        console.error('Error auto-playing video:', err);
+      // Only autoplay if still visible
+      if (isVisible) {
+        video.play().catch(err => {
+          console.error('Error auto-playing video:', err);
+        });
+      }
+    };
+
+    // Handle video errors
+    const handleError = (e: Event) => {
+      const videoEl = e.target as HTMLVideoElement;
+      console.error('Video playback error:', {
+        error: videoEl.error,
+        networkState: videoEl.networkState,
+        readyState: videoEl.readyState,
+        src: videoEl.src
       });
     };
 
     video.addEventListener('loadeddata', handleLoadedData);
     video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('error', handleError);
 
-    // Try to play immediately if video is already loaded
-    if (video.readyState >= 2) {
+    // Try to play immediately if video is already loaded and visible
+    if (video.readyState >= 2 && isVisible) {
       video.play().catch(err => {
         console.error('Error auto-playing video:', err);
       });
@@ -146,8 +207,9 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
     return () => {
       video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('error', handleError);
     };
-  }, [mediaUrl, isVideo]);
+  }, [mediaUrl, isVideo, isVisible]);
 
   const handleDownload = async (e?: React.MouseEvent) => {
     if (e) {
@@ -178,6 +240,7 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
 
   return (
     <div 
+      ref={containerRef}
       className="border border-neutral-700 bg-black rounded-lg overflow-hidden hover:border-neutral-500 transition-colors cursor-pointer group"
       onClick={() => handleDownload()}
     >
@@ -192,16 +255,17 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
               playsInline
               muted
               loop
-              preload="auto"
+              preload="metadata"
+              crossOrigin="anonymous"
               onError={(e) => {
-                console.error('Video error:', e);
-                const video = e.currentTarget;
-                console.error('Video error details:', {
-                  error: video.error,
-                  networkState: video.networkState,
-                  readyState: video.readyState,
-                  src: video.src
+                console.error('Video playback error:', {
+                  error: (e.target as HTMLVideoElement).error,
+                  code: (e.target as HTMLVideoElement).error?.code,
+                  message: (e.target as HTMLVideoElement).error?.message,
+                  src: (e.target as HTMLVideoElement).src
                 });
+                // If video fails to play (e.g., .mov not supported), show fallback
+                setIsVideo(false);
               }}
             />
           ) : (
@@ -209,6 +273,7 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
               src={mediaUrl}
               alt={overlay.fileName}
               className="w-full h-full object-cover"
+              loading="lazy"
               onError={(e) => {
                 console.error('Image error:', e);
               }}

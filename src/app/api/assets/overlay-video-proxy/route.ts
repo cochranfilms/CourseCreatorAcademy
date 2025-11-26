@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 
 // GET /api/assets/overlay-video-proxy?assetId=xxx&overlayId=xxx
-// Streams video file with proper range request support for video playback
+// Returns signed URL for video playback with proper CORS support
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -53,8 +53,12 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
     
+    // Get file metadata for content type
+    const [metadata] = await file.getMetadata();
+    const contentType = metadata.contentType || (fileType === 'mov' ? 'video/quicktime' : `video/${fileType}`);
+    
     // Use signed URL with long expiration for public files
-    // This ensures proper encoding and CORS headers
+    // Firebase Storage signed URLs support range requests natively
     // Note: v4 signed URLs have a maximum expiration of 7 days
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days (maximum for v4)
@@ -68,7 +72,8 @@ export async function GET(req: NextRequest) {
     // Return the signed URL (acts as public URL) and file type
     return NextResponse.json({ 
       videoUrl: publicUrl,
-      fileType: fileType.toLowerCase()
+      fileType: fileType.toLowerCase(),
+      contentType: contentType
     });
   } catch (err: any) {
     console.error('Error proxying video:', err);
