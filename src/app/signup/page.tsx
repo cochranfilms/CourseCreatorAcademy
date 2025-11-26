@@ -98,8 +98,10 @@ export default function SignupPage() {
     setLoading(true);
     try {
       // Set flag to allow checkout flow even without membership
+      // Set it BEFORE calling signInWithGoogle so it's available during the auth flow
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('signup_checkout_flow', 'true');
+        console.log('[Signup] Set signup_checkout_flow flag to true');
       }
       
       await signInWithGoogle();
@@ -110,24 +112,23 @@ export default function SignupPage() {
       setIsGoogleOnlyAccount(false);
       setPendingPlan(null);
       
-      // Clear the flag after successful sign-in
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('signup_checkout_flow');
-      }
+      // Don't clear the flag yet - keep it until checkout completes
+      // It will be cleared when checkout closes or completes
     } catch (err: any) {
       console.error('Google sign-in error:', err);
-      // Clear flag on error
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('signup_checkout_flow');
-      }
       
       if (err.message?.includes('Membership required')) {
         // User signed in but doesn't have membership - that's fine, proceed to checkout
+        // The flag should still be set, so checkout can proceed
         setPlan(pendingPlan);
         setOpen(true);
         setIsGoogleOnlyAccount(false);
         setPendingPlan(null);
       } else {
+        // Clear flag on other errors
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('signup_checkout_flow');
+        }
         setError(err.message || 'Failed to sign in with Google. Please try again.');
       }
     } finally {

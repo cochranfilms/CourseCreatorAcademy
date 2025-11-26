@@ -167,6 +167,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const isInCheckoutFlow = typeof window !== 'undefined' && sessionStorage.getItem('signup_checkout_flow') === 'true';
           const isOnSignupPage = typeof window !== 'undefined' && window.location.pathname === '/signup';
           
+          console.log('[Auth] Membership check:', { 
+            hasMembership: false, 
+            isInCheckoutFlow, 
+            isOnSignupPage,
+            pathname: typeof window !== 'undefined' ? window.location.pathname : 'N/A',
+            flagValue: typeof window !== 'undefined' ? sessionStorage.getItem('signup_checkout_flow') : 'N/A'
+          });
+          
           if (isInCheckoutFlow || isOnSignupPage) {
             console.log('[Auth] User in signup checkout flow without membership - allowing to proceed with checkout');
             setUser(user);
@@ -356,6 +364,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Don't sign out if user is in signup checkout flow (they're trying to purchase membership)
         const isInCheckoutFlow = typeof window !== 'undefined' && sessionStorage.getItem('signup_checkout_flow') === 'true';
         const isOnSignupPage = typeof window !== 'undefined' && window.location.pathname === '/signup';
+        
+        console.log('[Google Sign-In] Membership check:', { 
+          hasMembership: false, 
+          isInCheckoutFlow, 
+          isOnSignupPage,
+          pathname: typeof window !== 'undefined' ? window.location.pathname : 'N/A',
+          flagValue: typeof window !== 'undefined' ? sessionStorage.getItem('signup_checkout_flow') : 'N/A'
+        });
         
         if (isInCheckoutFlow || isOnSignupPage) {
           console.log('[Google Sign-In] User in signup checkout flow without membership - allowing to proceed with checkout');
