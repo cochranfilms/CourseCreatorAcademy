@@ -282,7 +282,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     if (!auth) throw new Error('Firebase Auth not initialized');
     const provider = new GoogleAuthProvider();
+    
+    // Add prompt to force account selection
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
     try {
+      // Try popup first (better UX)
       const result = await signInWithPopup(auth, provider);
       
       // Check membership immediately after sign-in
@@ -301,7 +308,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error.message?.includes('Membership required')) {
         throw error;
       }
-      // Re-throw other errors (like popup closed, network errors, etc.)
+      
+      // If popup was blocked or failed, try redirect as fallback
+      if (error.code === 'auth/popup-blocked' || 
+          error.code === 'auth/popup-closed-by-user' ||
+          error.message?.includes('popup') ||
+          error.message?.includes('blocked')) {
+        // Use redirect instead
+        throw new Error('Popup blocked. Please allow popups for this site or use email/password sign-in.');
+      }
+      
+      // Re-throw other errors
       throw error;
     }
   };
@@ -328,7 +345,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error.message?.includes('Membership required')) {
         throw error;
       }
-      // Re-throw other errors (like popup closed, network errors, etc.)
+      
+      // If popup was blocked or failed, provide helpful error
+      if (error.code === 'auth/popup-blocked' || 
+          error.code === 'auth/popup-closed-by-user' ||
+          error.message?.includes('popup') ||
+          error.message?.includes('blocked')) {
+        throw new Error('Popup blocked. Please allow popups for this site or use email/password sign-in.');
+      }
+      
+      // Re-throw other errors
       throw error;
     }
   };

@@ -5,6 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
 
+// Note: Console errors about "message channel closed" are harmless and come from
+// browser extensions (password managers, ad blockers) trying to intercept page messages.
+// These do not affect functionality and can be safely ignored.
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
