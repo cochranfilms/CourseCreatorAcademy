@@ -65,10 +65,20 @@ async function check720pExists(storagePath) {
 async function updateOverlay(overlayDoc, assetId, dryRun = false) {
   const overlayId = overlayDoc.id;
   const overlayData = overlayDoc.data();
-  const storagePath = overlayData?.storagePath;
+  let storagePath = overlayData?.storagePath;
 
   if (!storagePath) {
     return { success: false, reason: 'no_storage_path' };
+  }
+
+  // If storagePath points to .mov, check for .mp4 version
+  if (storagePath.toLowerCase().endsWith('.mov')) {
+    const mp4Path = storagePath.replace(/\.mov$/i, '.mp4');
+    const mp4File = bucket.file(mp4Path);
+    const [mp4Exists] = await mp4File.exists();
+    if (mp4Exists) {
+      storagePath = mp4Path; // Use .mp4 version for checking 720p
+    }
   }
 
   // Check if it's a video file
@@ -110,31 +120,66 @@ async function updateOverlay(overlayDoc, assetId, dryRun = false) {
       .get();
     
     if (subcollectionDoc.exists) {
-      await db
-        .collection('assets')
-        .doc(assetId)
-        .collection('overlays')
-        .doc(overlayId)
-        .update({
-          previewStoragePath: previewPath,
-          transcoded720p: true,
-          transcodedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      console.log(`    ✓ Updated Firestore subcollection document`);
+      const currentData = subcollectionDoc.data();
+      // Only update if previewStoragePath is missing or different
+      if (currentData.previewStoragePath !== previewPath) {
+        await db
+          .collection('assets')
+          .doc(assetId)
+          .collection('overlays')
+          .doc(overlayId)
+          .update({
+            previewStoragePath: previewPath,
+            transcoded720p: true,
+            transcodedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        console.log(`    ✓ Updated Firestore subcollection document`);
+      } else {
+        console.log(`    ⏭ Already has correct previewStoragePath`);
+      }
       return { success: true };
     } else {
       // Try flat overlays collection
       const flatDoc = await db.collection('overlays').doc(overlayId).get();
       if (flatDoc.exists) {
-        await db.collection('overlays').doc(overlayId).update({
-          previewStoragePath: previewPath,
-          transcoded720p: true,
-          transcodedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        console.log(`    ✓ Updated Firestore overlays collection document`);
+        const currentData = flatDoc.data();
+        // Only update if previewStoragePath is missing or different
+        if (currentData.previewStoragePath !== previewPath) {
+          await db.collection('overlays').doc(overlayId).update({
+            previewStoragePath: previewPath,
+            transcoded720p: true,
+            transcodedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          console.log(`    ✓ Updated Firestore overlays collection document`);
+        } else {
+          console.log(`    ⏭ Already has correct previewStoragePath`);
+        }
         return { success: true };
       } else {
-        console.log(`    ⚠ Document not found in either location`);
+        // Try finding by storagePath instead of overlayId
+        const foundByPath = await db
+          .collection('overlays')
+          .where('assetId', '==', assetId)
+          .where('storagePath', '==', storagePath)
+          .get();
+        
+        if (!foundByPath.empty) {
+          const doc = foundByPath.docs[0];
+          const currentData = doc.data();
+          if (currentData.previewStoragePath !== previewPath) {
+            await db.collection('overlays').doc(doc.id).update({
+              previewStoragePath: previewPath,
+              transcoded720p: true,
+              transcodedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            console.log(`    ✓ Updated Firestore overlays collection document (found by storagePath)`);
+          } else {
+            console.log(`    ⏭ Already has correct previewStoragePath`);
+          }
+          return { success: true };
+        }
+        
+        console.log(`    ⚠ Document not found in any location`);
         return { success: false, reason: 'doc_not_found' };
       }
     }

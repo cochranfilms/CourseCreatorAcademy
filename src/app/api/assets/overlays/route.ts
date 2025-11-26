@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
       .get();
 
     const allOverlays: any[] = [];
+    const processedOverlayIds = new Set<string>();
 
     // Fetch overlays from each asset's subcollection
     for (const assetDoc of overlayAssetsSnap.docs) {
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest) {
         .get();
 
       overlaysSnap.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
+        processedOverlayIds.add(doc.id);
         allOverlays.push({
           id: doc.id,
           ...doc.data(),
@@ -39,6 +41,36 @@ export async function GET(req: NextRequest) {
         });
       });
     }
+
+    // Also fetch from flat overlays collection
+    const flatOverlaysSnap = await adminDb
+      .collection('overlays')
+      .orderBy('fileName', 'asc')
+      .get();
+
+    // Create a map of assetId -> asset title for quick lookup
+    const assetMap = new Map<string, string>();
+    overlayAssetsSnap.docs.forEach((doc) => {
+      assetMap.set(doc.id, doc.data().title || 'Untitled');
+    });
+
+    flatOverlaysSnap.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
+      // Skip if already processed from subcollection
+      if (processedOverlayIds.has(doc.id)) {
+        return;
+      }
+
+      const overlayData = doc.data();
+      const assetId = overlayData.assetId;
+      const assetTitle = assetMap.get(assetId) || overlayData.assetTitle || 'Untitled';
+
+      allOverlays.push({
+        id: doc.id,
+        ...overlayData,
+        assetId,
+        assetTitle,
+      });
+    });
 
     return NextResponse.json({ overlays: allOverlays });
   } catch (err: any) {
