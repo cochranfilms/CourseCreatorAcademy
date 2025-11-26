@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /*
-  Unzip SFX asset ZIP files and extract individual sound files to Firebase Storage
+  Unzip Overlay asset ZIP files and extract individual overlay files to Firebase Storage
   
   This script:
-  1. Downloads SFX ZIP files from Firebase Storage
+  1. Downloads Overlay ZIP files from Firebase Storage
   2. Unzips them to a temporary directory
-  3. Uploads individual sound files back to Storage in a structured format
-  4. Creates/updates Firestore documents for individual sound effects
+  3. Uploads individual overlay files (images/videos) back to Storage in a structured format
+  4. Creates/updates Firestore documents for individual overlays
   
   Requirements:
   - FIREBASE_ADMIN_PROJECT_ID
@@ -15,10 +15,10 @@
   - npm packages: yauzl, fs-extra
   
   Usage:
-    node scripts/unzip-sfx-assets.js [--assetId=xxx] [--all]
+    node scripts/unzip-overlay-assets.js [--assetId=xxx] [--all]
   
   If --assetId is provided, only processes that asset.
-  If --all is provided, processes all SFX assets.
+  If --all is provided, processes all Overlay assets.
 */
 
 // Load env from .env.local first, then fallback to .env
@@ -54,8 +54,13 @@ const db = admin.firestore();
 const storage = admin.storage();
 const bucket = storage.bucket();
 
-// Supported audio file extensions
-const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.aiff', '.m4a', '.ogg', '.flac'];
+// Supported overlay file extensions (images and videos)
+const OVERLAY_EXTENSIONS = [
+  // Images
+  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.tiff', '.tif',
+  // Videos
+  '.mov', '.mp4', '.avi', '.mkv', '.webm', '.m4v',
+];
 
 function getArg(name, def) {
   const arg = process.argv.find(a => a.startsWith(`--${name}=`));
@@ -90,14 +95,14 @@ async function uploadFile(localPath, storagePath, contentType) {
 }
 
 /**
- * Unzip a file and extract audio files
+ * Unzip a file and extract overlay files
  */
 function unzipFile(zipPath, extractTo) {
   return new Promise((resolve, reject) => {
     yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
       if (err) return reject(err);
       
-      const audioFiles = [];
+      const overlayFiles = [];
       
       zipfile.readEntry();
       
@@ -113,7 +118,7 @@ function unzipFile(zipPath, extractTo) {
           }
           
           const ext = path.extname(entry.fileName).toLowerCase();
-          if (AUDIO_EXTENSIONS.includes(ext)) {
+          if (OVERLAY_EXTENSIONS.includes(ext)) {
             const fileName = path.basename(entry.fileName);
             // Double-check: skip if filename starts with ._
             if (fileName.startsWith('._')) {
@@ -134,7 +139,7 @@ function unzipFile(zipPath, extractTo) {
               readStream.pipe(writeStream);
               
               writeStream.on('close', () => {
-                audioFiles.push({
+                overlayFiles.push({
                   fileName,
                   localPath: extractPath,
                   extension: ext,
@@ -148,53 +153,69 @@ function unzipFile(zipPath, extractTo) {
         }
       });
       
-      zipfile.on('end', () => resolve(audioFiles));
+      zipfile.on('end', () => resolve(overlayFiles));
       zipfile.on('error', reject);
     });
   });
 }
 
 /**
- * Get audio duration (basic implementation - you may want to use a library like node-ffprobe)
+ * Get content type based on file extension
  */
-async function getAudioDuration(filePath) {
-  // For now, return 0. We can enhance this later with ffprobe or similar
-  // This is a placeholder
-  return 0;
+function getContentType(extension) {
+  const contentTypeMap = {
+    // Images
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.tiff': 'image/tiff',
+    '.tif': 'image/tiff',
+    // Videos
+    '.mov': 'video/quicktime',
+    '.mp4': 'video/mp4',
+    '.avi': 'video/x-msvideo',
+    '.mkv': 'video/x-matroska',
+    '.webm': 'video/webm',
+    '.m4v': 'video/x-m4v',
+  };
+  
+  return contentTypeMap[extension.toLowerCase()] || 'application/octet-stream';
 }
 
 /**
- * Process a single SFX asset
+ * Process a single Overlay asset
  */
-async function processSfxAsset(asset) {
+async function processOverlayAsset(asset) {
   console.log(`\nProcessing: ${asset.title} (${asset.id})`);
   
-  if (!asset.storagePath || !asset.storagePath.includes('/sfx/')) {
-    console.log('  Skipping: Not an SFX asset');
+  if (!asset.storagePath || !asset.storagePath.toLowerCase().includes('/overlays/')) {
+    console.log('  Skipping: Not an Overlay asset');
     return;
   }
   
-  // Check if sound effects already exist for this asset
-  const existingSoundEffects = await db
+  // Check if overlays already exist for this asset
+  const existingOverlays = await db
     .collection('assets')
     .doc(asset.id)
-    .collection('soundEffects')
+    .collection('overlays')
     .limit(1)
     .get();
   
-  if (!existingSoundEffects.empty) {
+  if (!existingOverlays.empty) {
     // Get full count for logging
-    const allSoundEffects = await db
+    const allOverlays = await db
       .collection('assets')
       .doc(asset.id)
-      .collection('soundEffects')
+      .collection('overlays')
       .get();
-    console.log(`  ⏭ Skipping: Already processed (${allSoundEffects.size} sound effect(s) found)`);
+    console.log(`  ⏭ Skipping: Already processed (${allOverlays.size} overlay(s) found)`);
     return;
   }
   
   // Create temp directory
-  const tempDir = path.join(os.tmpdir(), `sfx-extract-${asset.id}-${Date.now()}`);
+  const tempDir = path.join(os.tmpdir(), `overlay-extract-${asset.id}-${Date.now()}`);
   const zipPath = path.join(tempDir, 'asset.zip');
   
   try {
@@ -210,63 +231,56 @@ async function processSfxAsset(asset) {
     // Download ZIP file
     await downloadFile(asset.storagePath, zipPath);
     
-    // Extract audio files
+    // Extract overlay files
     const extractDir = path.join(tempDir, 'extracted');
-    const audioFiles = await unzipFile(zipPath, extractDir);
+    const overlayFiles = await unzipFile(zipPath, extractDir);
     
-    if (audioFiles.length === 0) {
-      console.log('  No audio files found in ZIP');
+    if (overlayFiles.length === 0) {
+      console.log('  No overlay files found in ZIP');
       return;
     }
     
-    console.log(`  Found ${audioFiles.length} audio files`);
+    console.log(`  Found ${overlayFiles.length} overlay files`);
     
     // Get asset folder name (without .zip)
     const zipFileName = path.basename(asset.storagePath);
     const assetFolderName = zipFileName.replace('.zip', '');
     const baseStoragePath = asset.storagePath.replace(`/${zipFileName}`, '');
     
-    // Process each audio file
-    const soundEffects = [];
+    // Process each overlay file
+    const overlays = [];
     
-    for (const audioFile of audioFiles) {
-      const soundFileName = audioFile.fileName;
-      const soundStoragePath = `${baseStoragePath}/${assetFolderName}/sounds/${soundFileName}`;
+    for (const overlayFile of overlayFiles) {
+      const overlayFileName = overlayFile.fileName;
+      const overlayStoragePath = `${baseStoragePath}/${assetFolderName}/${overlayFileName}`;
       
       // Upload to Storage
-      const contentType = audioFile.extension === '.mp3' ? 'audio/mpeg' :
-                         audioFile.extension === '.wav' ? 'audio/wav' :
-                         audioFile.extension === '.m4a' ? 'audio/mp4' :
-                         'audio/octet-stream';
+      const contentType = getContentType(overlayFile.extension);
       
-      await uploadFile(audioFile.localPath, soundStoragePath, contentType);
+      await uploadFile(overlayFile.localPath, overlayStoragePath, contentType);
       
-      // Get duration (placeholder for now)
-      const duration = await getAudioDuration(audioFile.localPath);
-      
-      // Create sound effect document
-      const soundEffect = {
+      // Create overlay document
+      const overlay = {
         assetId: asset.id,
         assetTitle: asset.title,
-        fileName: soundFileName,
-        storagePath: soundStoragePath,
-        fileType: audioFile.extension.replace('.', ''),
-        duration: duration, // Will be 0 for now
+        fileName: overlayFileName,
+        storagePath: overlayStoragePath,
+        fileType: overlayFile.extension.replace('.', ''),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
       
-      soundEffects.push(soundEffect);
+      overlays.push(overlay);
     }
     
-    // Store sound effects in Firestore subcollection
+    // Store overlays in Firestore subcollection
     const batch = db.batch();
-    for (const soundEffect of soundEffects) {
-      const docRef = db.collection('assets').doc(asset.id).collection('soundEffects').doc();
-      batch.set(docRef, soundEffect);
+    for (const overlay of overlays) {
+      const docRef = db.collection('assets').doc(asset.id).collection('overlays').doc();
+      batch.set(docRef, overlay);
     }
     await batch.commit();
     
-    console.log(`  ✓ Processed ${soundEffects.length} sound effects`);
+    console.log(`  ✓ Processed ${overlays.length} overlays`);
     
     // Cleanup temp directory
     await fs.remove(tempDir);
@@ -288,7 +302,7 @@ async function main() {
   const processAll = hasFlag('all');
   
   if (!assetId && !processAll) {
-    console.error('Usage: node scripts/unzip-sfx-assets.js [--assetId=xxx] [--all]');
+    console.error('Usage: node scripts/unzip-overlay-assets.js [--assetId=xxx] [--all]');
     process.exit(1);
   }
   
@@ -302,25 +316,25 @@ async function main() {
       }
       
       const asset = { id: assetDoc.id, ...assetDoc.data() };
-      await processSfxAsset(asset);
+      await processOverlayAsset(asset);
     } else {
-      // Process all SFX assets
-      // First, check Firebase Storage directly for SFX zip files
+      // Process all Overlay assets
+      // First, check Firebase Storage directly for Overlay zip files
       // This catches files that might not have Firestore documents yet
-      console.log('Scanning Firebase Storage for SFX zip files...');
+      console.log('Scanning Firebase Storage for Overlay zip files...');
       const [storageFiles] = await bucket.getFiles({ prefix: 'assets/' });
       
-      const storageSfxZips = [];
+      const storageOverlayZips = [];
       for (const file of storageFiles) {
         const fileName = file.name.split('/').pop();
         const pathParts = file.name.split('/');
         
-        // Check if it's a ZIP file in an SFX folder
-        // Pattern: assets/sfx/{filename}.zip or assets/SFX/{filename}.zip
+        // Check if it's a ZIP file in an Overlay folder
+        // Pattern: assets/overlays/{filename}.zip or assets/Overlays/{filename}.zip
         if (fileName.endsWith('.zip') && pathParts.length === 3 && pathParts[0] === 'assets') {
           const categoryFolder = pathParts[1].toLowerCase();
-          if (categoryFolder === 'sfx' || categoryFolder.includes('sfx')) {
-            storageSfxZips.push({
+          if (categoryFolder === 'overlays' || categoryFolder.includes('overlay')) {
+            storageOverlayZips.push({
               storagePath: file.name,
               fileName: fileName,
             });
@@ -328,7 +342,7 @@ async function main() {
         }
       }
       
-      console.log(`Found ${storageSfxZips.length} SFX zip files in Storage`);
+      console.log(`Found ${storageOverlayZips.length} Overlay zip files in Storage`);
       
       // Now fetch all assets from Firestore
       console.log('Fetching all assets from Firestore...');
@@ -345,18 +359,18 @@ async function main() {
         }
       }
       
-      // Process SFX assets from both sources
-      const sfxAssets = [];
+      // Process Overlay assets from both sources
+      const overlayAssets = [];
       
-      // First, add assets from Firestore that match SFX
+      // First, add assets from Firestore that match Overlay
       for (const [storagePath, asset] of assetMap.entries()) {
-        if (storagePath.toLowerCase().includes('/sfx/')) {
-          sfxAssets.push(asset);
+        if (storagePath.toLowerCase().includes('/overlays/')) {
+          overlayAssets.push(asset);
         }
       }
       
       // Then, create Firestore documents for Storage files that don't have documents yet
-      for (const zipFile of storageSfxZips) {
+      for (const zipFile of storageOverlayZips) {
         if (!assetMap.has(zipFile.storagePath)) {
           console.log(`\n⚠ Found zip file in Storage without Firestore document: ${zipFile.fileName}`);
           console.log(`  Storage path: ${zipFile.storagePath}`);
@@ -366,7 +380,7 @@ async function main() {
           const title = zipFile.fileName.replace('.zip', '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
           const assetData = {
             title: title,
-            category: 'SFX & Plugins',
+            category: 'Overlays & Transitions',
             storagePath: zipFile.storagePath,
             fileType: 'zip',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -377,16 +391,16 @@ async function main() {
           // Refresh the document to get the actual server timestamp
           const createdDoc = await docRef.get();
           const newAsset = { id: createdDoc.id, ...createdDoc.data() };
-          sfxAssets.push(newAsset);
+          overlayAssets.push(newAsset);
           console.log(`  ✓ Created document: ${docRef.id}`);
         }
       }
       
-      console.log(`\nFound ${sfxAssets.length} total SFX assets to process`);
+      console.log(`\nFound ${overlayAssets.length} total Overlay assets to process`);
       
-      // Debug: List all SFX assets found
-      console.log('\nSFX Assets found:');
-      sfxAssets.forEach((asset, index) => {
+      // Debug: List all Overlay assets found
+      console.log('\nOverlay Assets found:');
+      overlayAssets.forEach((asset, index) => {
         console.log(`  ${index + 1}. ${asset.title || 'Untitled'} (${asset.id})`);
         console.log(`     Storage: ${asset.storagePath}`);
         if (asset.createdAt) {
@@ -413,7 +427,7 @@ async function main() {
       });
       
       // Sort by createdAt if available (newest first) to process recent uploads first
-      sfxAssets.sort((a, b) => {
+      overlayAssets.sort((a, b) => {
         let aTime = 0;
         let bTime = 0;
         
@@ -424,7 +438,7 @@ async function main() {
             } else if (a.createdAt.toDate) {
               aTime = a.createdAt.toDate().getTime();
             } else if (typeof a.createdAt === 'object' && a.createdAt._methodName === 'serverTimestamp') {
-              // Server timestamp placeholder - treat as newest (0 will sort to end, so use large number)
+              // Server timestamp placeholder - treat as newest
               aTime = Date.now();
             } else {
               const date = new Date(a.createdAt);
@@ -456,8 +470,8 @@ async function main() {
         return bTime - aTime; // Newest first
       });
       
-      for (const asset of sfxAssets) {
-        await processSfxAsset(asset);
+      for (const asset of overlayAssets) {
+        await processOverlayAsset(asset);
       }
     }
     

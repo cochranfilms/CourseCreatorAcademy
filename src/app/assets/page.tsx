@@ -28,6 +28,15 @@ interface SoundEffect {
   duration: number;
 }
 
+interface Overlay {
+  id: string;
+  assetId: string;
+  assetTitle: string;
+  fileName: string;
+  storagePath: string;
+  fileType: string;
+}
+
 const categories: AssetCategory[] = ['All Packs', 'LUTs & Presets', 'Overlays & Transitions', 'SFX & Plugins', 'Templates'];
 
 /**
@@ -66,6 +75,134 @@ function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Overlay Player Component - Shows looping video preview
+ */
+function OverlayPlayer({ overlay }: { overlay: Overlay }) {
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    // Load video URL when component mounts
+    const loadVideoUrl = async () => {
+      try {
+        const response = await fetch(`/api/assets/overlay-download?assetId=${overlay.assetId}&overlayId=${overlay.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setVideoUrl(data.downloadUrl);
+        }
+      } catch (error) {
+        console.error('Error loading video URL:', error);
+      }
+    };
+    loadVideoUrl();
+  }, [overlay]);
+
+  // Auto-play and loop video when URL is loaded
+  useEffect(() => {
+    if (videoRef.current && videoUrl) {
+      videoRef.current.loop = true;
+      videoRef.current.muted = true;
+      videoRef.current.play().catch(err => {
+        console.error('Error auto-playing video:', err);
+      });
+    }
+  }, [videoUrl]);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (downloading) return;
+    
+    setDownloading(true);
+    try {
+      const response = await fetch(`/api/assets/overlay-download?assetId=${overlay.assetId}&overlayId=${overlay.id}`);
+      if (!response.ok) throw new Error('Failed to get download URL');
+      const data = await response.json();
+      
+      const link = document.createElement('a');
+      link.href = data.downloadUrl;
+      link.download = overlay.fileName;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download overlay. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="border border-ccaBlue/30 bg-black/80 backdrop-blur-sm rounded-lg p-4 hover:border-ccaBlue/60 hover:bg-black/90 transition-all duration-300 shadow-lg shadow-ccaBlue/10 hover:shadow-ccaBlue/20">
+      <div className="flex items-center gap-4">
+        {/* Video Thumbnail Preview */}
+        <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-neutral-900 via-neutral-800 to-black flex-shrink-0 overflow-hidden border border-ccaBlue/20 shadow-lg shadow-black/50 relative group">
+          {videoUrl ? (
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              className="w-full h-full object-cover"
+              playsInline
+              muted
+              loop
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-ccaBlue/50 bg-gradient-to-br from-neutral-900 to-black">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="text-white text-sm font-semibold truncate drop-shadow-lg">{overlay.fileName.replace(/\.[^/.]+$/, '')}</div>
+          <div className="text-xs text-ccaBlue/70 mt-0.5 font-medium">{overlay.assetTitle}</div>
+        </div>
+
+        {/* Download Button */}
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-ccaBlue transition-all duration-300 flex-shrink-0 rounded-lg hover:bg-ccaBlue/10 hover:border hover:border-ccaBlue/30 group"
+          title="Download"
+        >
+          {downloading ? (
+            <svg className="w-5 h-5 animate-spin text-ccaBlue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          )}
+        </button>
+
+        {/* Favorite Button */}
+        <button
+          className="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-pink-500 transition-all duration-300 flex-shrink-0 rounded-lg hover:bg-pink-500/10 hover:border hover:border-pink-500/30 group"
+          title="Favorite"
+        >
+          <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Tag */}
+      <div className="mt-3">
+        <span className="inline-block px-3 py-1 bg-gradient-to-r from-neutral-900/80 to-black/80 backdrop-blur-sm text-ccaBlue/80 text-xs rounded-md border border-ccaBlue/20 font-medium shadow-lg shadow-black/30">
+          overlay
+        </span>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -360,6 +497,7 @@ export default function AssetsPage() {
   const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategory>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [soundEffects, setSoundEffects] = useState<{ [assetId: string]: SoundEffect[] }>({});
+  const [overlays, setOverlays] = useState<Overlay[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   
@@ -424,9 +562,31 @@ export default function AssetsPage() {
     }
   }, [selectedSubCategory, assets]);
 
+  // Load overlays when "Overlays & Transitions" category is selected
+  useEffect(() => {
+    if (selectedCategory !== 'Overlays & Transitions') {
+      setOverlays([]);
+      return;
+    }
+
+    const loadOverlays = async () => {
+      try {
+        const response = await fetch('/api/assets/overlays');
+        if (response.ok) {
+          const data = await response.json();
+          setOverlays(data.overlays || []);
+        }
+      } catch (error) {
+        console.error('Error loading overlays:', error);
+      }
+    };
+
+    loadOverlays();
+  }, [selectedCategory]);
+
   // Get subcategories for the current category
   const getSubCategories = (category: AssetCategory): SubCategory[] => {
-    if (category === 'Overlays & Transitions') return ['Overlays', 'Transitions'];
+    // Removed 'Overlays & Transitions' subcategories - show all overlays directly
     if (category === 'SFX & Plugins') return ['SFX', 'Plugins'];
     if (category === 'LUTs & Presets') return ['LUTs', 'Presets'];
     return [];
@@ -480,6 +640,7 @@ export default function AssetsPage() {
 
   // Show individual sound effects for SFX subcategory
   const showSoundEffects = selectedSubCategory === 'SFX';
+  const showOverlays = selectedCategory === 'Overlays & Transitions';
   const allSoundEffects: Array<{ soundEffect: SoundEffect; asset: Asset }> = [];
 
   if (showSoundEffects) {
@@ -552,6 +713,12 @@ export default function AssetsPage() {
                   <div className="h-3 bg-neutral-900 rounded w-1/2 animate-pulse"></div>
                 </div>
               </div>
+            ))}
+          </div>
+        ) : showOverlays && overlays.length > 0 ? (
+          <div className="mt-6 space-y-2">
+            {overlays.map((overlay) => (
+              <OverlayPlayer key={overlay.id} overlay={overlay} />
             ))}
           </div>
         ) : showSoundEffects && allSoundEffects.length > 0 ? (
