@@ -58,7 +58,7 @@ export default function SignupPage() {
       
       // Handle specific Firebase errors
       if (err.code === 'auth/email-already-in-use') {
-        // Check if this account was created with Google OAuth
+        // Account already exists - try to sign them in and proceed to checkout
         try {
           const signInMethods = await fetchSignInMethodsForEmail(auth, email);
           const hasGoogleProvider = signInMethods.includes('google.com');
@@ -71,26 +71,43 @@ export default function SignupPage() {
             setError('This email is registered with Google. Signing you in...');
             
             // Automatically sign in with Google and proceed to checkout
-            // Pass the plan directly to avoid React state timing issues
-            // Use setTimeout to allow error state to update UI first
             setTimeout(async () => {
               try {
                 await handleGoogleSignInForCheckout(selectedPlan);
               } catch (autoSignInError: any) {
                 console.error('Auto sign-in error:', autoSignInError);
-                // If auto sign-in fails, show the manual button option
                 setError('This email is already registered with Google. Please sign in with Google to continue with your purchase.');
               }
             }, 100);
             return; // Exit early, checkout will open via handleGoogleSignInForCheckout
+          } else if (hasPasswordProvider) {
+            // Account exists with password - sign them in and proceed to checkout
+            try {
+              const { signInWithEmailAndPassword } = await import('firebase/auth');
+              await signInWithEmailAndPassword(auth, email, password);
+              // User is now signed in, proceed to checkout
+              setPlan(selectedPlan);
+              setOpen(true);
+              setError('');
+            } catch (signInError: any) {
+              console.error('Sign-in error:', signInError);
+              if (signInError.code === 'auth/wrong-password') {
+                setError('Incorrect password. Please sign in to your account first.');
+              } else {
+                setError('Unable to sign in. Please try signing in manually first.');
+              }
+            }
+            return;
           } else {
-            // Account exists with password or other providers
-            setError('An account with this email already exists. Please sign in instead.');
+            // Account exists but no password provider - suggest Google sign-in
+            setIsGoogleOnlyAccount(true);
+            setPendingPlan(selectedPlan);
+            setError('This email is already registered. Please sign in with Google to continue.');
           }
         } catch (checkError) {
-          // If we can't check, show generic error
+          // If we can't check, suggest they sign in first
           console.error('Error checking sign-in methods:', checkError);
-          setError('An account with this email already exists. Please sign in instead.');
+          setError('An account with this email already exists. Please sign in first, then return to purchase a membership.');
         }
       } else if (err.code === 'auth/invalid-email') {
         setError('Invalid email address format.');
