@@ -162,7 +162,7 @@ export default function SignupPage() {
   }, [user, pendingPlan, open]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12 -mt-16">
+    <div className="min-h-screen flex items-center justify-center px-6 py-12 pt-safe">
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">Join Creator Collective</h1>
