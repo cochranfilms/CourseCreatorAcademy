@@ -36,7 +36,28 @@ export async function GET(req: NextRequest) {
       hasMembership = Boolean(userData?.membershipActive);
     }
 
-    // If no active membership, check for pending membership to claim
+    // If no active membership, check if user is a legacy creator
+    // Legacy creators should be able to login without a membership
+    if (!hasMembership) {
+      try {
+        // Check if user's userId matches an ownerUserId in legacy_creators collection
+        const legacyCreatorQuery = adminDb
+          .collection('legacy_creators')
+          .where('ownerUserId', '==', userId)
+          .limit(1);
+        
+        const legacyCreatorSnap = await legacyCreatorQuery.get();
+        if (!legacyCreatorSnap.empty) {
+          // User is a legacy creator - allow them to sign in
+          hasMembership = true;
+        }
+      } catch (legacyCheckError) {
+        // If legacy check fails, continue to check for pending membership
+        console.warn('[Membership API] Error checking legacy creator status:', legacyCheckError);
+      }
+    }
+
+    // If no active membership and not a legacy creator, check for pending membership to claim
     if (!hasMembership && email) {
       const normalizedEmail = email.toLowerCase().trim();
       const claimsQ = adminDb

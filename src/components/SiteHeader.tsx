@@ -47,6 +47,8 @@ export function SiteHeader() {
   const [showLegacy, setShowLegacy] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
   const [hasLegacySub, setHasLegacySub] = useState(false);
+  const [membershipPlan, setMembershipPlan] = useState<string | null>(null);
+  const [membershipActive, setMembershipActive] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -73,6 +75,9 @@ export function SiteHeader() {
               photoURL: data.photoURL || base.photoURL,
             };
             isLegacy = Boolean(data.isLegacyCreator || data.roles?.legacyCreator);
+            // Track membership plan and status
+            setMembershipPlan(data.membershipPlan || null);
+            setMembershipActive(Boolean(data.membershipActive));
           }
           // Fallback: if user doc doesn't say legacy, check legacy_creators mapping via API
           if (!isLegacy) {
@@ -92,11 +97,15 @@ export function SiteHeader() {
             photoURL: user.photoURL || undefined,
             isLegacyCreator: false
           });
+          setMembershipPlan(null);
+          setMembershipActive(false);
         }
       };
       fetchProfile();
     } else {
       setProfile(null);
+      setMembershipPlan(null);
+      setMembershipActive(false);
     }
   }, [user]);
 
@@ -270,7 +279,11 @@ export function SiteHeader() {
                   <span className="hidden lg:inline text-sm text-neutral-400">Your Status:</span>
                   
                   {/* Upgrade / Status Button */}
-                  {hasLegacySub ? (
+                  {membershipActive && membershipPlan === 'cca_membership_87' ? (
+                    <span className="hidden lg:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                      All-Access Member
+                    </span>
+                  ) : hasLegacySub ? (
                     <span className="hidden lg:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
                       Legacy+
                     </span>
