@@ -256,16 +256,22 @@ export function LegacySubscriptions() {
     }
   };
 
-  const getAvailablePlans = (): { upgrade: string | null; downgrade: string | null } => {
+  const getAvailablePlans = (): { upgrades: string[]; downgrade: string | null } => {
     if (!planType) {
-      return { upgrade: null, downgrade: null };
+      return { upgrades: [], downgrade: null };
     }
     
     const currentPlanIndex = ['cca_monthly_37', 'cca_no_fees_60', 'cca_membership_87'].indexOf(planType);
     const plans = ['cca_monthly_37', 'cca_no_fees_60', 'cca_membership_87'];
     
+    // Get all available upgrades (plans with higher index)
+    const upgrades: string[] = [];
+    for (let i = currentPlanIndex + 1; i < plans.length; i++) {
+      upgrades.push(plans[i]);
+    }
+    
     return {
-      upgrade: currentPlanIndex < plans.length - 1 ? plans[currentPlanIndex + 1] : null,
+      upgrades,
       downgrade: currentPlanIndex > 0 ? plans[currentPlanIndex - 1] : null,
     };
   };
@@ -361,15 +367,16 @@ export function LegacySubscriptions() {
 
                 {/* Upgrade/Downgrade Buttons */}
                 <div className="flex flex-wrap gap-3 pt-4 border-t border-neutral-800">
-                  {availablePlans.upgrade && (
+                  {availablePlans.upgrades.map((upgradePlan) => (
                     <button
-                      onClick={() => handleChangePlan(availablePlans.upgrade!, true)}
+                      key={upgradePlan}
+                      onClick={() => handleChangePlan(upgradePlan, true)}
                       disabled={changingPlan}
                       className="px-4 py-2 bg-ccaBlue hover:bg-ccaBlue/90 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {changingPlan ? 'Processing...' : `Upgrade to ${PLAN_FEATURES[availablePlans.upgrade].name}`}
+                      {changingPlan ? 'Processing...' : `Upgrade to ${PLAN_FEATURES[upgradePlan].name}`}
                     </button>
-                  )}
+                  ))}
                   {availablePlans.downgrade && (
                     <button
                       onClick={() => handleChangePlan(availablePlans.downgrade!, true)}
