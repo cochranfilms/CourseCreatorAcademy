@@ -225,6 +225,7 @@ export async function POST(req: NextRequest) {
 
       // Verify the credit was created by checking the latest invoice
       // Use Stripe's actual invoice to get the exact credit amount
+      // Calculate NET credit (same way as preview) to ensure consistency
       let actualCreditAmount = creditAmount;
       try {
         const invoices = await stripe.invoices.list({
@@ -236,24 +237,32 @@ export async function POST(req: NextRequest) {
         if (invoices.data.length > 0) {
           const latestInvoice = invoices.data[0];
           
-          // Extract credit from invoice line items (most accurate)
-          let invoiceCredit = 0;
+          // Calculate NET credit from invoice line items (same logic as preview)
+          let invoicePositiveProration = 0;
+          let invoiceNegativeProration = 0;
           if (latestInvoice.lines?.data) {
             for (const line of latestInvoice.lines.data) {
-              if (line.proration && line.amount < 0) {
-                invoiceCredit += Math.abs(line.amount);
+              if (line.proration) {
+                if (line.amount > 0) {
+                  invoicePositiveProration += line.amount;
+                } else if (line.amount < 0) {
+                  invoiceNegativeProration += Math.abs(line.amount);
+                }
               }
             }
           }
           
-          if (invoiceCredit > 0) {
-            actualCreditAmount = invoiceCredit;
+          // Net credit = negative proration - positive proration
+          const netInvoiceCredit = Math.max(0, invoiceNegativeProration - invoicePositiveProration);
+          
+          if (netInvoiceCredit > 0) {
+            actualCreditAmount = netInvoiceCredit;
+          } else if (latestInvoice.total < 0) {
+            // Fallback: negative total means credit
+            actualCreditAmount = Math.abs(latestInvoice.total);
           } else if (latestInvoice.amount_due < 0) {
             // Fallback: negative amount_due means credit
             actualCreditAmount = Math.abs(latestInvoice.amount_due);
-          } else if (latestInvoice.amount_paid < 0) {
-            // Or check amount_paid for credits
-            actualCreditAmount = Math.abs(latestInvoice.amount_paid);
           }
         }
       } catch (err) {
