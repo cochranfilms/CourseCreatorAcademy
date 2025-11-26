@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import * as FirebaseFirestore from 'firebase-admin/firestore';
 
 // GET /api/assets/sound-effects?assetId=xxx
 // Returns list of individual sound effects for an SFX asset pack
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
       .orderBy('fileName', 'asc')
       .get();
 
-    const soundEffects = soundEffectsSnap.docs.map(doc => ({
+    const soundEffects = soundEffectsSnap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
       id: doc.id,
       ...doc.data(),
     }));
