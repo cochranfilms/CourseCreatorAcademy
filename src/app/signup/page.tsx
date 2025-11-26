@@ -175,7 +175,7 @@ export default function SignupPage() {
               {error}
               {isGoogleOnlyAccount && (
                 <button
-                  onClick={handleGoogleSignInForCheckout}
+                  onClick={() => handleGoogleSignInForCheckout()}
                   disabled={loading}
                   className="mt-3 w-full bg-white text-black py-2 px-4 rounded-lg font-semibold hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
