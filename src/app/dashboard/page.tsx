@@ -60,6 +60,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'projects' | 'social' | 'email' | 'privacy' | 'orders' | 'onboarding' | 'legacy' | 'jobs'>('projects');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [planChangeMessage, setPlanChangeMessage] = useState<string | null>(null);
   
   // Project form state
   const [projectTitle, setProjectTitle] = useState('');
@@ -137,6 +138,34 @@ export default function DashboardPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [hasLegacySub, setHasLegacySub] = useState(false);
   const [showLegacyModal, setShowLegacyModal] = useState(false);
+
+  // Handle plan change success/cancel messages from URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const planChange = params.get('plan_change');
+      const newPlan = params.get('new_plan');
+      
+      if (planChange === 'success') {
+        const planName = newPlan === 'cca_membership_87' ? 'All-Access Membership' 
+          : newPlan === 'cca_no_fees_60' ? 'No-Fees Membership'
+          : newPlan === 'cca_monthly_37' ? 'Monthly Membership'
+          : 'your new plan';
+        setPlanChangeMessage(`Plan upgraded successfully! You're now on ${planName}.`);
+        setActiveTab('legacy');
+        // Clean up URL
+        router.replace('/dashboard');
+        // Reload after 3 seconds to show updated subscription
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      } else if (planChange === 'canceled') {
+        setPlanChangeMessage('Plan change was canceled.');
+        router.replace('/dashboard');
+        setTimeout(() => setPlanChangeMessage(null), 5000);
+      }
+    }
+  }, [router]);
 
   // Fetch user profile
   useEffect(() => {
@@ -719,6 +748,25 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 w-full overflow-x-hidden">
+        {/* Plan Change Success Message */}
+        {planChangeMessage && (
+          <div className="mb-6 p-4 rounded-lg border bg-green-500/10 border-green-500/30 text-green-300">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="font-semibold mb-1">Success!</div>
+                <div className="text-sm">{planChangeMessage}</div>
+              </div>
+              <button
+                onClick={() => setPlanChangeMessage(null)}
+                className="ml-4 text-current opacity-70 hover:opacity-100"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
         {/* Profile Section */}
         <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 w-full overflow-x-hidden">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 w-full">

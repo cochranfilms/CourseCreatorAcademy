@@ -72,7 +72,7 @@ async function checkMembershipStatus(user: User): Promise<boolean | null> {
     
     // Handle null (couldn't verify) vs false (no membership) vs true (has membership)
     if (data.hasMembership === null || data.hasMembership === undefined) {
-      console.warn('[Membership Check] Could not verify membership status, allowing access');
+      // Silently allow access if we can't verify (server may not be configured in dev)
       return null; // Couldn't verify - allow access
     }
     

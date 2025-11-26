@@ -191,25 +191,21 @@ export function LegacySubscriptions() {
         }
       } catch (err) {
         console.error('Error calculating proration:', err);
-        alert('Failed to calculate proration. Please try again.');
+        setProrationPreview({
+          amount: 0,
+          isUpgrade: false,
+          message: 'Failed to calculate proration. Please try again.',
+          planType: newPlanType,
+        });
         return;
       }
     }
 
-    // Confirm with user
-    const confirmMessage = prorationPreview
-      ? `${prorationPreview.message}\n\nDo you want to proceed?`
-      : `Are you sure you want to change your plan?`;
-
-    if (!confirm(confirmMessage)) {
-      setProrationPreview(null);
-      return;
-    }
-
+    // Proceed with plan change
     setChangingPlan(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/subscription/change-plan', {
+      const res = await fetch('/api/subscription/checkout', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -220,17 +216,39 @@ export function LegacySubscriptions() {
 
       const data = await res.json();
       if (res.ok) {
-        alert(`Plan changed successfully! ${data.message || ''}`);
-        // Reload the page to reflect changes
-        window.location.reload();
+        if (data.requiresPayment && data.checkoutUrl) {
+          // Redirect to Stripe Checkout for payment
+          window.location.href = data.checkoutUrl;
+        } else {
+          // Downgrade or no payment needed - show success and reload
+          setProrationPreview({
+            amount: 0,
+            isUpgrade: false,
+            message: data.message || 'Plan changed successfully!',
+            planType: newPlanType,
+          });
+          // Reload after a short delay to show success message
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        }
       } else {
-        alert(data.error || 'Failed to change plan');
+        setProrationPreview({
+          amount: 0,
+          isUpgrade: false,
+          message: data.error || 'Failed to change plan',
+          planType: newPlanType,
+        });
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to change plan');
+      setProrationPreview({
+        amount: 0,
+        isUpgrade: false,
+        message: err.message || 'Failed to change plan',
+        planType: newPlanType,
+      });
     } finally {
       setChangingPlan(false);
-      setProrationPreview(null);
     }
   };
 
@@ -356,24 +374,56 @@ export function LegacySubscriptions() {
                   )}
                 </div>
 
+                {/* Proration Preview/Status Modal */}
                 {prorationPreview && (
-                  <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                    <div className="text-sm text-blue-300 mb-2">{prorationPreview.message}</div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleChangePlan(prorationPreview.planType, false)}
-                        disabled={changingPlan}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition disabled:opacity-50"
-                      >
-                        {changingPlan ? 'Processing...' : 'Confirm Change'}
-                      </button>
-                      <button
-                        onClick={() => setProrationPreview(null)}
-                        disabled={changingPlan}
-                        className="px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 text-white rounded text-xs font-medium transition disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
+                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-6 max-w-md w-full shadow-xl">
+                      <div className="mb-4">
+                        <h3 className="text-lg font-semibold text-white mb-2">
+                          {prorationPreview.isUpgrade ? 'Confirm Upgrade' : prorationPreview.message.includes('successfully') ? 'Plan Changed' : 'Confirm Plan Change'}
+                        </h3>
+                        <div className={`text-sm ${
+                          prorationPreview.message.includes('successfully') || prorationPreview.message.includes('Credit')
+                            ? 'text-green-400'
+                            : prorationPreview.message.includes('Failed')
+                            ? 'text-red-400'
+                            : 'text-neutral-300'
+                        }`}>
+                          {prorationPreview.message}
+                        </div>
+                        {prorationPreview.amount > 0 && (
+                          <div className="mt-3 text-lg font-semibold text-white">
+                            Amount: ${(prorationPreview.amount / 100).toFixed(2)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-3">
+                        {!prorationPreview.message.includes('successfully') && !prorationPreview.message.includes('Credit') && (
+                          <button
+                            onClick={() => handleChangePlan(prorationPreview.planType, false)}
+                            disabled={changingPlan}
+                            className="flex-1 px-4 py-2 bg-ccaBlue hover:bg-ccaBlue/90 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {changingPlan ? 'Processing...' : prorationPreview.isUpgrade ? 'Proceed to Payment' : 'Confirm Change'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setProrationPreview(null);
+                            if (prorationPreview.message.includes('successfully')) {
+                              window.location.reload();
+                            }
+                          }}
+                          disabled={changingPlan}
+                          className={`px-4 py-2 ${
+                            prorationPreview.message.includes('successfully') || prorationPreview.message.includes('Credit')
+                              ? 'bg-ccaBlue hover:bg-ccaBlue/90'
+                              : 'bg-neutral-700 hover:bg-neutral-600'
+                          } text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {prorationPreview.message.includes('successfully') || prorationPreview.message.includes('Credit') ? 'OK' : 'Cancel'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

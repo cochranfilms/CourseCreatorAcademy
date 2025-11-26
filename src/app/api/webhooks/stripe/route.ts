@@ -601,6 +601,76 @@ export async function POST(req: NextRequest) {
         metadata: pi.metadata
       });
 
+      // Handle plan upgrade payment
+      if (pi.metadata && pi.metadata.action === 'upgrade_plan' && pi.metadata.subscriptionId && pi.metadata.newPlanType) {
+        try {
+          const subscriptionId = pi.metadata.subscriptionId;
+          const newPlanType = pi.metadata.newPlanType;
+          const buyerId = pi.metadata.buyerId;
+
+          // Get the subscription
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const currentItem = subscription.items.data[0];
+          
+          if (!currentItem) {
+            console.error('No subscription items found for upgrade');
+            break;
+          }
+
+          // Create or find product
+          let product;
+          const products = await stripe.products.list({ limit: 100 });
+          product = products.data.find((p) => p.name === 'CCA Membership' || p.name?.includes('CCA'));
+          
+          if (!product) {
+            product = await stripe.products.create({
+              name: 'CCA Membership',
+              description: 'Course Creator Academy membership plans',
+            });
+          }
+
+          // Get plan price
+          const planPrices: Record<string, number> = {
+            cca_monthly_37: 3700,
+            cca_no_fees_60: 6000,
+            cca_membership_87: 8700,
+          };
+          const newPrice = planPrices[newPlanType];
+          
+          if (!newPrice) {
+            console.error('Invalid plan type for upgrade:', newPlanType);
+            break;
+          }
+
+          // Create new price
+          const price = await stripe.prices.create({
+            currency: 'usd',
+            unit_amount: newPrice,
+            recurring: { interval: 'month' },
+            product: product.id,
+            metadata: {
+              planType: newPlanType,
+            },
+          });
+
+          // Update subscription to new plan
+          await stripe.subscriptions.update(subscriptionId, {
+            items: [{
+              id: currentItem.id,
+              price: price.id,
+            }],
+            metadata: {
+              planType: newPlanType,
+              buyerId: buyerId || '',
+            },
+          });
+
+          console.log('Subscription upgraded successfully:', { subscriptionId, newPlanType });
+        } catch (err: any) {
+          console.error('Failed to upgrade subscription after payment:', err);
+        }
+      }
+
       // Handle job deposit payments
       if (pi.metadata?.type === 'job_deposit' && adminDb) {
         try {
