@@ -972,7 +972,7 @@ export default function DashboardPage() {
                   : 'bg-neutral-900/60 backdrop-blur-sm text-neutral-400 hover:text-white border border-neutral-800/50'
               }`}
             >
-              {tab === 'legacy' ? 'Legacy+ Subscriptions' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'legacy' ? 'Subscriptions' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
@@ -1394,10 +1394,6 @@ export default function DashboardPage() {
 
         {activeTab === 'legacy' && (
           <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
-            <div className="mb-6">
-              <h2 className="text-xl sm:text-2xl font-semibold mb-2">Legacy+ Subscriptions</h2>
-              <p className="text-neutral-400 text-sm">Manage your Legacy+ creator subscriptions</p>
-            </div>
             <LegacySubscriptions />
           </div>
         )}

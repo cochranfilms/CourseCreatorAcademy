@@ -286,9 +286,12 @@ export function LegacySubscriptions() {
     : null;
 
   return (
-    <div className="space-y-6">
-      {/* CCA Membership Card */}
-      <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-6">
+    <div className="space-y-8">
+      {/* Platform Subscription Section */}
+      <div>
+        <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-white">Platform Subscription</h2>
+        <p className="text-neutral-400 text-sm mb-4">Manage your CCA platform membership</p>
+        <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
@@ -444,17 +447,20 @@ export function LegacySubscriptions() {
             )}
           </div>
         </div>
+        </div>
       </div>
 
-      {/* Legacy+ Subscriptions */}
-      {subscriptions.length === 0 ? (
-        <div className="text-center py-6">
-          <p className="text-neutral-400 mb-4">You don't have any active Legacy+ subscriptions.</p>
-          <Link href="/learn" className="text-ccaBlue hover:underline">Browse Creator Kits</Link>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white">Legacy+ Creator Subscriptions</h3>
+      {/* Legacy+ Subscriptions Section */}
+      <div>
+        <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-white">Legacy+ Subscriptions</h2>
+        <p className="text-neutral-400 text-sm mb-4">Manage your Legacy+ creator subscriptions</p>
+        {subscriptions.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-neutral-400 mb-4">You don't have any active Legacy+ subscriptions.</p>
+            <Link href="/learn" className="text-ccaBlue hover:underline">Browse Creator Kits</Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
           {subscriptions.map((sub) => (
             <div
               key={sub.id}
