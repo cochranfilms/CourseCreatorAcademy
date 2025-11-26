@@ -39,43 +39,38 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 // Helper function to check if user has active membership or pending membership to claim
-async function checkMembershipStatus(userId: string, email: string): Promise<boolean> {
-  if (!firebaseReady || !db) return false;
+// Uses server-side API route to bypass Firestore permission issues
+async function checkMembershipStatus(user: User): Promise<boolean> {
+  if (!firebaseReady || !user) return false;
   
   try {
-    // Check if user has active membership
-    const userDocRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userDocRef);
-    
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      if (userData?.membershipActive === true) {
-        return true;
-      }
+    // Get Firebase ID token for server-side verification
+    const idToken = await user.getIdToken();
+    if (!idToken) {
+      console.error('[Membership Check] No ID token available');
+      return false; // Secure default - deny access
     }
-    
-    // Check if user has pending membership to claim
-    if (email) {
-      const normalizedEmail = email.toLowerCase().trim();
-      const claimsQ = query(
-        collection(db, 'pendingMemberships'), 
-        where('email', '==', normalizedEmail), 
-        where('claimed', '==', false)
-      );
-      
-      const snap = await getDocs(claimsQ);
-      if (!snap.empty) {
-        // User has pending membership - allow them to sign in to claim it
-        return true;
-      }
+
+    // Call server-side API route that uses admin SDK
+    const response = await fetch('/api/auth/check-membership', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error('[Membership Check] API error:', response.status, response.statusText);
+      return false; // Secure default - deny access on error
     }
-    
-    return false;
+
+    const data = await response.json();
+    return Boolean(data.hasMembership);
   } catch (error) {
-    console.error('Error checking membership status:', error);
-    // On error, be permissive to avoid blocking legitimate users
-    // This prevents false positives from blocking access
-    return true;
+    console.error('[Membership Check] Error checking membership status:', error);
+    // SECURITY: On error, deny access (secure default)
+    // This prevents unauthorized access if the check fails
+    return false;
   }
 }
 
@@ -148,11 +143,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         // Check membership status before allowing sign-in
-        const hasMembership = await checkMembershipStatus(user.uid, user.email || '');
+        // Wait a moment for the user to be fully authenticated
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const hasMembership = await checkMembershipStatus(user);
         
         if (!hasMembership) {
           // Sign out user immediately if they don't have membership
-          console.log('User does not have active membership, signing out...');
+          console.log('[Auth] User does not have active membership, signing out...');
           try {
             await signOut(auth);
           } catch (signOutError) {
@@ -258,8 +255,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
       
-      // Check membership immediately after sign-in
-      const hasMembership = await checkMembershipStatus(result.user.uid, result.user.email || '');
+      // Wait a moment for auth state to fully propagate
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Check membership immediately after sign-in using server-side API
+      const hasMembership = await checkMembershipStatus(result.user);
       
       if (!hasMembership) {
         // Sign out immediately if no membership
@@ -299,8 +299,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log('[Google Sign-In] Popup successful, user:', result.user.email);
       
-      // Check membership immediately after sign-in
-      const hasMembership = await checkMembershipStatus(result.user.uid, result.user.email || '');
+      // Wait a moment for auth state to fully propagate
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Check membership immediately after sign-in using server-side API
+      const hasMembership = await checkMembershipStatus(result.user);
       
       if (!hasMembership) {
         console.log('[Google Sign-In] User does not have membership, signing out...');
@@ -364,8 +367,11 @@ If the issue persists, try using email/password sign-in instead.`;
     try {
       const result = await signInWithPopup(auth, provider);
       
-      // Check membership immediately after sign-in
-      const hasMembership = await checkMembershipStatus(result.user.uid, result.user.email || '');
+      // Wait a moment for auth state to fully propagate
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Check membership immediately after sign-in using server-side API
+      const hasMembership = await checkMembershipStatus(result.user);
       
       if (!hasMembership) {
         // Sign out immediately if no membership
