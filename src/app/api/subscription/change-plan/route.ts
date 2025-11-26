@@ -76,12 +76,6 @@ export async function POST(req: NextRequest) {
     const currentPlan = PLAN_CONFIG[currentPlanType as keyof typeof PLAN_CONFIG];
     const isUpgrade = newPlan.price > (currentPlan?.price || 0);
 
-    // Get the current price item (first item in the subscription)
-    const currentItem = subscription.items.data[0];
-    if (!currentItem) {
-      return NextResponse.json({ error: 'Subscription has no items' }, { status: 400 });
-    }
-
     // Create or find a product for CCA memberships
     let product;
     const products = await stripe.products.list({ limit: 100 });
