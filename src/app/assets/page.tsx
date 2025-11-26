@@ -566,6 +566,9 @@ function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { as
                   // For LUT previews, use the before video as thumbnail
                   thumbnailUrl = getPublicStorageUrl(asset.beforeVideoPath);
                 }
+                // Determine subcategory for LUT previews
+                const subCategory = previewId ? 'LUTs' : getSubCategory(asset);
+                
                 const nowFavorited = await toggleSaved(user.uid, 'asset', targetId, {
                   assetId: asset.id,
                   title: asset.title,
@@ -574,6 +577,7 @@ function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { as
                   thumbnailUrl: thumbnailUrl || undefined,
                   beforeVideoPath: asset.beforeVideoPath || undefined,
                   afterVideoPath: asset.afterVideoPath || undefined,
+                  subCategory: subCategory || undefined,
                 });
                 setIsFavorited(nowFavorited);
               }}
@@ -903,6 +907,15 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
                   : overlay.storagePath 
                     ? getPublicStorageUrl(overlay.storagePath)
                     : undefined;
+                // Determine subcategory from storage path
+                const getSubCategoryFromPath = (path: string): string | null => {
+                  const pathLower = path.toLowerCase();
+                  if (pathLower.includes('/overlays/')) return 'Overlays';
+                  if (pathLower.includes('/transitions/')) return 'Transitions';
+                  return null;
+                };
+                const subCategory = getSubCategoryFromPath(overlay.storagePath);
+                
                 const nowFavorited = await toggleSaved(user.uid, 'asset', overlay.id, {
                   assetId: overlay.assetId,
                   title: overlay.fileName,
@@ -910,6 +923,10 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
                   fileName: overlay.fileName,
                   thumbnailUrl: overlayThumbnailUrl,
                   storagePath: overlay.storagePath,
+                  previewStoragePath: overlay.previewStoragePath || undefined,
+                  fileType: overlay.fileType,
+                  category: 'Overlays & Transitions',
+                  subCategory: subCategory || undefined,
                 });
                 setIsFavorited(nowFavorited);
               }}
@@ -1224,6 +1241,8 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
               soundEffectId: soundEffect.id,
               fileName: soundEffect.fileName,
               thumbnailUrl: assetThumbnailUrl || undefined,
+              category: 'SFX & Plugins',
+              subCategory: 'SFX',
             });
             setIsFavorited(nowFavorited);
           }}
@@ -1272,6 +1291,55 @@ export default function AssetsPage() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [favoritedAssets, setFavoritedAssets] = useState<Set<string>>(new Set());
+
+  // Handle URL hash navigation from saved items
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1); // Remove #
+      if (!hash) return;
+      
+      // Parse hash format: "category-subcategory" or just "category"
+      const parts = hash.split('-');
+      const categoryHash = parts[0];
+      const subCategoryHash = parts[1];
+      
+      // Map hash to category
+      const hashToCategory: Record<string, AssetCategory> = {
+        'overlays-transitions': 'Overlays & Transitions',
+        'luts-presets': 'LUTs & Presets',
+        'sfx-plugins': 'SFX & Plugins',
+        'templates': 'Templates',
+        'all': 'All Packs',
+      };
+      
+      const hashToSubCategory: Record<string, SubCategory> = {
+        'overlays': 'Overlays',
+        'transitions': 'Transitions',
+        'sfx': 'SFX',
+        'plugins': 'Plugins',
+        'luts': 'LUTs',
+        'presets': 'Presets',
+      };
+      
+      if (categoryHash && hashToCategory[categoryHash]) {
+        setSelectedCategory(hashToCategory[categoryHash]);
+        if (subCategoryHash && hashToSubCategory[subCategoryHash]) {
+          setSelectedSubCategory(hashToSubCategory[subCategoryHash]);
+        } else {
+          setSelectedSubCategory(null);
+        }
+      }
+    };
+    
+    // Check hash on mount
+    handleHashChange();
+    
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
   
   // Reset subcategory when main category changes
   useEffect(() => {
@@ -1764,11 +1832,13 @@ export default function AssetsPage() {
                             alert('Please sign in to favorite assets');
                             return;
                           }
+                          const assetSubCategory = getSubCategory(asset);
                           const nowFavorited = await toggleSaved(user.uid, 'asset', asset.id, {
                             assetId: asset.id,
                             title: asset.title,
                             category: asset.category,
                             thumbnailUrl: asset.thumbnailUrl || undefined,
+                            subCategory: assetSubCategory || undefined,
                           });
                           setFavoritedAssets(prev => {
                             const newSet = new Set(prev);

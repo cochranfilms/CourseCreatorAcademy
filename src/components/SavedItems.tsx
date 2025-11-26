@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { collection, getDocs, query, orderBy, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +26,12 @@ type SavedItem = {
   assetId?: string;
   beforeVideoPath?: string;
   afterVideoPath?: string;
+  storagePath?: string;
+  previewStoragePath?: string;
+  fileType?: string;
+  category?: string;
+  subCategory?: string;
+  previewId?: string;
   createdAt?: any;
   [key: string]: any;
 };
@@ -39,6 +45,185 @@ function getMuxThumbnailUrl(playbackId?: string, durationSec?: number) {
   if (!playbackId) return '';
   const time = durationSec && durationSec > 0 ? Math.floor(durationSec / 2) : 1;
   return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=${time}&width=640&fit_mode=preserve`;
+}
+
+function getPublicStorageUrl(storagePath: string): string {
+  const bucket = 'course-creator-academy-866d6.firebasestorage.app';
+  const encodedPath = encodeURIComponent(storagePath);
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+}
+
+// Component for saved item card with video support
+function SavedItemCard({ 
+  item, 
+  getItemHref, 
+  getItemTitle, 
+  getItemImage, 
+  isVideoAsset, 
+  getVideoUrl, 
+  handleUnsave 
+}: {
+  item: SavedItem;
+  getItemHref: (item: SavedItem) => string;
+  getItemTitle: (item: SavedItem) => string;
+  getItemImage: (item: SavedItem) => string | undefined;
+  isVideoAsset: (item: SavedItem) => boolean;
+  getVideoUrl: (item: SavedItem) => string | null;
+  handleUnsave: (item: SavedItem) => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const videoUrl = getVideoUrl(item);
+  const isVideo = isVideoAsset(item) && videoUrl;
+
+  // Intersection Observer for video playback
+  useEffect(() => {
+    if (!isVideo || !containerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            if (videoRef.current) {
+              videoRef.current.play().catch(() => {});
+            }
+          } else {
+            setIsVisible(false);
+            if (videoRef.current) {
+              videoRef.current.pause();
+            }
+          }
+        });
+      },
+      {
+        rootMargin: '50px',
+        threshold: 0.01
+      }
+    );
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [isVideo]);
+
+  // Setup video element
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isVideo || !videoUrl) return;
+
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    video.crossOrigin = 'anonymous';
+
+    const handleCanPlay = () => {
+      if (isVisible) {
+        video.play().catch(() => {});
+      }
+    };
+
+    video.addEventListener('canplay', handleCanPlay, { once: true });
+    return () => {
+      video.removeEventListener('canplay', handleCanPlay);
+    };
+  }, [isVideo, videoUrl, isVisible]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="border border-neutral-800 rounded-lg bg-neutral-950/60 overflow-hidden hover:border-neutral-700 transition group"
+    >
+      <Link href={getItemHref(item) as any} className="block">
+        <div className="relative h-40 bg-neutral-800 overflow-hidden">
+          {isVideo && videoUrl ? (
+            <>
+              {/* Video preview for video assets */}
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                className="w-full h-full object-cover"
+                playsInline
+                muted
+                loop
+                preload="metadata"
+                crossOrigin="anonymous"
+                style={{
+                  maxWidth: '1280px',
+                  maxHeight: '720px',
+                  width: '100%',
+                  height: 'auto'
+                }}
+                onError={(e) => {
+                  // Fallback to thumbnail if video fails
+                  const videoEl = e.target as HTMLVideoElement;
+                  videoEl.style.display = 'none';
+                  const fallback = videoEl.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'block';
+                }}
+              />
+              {/* Fallback thumbnail if video fails */}
+              {getItemImage(item) && (
+                <img
+                  src={getItemImage(item)!}
+                  alt={getItemTitle(item)}
+                  className="w-full h-full object-cover hidden"
+                  loading="lazy"
+                />
+              )}
+            </>
+          ) : getItemImage(item) ? (
+            <>
+              {/* Static image thumbnail */}
+              <img
+                src={getItemImage(item)!}
+                alt={getItemTitle(item)}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={(e) => {
+                  // Fallback to placeholder if image fails
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-neutral-600">
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </div>
+          )}
+        </div>
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold truncate">{getItemTitle(item)}</h3>
+              {item.price !== undefined && (
+                <p className="text-sm text-ccaBlue mt-1">${item.price.toFixed(2)}</p>
+              )}
+              <span className="inline-block mt-2 text-xs px-2 py-1 rounded bg-neutral-800 text-neutral-400">
+                {item.type}
+              </span>
+            </div>
+            <button
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await handleUnsave(item);
+              }}
+              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition opacity-0 group-hover:opacity-100"
+              aria-label="Unsave"
+            >
+              <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1 4.13 2.44C11.09 5 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
 }
 
 export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
@@ -102,29 +287,71 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
             }
           }
           
-          // If it's an asset and missing thumbnailUrl, try to fetch from asset document
-          if (item.type === 'asset' && !item.thumbnailUrl && item.assetId) {
+          // If it's an asset, fetch missing data from asset document or overlay document
+          if (item.type === 'asset') {
             try {
-              const assetRef = doc(currentDb, `assets/${item.assetId}`);
-              const assetSnap = await getDoc(assetRef);
-              if (assetSnap.exists()) {
-                const assetData = assetSnap.data();
-                // Use saved thumbnailUrl, or generate from beforeVideoPath if available
-                if (assetData.thumbnailUrl) {
-                  item.thumbnailUrl = assetData.thumbnailUrl;
-                } else if (item.beforeVideoPath) {
-                  // Generate public URL from storage path
-                  const bucket = 'course-creator-academy-866d6.firebasestorage.app';
-                  const encodedPath = encodeURIComponent(item.beforeVideoPath);
-                  item.thumbnailUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
-                } else if (assetData.beforeVideoPath) {
-                  const bucket = 'course-creator-academy-866d6.firebasestorage.app';
-                  const encodedPath = encodeURIComponent(assetData.beforeVideoPath);
-                  item.thumbnailUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+              // Try to fetch from asset document first
+              if (item.assetId) {
+                const assetRef = doc(currentDb, `assets/${item.assetId}`);
+                const assetSnap = await getDoc(assetRef);
+                if (assetSnap.exists()) {
+                  const assetData = assetSnap.data();
+                  // Fill in missing thumbnailUrl
+                  if (!item.thumbnailUrl && assetData.thumbnailUrl) {
+                    item.thumbnailUrl = assetData.thumbnailUrl;
+                  }
+                  // Fill in missing beforeVideoPath/afterVideoPath for LUT previews
+                  if (!item.beforeVideoPath && assetData.beforeVideoPath) {
+                    item.beforeVideoPath = assetData.beforeVideoPath;
+                  }
+                  if (!item.afterVideoPath && assetData.afterVideoPath) {
+                    item.afterVideoPath = assetData.afterVideoPath;
+                  }
+                  // Fill in missing category/subcategory
+                  if (!item.category && assetData.category) {
+                    item.category = assetData.category;
+                  }
+                }
+              }
+              
+              // For overlays, try to fetch from overlay document
+              if (item.overlayId && !item.storagePath) {
+                try {
+                  const overlayRef = doc(currentDb, `assets/${item.assetId}/overlays/${item.overlayId}`);
+                  const overlaySnap = await getDoc(overlayRef);
+                  if (overlaySnap.exists()) {
+                    const overlayData = overlaySnap.data();
+                    if (!item.storagePath && overlayData.storagePath) {
+                      item.storagePath = overlayData.storagePath;
+                    }
+                    if (!item.previewStoragePath && overlayData.previewStoragePath) {
+                      item.previewStoragePath = overlayData.previewStoragePath;
+                    }
+                    if (!item.fileType && overlayData.fileType) {
+                      item.fileType = overlayData.fileType;
+                    }
+                  }
+                } catch (overlayErr) {
+                  // Overlay document might not exist, that's okay
+                }
+              }
+              
+              // Generate thumbnailUrl from video paths if missing
+              if (!item.thumbnailUrl) {
+                if (item.beforeVideoPath) {
+                  item.thumbnailUrl = getPublicStorageUrl(item.beforeVideoPath);
+                } else if (item.previewStoragePath) {
+                  item.thumbnailUrl = getPublicStorageUrl(item.previewStoragePath);
+                } else if (item.storagePath) {
+                  const fileType = (item.fileType || '').toLowerCase();
+                  const videoExtensions = ['mov', 'mp4', 'avi', 'mkv', 'webm', 'm4v'];
+                  if (videoExtensions.includes(fileType)) {
+                    item.thumbnailUrl = getPublicStorageUrl(item.storagePath);
+                  }
                 }
               }
             } catch (err) {
-              console.warn('Failed to fetch asset thumbnail data:', err);
+              console.warn('Failed to fetch asset data:', err);
             }
           }
           
@@ -163,7 +390,39 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
       case 'job':
         return `/opportunities`;
       case 'asset':
-        return `/assets`;
+        // Navigate to the correct category/subcategory using URL hash or query params
+        // We'll use a hash to preserve the category state
+        let href = '/assets';
+        if (item.category) {
+          // Map category to URL-friendly format
+          const categoryMap: Record<string, string> = {
+            'Overlays & Transitions': 'overlays-transitions',
+            'LUTs & Presets': 'luts-presets',
+            'SFX & Plugins': 'sfx-plugins',
+            'Templates': 'templates',
+            'All Packs': 'all',
+          };
+          const categoryHash = categoryMap[item.category] || '';
+          if (categoryHash) {
+            href = `/assets#${categoryHash}`;
+            // Add subcategory if available
+            if (item.subCategory) {
+              const subCategoryMap: Record<string, string> = {
+                'Overlays': 'overlays',
+                'Transitions': 'transitions',
+                'SFX': 'sfx',
+                'Plugins': 'plugins',
+                'LUTs': 'luts',
+                'Presets': 'presets',
+              };
+              const subHash = subCategoryMap[item.subCategory] || '';
+              if (subHash) {
+                href = `/assets#${categoryHash}-${subHash}`;
+              }
+            }
+          }
+        }
+        return href;
       case 'video':
         return item.courseSlug 
           ? `/learn/${item.courseSlug}/module/${item.moduleId}/lesson/${item.lessonId}`
@@ -191,6 +450,38 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
     
     // Fallback to image field for other types
     return item.image;
+  };
+
+  const isVideoAsset = (item: SavedItem): boolean => {
+    if (item.type !== 'asset') return false;
+    // Check if it has video paths or video file type
+    if (item.beforeVideoPath || item.afterVideoPath) return true;
+    if (item.previewStoragePath || item.storagePath) {
+      const path = (item.previewStoragePath || item.storagePath || '').toLowerCase();
+      const fileType = (item.fileType || '').toLowerCase();
+      const videoExtensions = ['mov', 'mp4', 'avi', 'mkv', 'webm', 'm4v'];
+      return videoExtensions.some(ext => path.includes(`.${ext}`) || fileType === ext);
+    }
+    return false;
+  };
+
+  const getVideoUrl = (item: SavedItem): string | null => {
+    if (item.type !== 'asset') return null;
+    // Prefer previewStoragePath (720p version) for overlays, or beforeVideoPath for LUTs
+    if (item.previewStoragePath) {
+      return getPublicStorageUrl(item.previewStoragePath);
+    }
+    if (item.beforeVideoPath) {
+      return getPublicStorageUrl(item.beforeVideoPath);
+    }
+    if (item.storagePath) {
+      const fileType = (item.fileType || '').toLowerCase();
+      const videoExtensions = ['mov', 'mp4', 'avi', 'mkv', 'webm', 'm4v'];
+      if (videoExtensions.includes(fileType)) {
+        return getPublicStorageUrl(item.storagePath);
+      }
+    }
+    return null;
   };
 
   if (!isOpen) return null;
@@ -257,72 +548,16 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
             ) : (
               <div className="grid sm:grid-cols-2 gap-4">
                 {filteredItems.map((item) => (
-                  <div
+                  <SavedItemCard
                     key={item.id}
-                    className="border border-neutral-800 rounded-lg bg-neutral-950/60 overflow-hidden hover:border-neutral-700 transition group"
-                  >
-                    <Link href={getItemHref(item) as any} className="block">
-                      <div className="relative h-40 bg-neutral-800 overflow-hidden">
-                        {getItemImage(item) ? (
-                          <>
-                            {/* Use img tag for better video file support (Firebase Storage URLs) */}
-                            <img
-                              src={getItemImage(item)!}
-                              alt={getItemTitle(item)}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                              onError={(e) => {
-                                // Fallback to placeholder if image/video fails
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                            {/* Play icon overlay for video thumbnails (LUT previews) */}
-                            {item.type === 'asset' && (item.beforeVideoPath || item.afterVideoPath) && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
-                                <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
-                                  <svg className="w-6 h-6 text-black ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M8 5v14l11-7z"/>
-                                  </svg>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-neutral-600">
-                            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold truncate">{getItemTitle(item)}</h3>
-                            {item.price !== undefined && (
-                              <p className="text-sm text-ccaBlue mt-1">${item.price.toFixed(2)}</p>
-                            )}
-                            <span className="inline-block mt-2 text-xs px-2 py-1 rounded bg-neutral-800 text-neutral-400">
-                              {item.type}
-                            </span>
-                          </div>
-                          <button
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              await handleUnsave(item);
-                            }}
-                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition opacity-0 group-hover:opacity-100"
-                            aria-label="Unsave"
-                          >
-                            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1 4.13 2.44C11.09 5 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </Link>
-                  </div>
+                    item={item}
+                    getItemHref={getItemHref}
+                    getItemTitle={getItemTitle}
+                    getItemImage={getItemImage}
+                    isVideoAsset={isVideoAsset}
+                    getVideoUrl={getVideoUrl}
+                    handleUnsave={handleUnsave}
+                  />
                 ))}
               </div>
             )}
