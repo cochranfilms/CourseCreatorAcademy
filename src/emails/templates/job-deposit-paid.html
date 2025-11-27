@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deposit Payment Received - Job Application</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .success-icon {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .success-icon svg {
+            width: 64px;
+            height: 64px;
+            color: #10b981;
+        }
+        .message {
+            margin-bottom: 30px;
+        }
+        .message h2 {
+            color: #1f2937;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        .message p {
+            color: #4b5563;
+            margin-bottom: 10px;
+        }
+        .job-details {
+            background-color: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .job-details h3 {
+            color: #1f2937;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .job-details p {
+            color: #4b5563;
+            margin: 5px 0;
+        }
+        .job-details strong {
+            color: #1f2937;
+        }
+        .payment-info {
+            background-color: #ecfdf5;
+            border: 1px solid #10b981;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .payment-info h3 {
+            color: #065f46;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .payment-info .amount {
+            font-size: 32px;
+            font-weight: 700;
+            color: #059669;
+            margin: 10px 0;
+        }
+        .next-steps {
+            background-color: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .next-steps h3 {
+            color: #1e40af;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .next-steps ul {
+            color: #1e3a8a;
+            margin: 0;
+            padding-left: 20px;
+        }
+        .next-steps li {
+            margin-bottom: 8px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #667eea;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .button:hover {
+            background-color: #5568d3;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 20px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Deposit Payment Received!</h1>
+        </div>
+        
+        <div class="content">
+            <div class="success-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            
+            <div class="message">
+                <h2>Congratulations, {{contractor_name}}!</h2>
+                <p>The employer has paid the deposit for your job application. You're officially hired and can begin work!</p>
+            </div>
+            
+            <div class="job-details">
+                <h3>Job Details</h3>
+                <p><strong>Position:</strong> {{job_title}}</p>
+                <p><strong>Company:</strong> {{company_name}}</p>
+                <p><strong>Employer:</strong> {{employer_name}}</p>
+            </div>
+            
+            <div class="payment-info">
+                <h3>Deposit Payment</h3>
+                <div class="amount">${{deposit_amount}}</div>
+                <p style="color: #065f46; margin-top: 10px;">
+                    This deposit (25% of the total project amount) has been secured and will be transferred to your account.
+                </p>
+            </div>
+            
+            <div class="next-steps">
+                <h3>What's Next?</h3>
+                <ul>
+                    <li>You can now begin working on the project</li>
+                    <li>Communicate with the employer through the platform messaging system</li>
+                    <li>Once you complete the work, mark the job as complete</li>
+                    <li>The remaining balance will be paid upon project completion</li>
+                </ul>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="{{dashboard_url}}" class="button">View Job Details</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Course Creator Academy</strong></p>
+            <p>If you have any questions, please contact our support team.</p>
+            <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">
+                This is an automated notification. Please do not reply to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/lib/firebaseClient';
+import { JobApplicationSuccessModal } from './JobApplicationSuccessModal';
 
 type JobApplicationModalProps = {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export function JobApplicationModal({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   // Form fields
   const [name, setName] = useState('');
@@ -89,8 +91,9 @@ export function JobApplicationModal({
       setAvailability('');
       setAdditionalInfo('');
 
+      // Show success modal instead of closing immediately
+      setShowSuccessModal(true);
       onSuccess?.();
-      onClose();
     } catch (err: any) {
       setError(err.message || 'Failed to submit application');
     } finally {
@@ -256,6 +259,17 @@ export function JobApplicationModal({
           </div>
         </form>
       </div>
+      
+      {/* Success Modal */}
+      <JobApplicationSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          onClose();
+        }}
+        opportunityTitle={opportunityTitle}
+        opportunityCompany={opportunityCompany}
+      />
     </div>
   );
 }

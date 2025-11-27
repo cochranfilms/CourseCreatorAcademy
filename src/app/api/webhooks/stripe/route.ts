@@ -897,6 +897,55 @@ export async function POST(req: NextRequest) {
                 updatedAt: FieldValue.serverTimestamp()
               });
               console.log('Job deposit payment processed:', applicationId, 'PaymentIntent:', pi.id);
+
+              // Send email notification to contractor (idempotent by checking if email was sent)
+              try {
+                const emailSentRef = adminDb.collection('emails').doc(`deposit_paid_${String(applicationId)}`);
+                const emailSent = await emailSentRef.get();
+                
+                if (!emailSent.exists && appData?.applicantId && appData?.email) {
+                  // Get contractor user data
+                  const contractorDoc = await adminDb.collection('users').doc(String(appData.applicantId)).get();
+                  const contractorData = contractorDoc.exists ? contractorDoc.data() : null;
+                  
+                  // Get employer user data
+                  const employerDoc = appData?.posterId 
+                    ? await adminDb.collection('users').doc(String(appData.posterId)).get()
+                    : null;
+                  const employerData = employerDoc?.exists ? employerDoc.data() : null;
+
+                  const templateId = process.env.EMAILJS_TEMPLATE_ID_DEPOSIT_PAID;
+                  if (templateId) {
+                    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+                    const depositAmount = appData?.depositAmount 
+                      ? (typeof appData.depositAmount === 'number' ? appData.depositAmount / 100 : parseFloat(String(appData.depositAmount)) / 100)
+                      : 0;
+
+                    await sendEmailJS(String(templateId), {
+                      contractor_name: appData?.name || contractorData?.displayName || 'Contractor',
+                      job_title: appData?.opportunityTitle || 'Job Opportunity',
+                      company_name: appData?.opportunityCompany || 'Company',
+                      employer_name: employerData?.displayName || employerData?.handle || 'Employer',
+                      deposit_amount: depositAmount.toFixed(2),
+                      dashboard_url: `${baseUrl}/dashboard`,
+                      to_email: String(appData.email),
+                      year: new Date().getFullYear().toString(),
+                    });
+                    
+                    // Mark email as sent
+                    await emailSentRef.set({ 
+                      createdAt: FieldValue.serverTimestamp(),
+                      applicationId: String(applicationId)
+                    });
+                    console.log('Deposit paid email sent to contractor:', appData.email);
+                  } else {
+                    console.warn('EMAILJS_TEMPLATE_ID_DEPOSIT_PAID not configured, skipping email');
+                  }
+                }
+              } catch (emailErr) {
+                // Don't fail the webhook if email fails
+                console.error('Failed to send deposit paid email:', emailErr);
+              }
             }
           }
         } catch (err) {
