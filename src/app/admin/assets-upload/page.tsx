@@ -52,10 +52,22 @@ export default function AdminAssetsUploadPage() {
     });
 
     try {
+      // Ensure we have a fresh auth token
+      await user.getIdToken(true); // Force refresh
+      
       // Step 1: Upload ZIP file directly to Firebase Storage
       const zipFileName = file.name;
       const timestamp = Date.now();
       const zipStoragePath = `admin-assets-uploads/${user.uid}/${timestamp}_${zipFileName.replace(/\s+/g, '_')}`;
+      
+      // Debug logging
+      console.log('Upload details:', {
+        userId: user.uid,
+        storagePath: zipStoragePath,
+        fileName: zipFileName,
+        fileSize: file.size,
+      });
+      
       const zipStorageRef = ref(storage, zipStoragePath);
       
       const zipUploadTask = uploadBytesResumable(zipStorageRef, file, {
@@ -75,6 +87,9 @@ export default function AdminAssetsUploadPage() {
             }));
           },
           (error) => {
+            console.error('Upload error:', error);
+            console.error('Error code:', error.code);
+            console.error('Error message:', error.message);
             reject(error);
           },
           async () => {

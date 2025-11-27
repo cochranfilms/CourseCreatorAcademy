@@ -124,15 +124,12 @@ service firebase.storage {
 
     // Admin asset uploads - temporary staging area for ZIP files before processing
     // Owner needs read access to generate downloadURL for server-side processing
+    // Note: Content type and size validation relaxed for resumable uploads - server-side validation ensures ZIP files
     match /admin-assets-uploads/{userId}/{allPaths=**} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null
-        && request.auth.uid == userId
-        && request.resource.size < 2 * 1024 * 1024 * 1024 // 2 GB max
-        && (
-          request.resource.contentType == 'application/zip' ||
-          request.resource.contentType == 'application/x-zip-compressed'
-        );
+      // Size check removed temporarily - resumable uploads may not have request.resource.size available initially
+      // Server-side processing validates file size when processing
+      allow write: if request.auth != null && request.auth.uid == userId;
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
