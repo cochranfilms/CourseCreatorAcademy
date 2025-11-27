@@ -45,7 +45,7 @@ type MessagesProps = {
 };
 
 export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesProps) {
-  const { user, auth } = useAuth();
+  const { user } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -296,7 +296,7 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
     if (!newMessageText.trim() || !selectedThreadId || !user) return;
 
     try {
-      const idToken = await auth?.currentUser?.getIdToken();
+      const idToken = await user.getIdToken();
       if (!idToken) {
         alert('Please sign in');
         return;
