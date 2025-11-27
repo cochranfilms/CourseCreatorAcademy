@@ -30,23 +30,6 @@ export default function AdminAssetsUploadPage() {
     progress: 0,
   });
 
-  // Check if user is authorized
-  if (!authLoading && (!user || user.email !== 'info@cochranfilms.com')) {
-    router.push('/home');
-    return null;
-  }
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-950">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
-          <p className="text-neutral-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   const handleFileSelect = useCallback(async (file: File, category: string) => {
     if (!user) return;
 
@@ -142,6 +125,23 @@ export default function AdminAssetsUploadPage() {
       });
     }
   }, [user]);
+
+  // Check if user is authorized
+  if (!authLoading && (!user || user.email !== 'info@cochranfilms.com')) {
+    router.push('/home');
+    return null;
+  }
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-950">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
+          <p className="text-neutral-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white p-8">
