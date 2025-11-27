@@ -7,6 +7,9 @@ import { storage, firebaseReady } from '@/lib/firebaseClient';
 import { AssetUploadZone } from '@/components/admin/AssetUploadZone';
 import { ProcessingStatus } from '@/components/admin/ProcessingStatus';
 
+type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets';
+type SubCategory = 'Overlays' | 'Transitions' | null;
+
 type ProcessingState = {
   status: 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
   progress: number;
@@ -32,7 +35,7 @@ export default function AdminAssetsUploadPage() {
     progress: 0,
   });
 
-  const handleFileSelect = useCallback(async (file: File, category: string, thumbnail?: File, subCategory?: string) => {
+  const handleFileSelect = useCallback(async (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory) => {
     if (!user || !firebaseReady || !storage) {
       setProcessingState({
         status: 'error',
@@ -150,7 +153,7 @@ export default function AdminAssetsUploadPage() {
           fileName: zipFileName,
           thumbnailStoragePath,
           thumbnailDownloadURL,
-          subCategory,
+          subCategory: subCategory || undefined,
         }),
       });
 
