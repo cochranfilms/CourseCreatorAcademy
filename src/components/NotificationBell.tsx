@@ -57,7 +57,7 @@ export function NotificationBell() {
     
     // Navigate if action URL exists
     if (actionUrl) {
-      router.push(actionUrl);
+      router.push(actionUrl as any);
     }
   };
 
