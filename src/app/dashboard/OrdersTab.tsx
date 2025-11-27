@@ -24,7 +24,7 @@ type Order = {
 };
 
 export default function OrdersTab() {
-  const { user, auth } = useAuth();
+  const { user } = useAuth();
   const [sold, setSold] = useState<Order[]>([]);
   const [bought, setBought] = useState<Order[]>([]);
 
@@ -116,7 +116,7 @@ export default function OrdersTab() {
   const submitTracking = async (order: Order, values: { trackingNumber: string; trackingCarrier?: string; trackingUrl?: string; }) => {
     if (!user || order.sellerId !== user.uid) { alert('Only the seller can update tracking'); return; }
     try {
-      const idToken = await auth?.currentUser?.getIdToken();
+      const idToken = await user.getIdToken();
       if (!idToken) {
         alert('Please sign in');
         return;
@@ -147,7 +147,7 @@ export default function OrdersTab() {
   const markDelivered = async (order: Order) => {
     if (!user || order.buyerId !== user.uid) { alert('Only the buyer can mark delivered'); return; }
     try {
-      const idToken = await auth?.currentUser?.getIdToken();
+      const idToken = await user.getIdToken();
       if (!idToken) {
         alert('Please sign in');
         return;
