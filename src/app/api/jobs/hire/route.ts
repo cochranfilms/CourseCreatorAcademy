@@ -6,6 +6,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { getUserIdFromAuthHeader } from '@/lib/api/auth';
 import { getOrCreateCustomer } from '@/lib/api/stripeCustomer';
 import { badRequest, forbidden, notFound, serverError } from '@/lib/api/responses';
+import { createJobNotification } from '@/lib/notifications';
 
 export async function POST(req: NextRequest) {
   try {
@@ -86,6 +87,18 @@ export async function POST(req: NextRequest) {
       applicantConnectAccountId,
       updatedAt: FieldValue.serverTimestamp()
     });
+
+    // Create notification for applicant (hired)
+    try {
+      await createJobNotification(applicationData?.applicantId, 'job_application_accepted', {
+        jobTitle: applicationData?.opportunityTitle || opportunityData?.title || 'Job Opportunity',
+        companyName: applicationData?.opportunityCompany || opportunityData?.company || '',
+        applicationId,
+      });
+    } catch (notifErr) {
+      console.error('Error creating hire notification:', notifErr);
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json({
       success: true,

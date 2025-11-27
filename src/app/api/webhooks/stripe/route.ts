@@ -4,6 +4,7 @@ import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendEmailJS } from '@/lib/email';
 import { computeApplicationFeeAmount } from '@/lib/fees';
+import { createJobNotification, createOrderNotification } from '@/lib/notifications';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -179,6 +180,18 @@ export async function POST(req: NextRequest) {
                         applicationId: String(applicationId)
                       });
                       console.log('[checkout.session.completed] ✅ Deposit paid email sent successfully to contractor:', contractorEmail);
+                      
+                      // Create in-app notification for contractor
+                      try {
+                        await createJobNotification(String(appData.applicantId), 'job_deposit_paid', {
+                          jobTitle: appData?.opportunityTitle || 'Job Opportunity',
+                          companyName: appData?.opportunityCompany || '',
+                          applicationId: String(applicationId),
+                          amount: depositAmount * 100, // Convert to cents
+                        });
+                      } catch (notifErr) {
+                        console.error('[checkout.session.completed] Error creating deposit paid notification:', notifErr);
+                      }
                     } catch (emailSendErr: any) {
                       console.error('[checkout.session.completed] ❌ Failed to send deposit paid email via EmailJS:', {
                         error: emailSendErr?.message || emailSendErr,
@@ -478,7 +491,39 @@ export async function POST(req: NextRequest) {
             createdAt: FieldValue.serverTimestamp(),
             trackingDeadlineAtMs: now + deadlineMs,
           };
-          await adminDb.collection('orders').add(order);
+          const orderRef = await adminDb.collection('orders').add(order);
+          
+          // Create notifications for buyer and seller
+          try {
+            // Notification for seller (new order received)
+            if (order.sellerId) {
+              // Get buyer name
+              const buyerDoc = order.buyerId 
+                ? await adminDb.collection('users').doc(String(order.buyerId)).get()
+                : null;
+              const buyerData = buyerDoc?.exists ? buyerDoc.data() : null;
+              const buyerName = buyerData?.displayName || buyerData?.handle || buyerData?.email?.split('@')[0] || 'A customer';
+
+              await createOrderNotification(String(order.sellerId), 'order_placed', {
+                orderId: orderRef.id,
+                listingTitle: order.listingTitle || 'Product',
+                amount: order.amount,
+                buyerName,
+              });
+            }
+
+            // Notification for buyer (order placed confirmation)
+            if (order.buyerId) {
+              await createOrderNotification(String(order.buyerId), 'order_delivered', {
+                orderId: orderRef.id,
+                listingTitle: order.listingTitle || 'Product',
+                amount: order.amount,
+              });
+            }
+          } catch (notifErr) {
+            console.error('Error creating order notifications:', notifErr);
+            // Don't fail the webhook if notifications fail
+          }
         }
       } catch (err) {
         console.error('Webhook handling error (checkout.session.completed):', err);
@@ -1179,6 +1224,18 @@ export async function POST(req: NextRequest) {
               totalTransferAmount,
               updatedAt: FieldValue.serverTimestamp()
             });
+
+            // Create notification for contractor (final payment received)
+            try {
+              await createJobNotification(String(appData?.applicantId), 'job_final_payment_paid', {
+                jobTitle: appData?.opportunityTitle || 'Job Opportunity',
+                companyName: appData?.opportunityCompany || '',
+                applicationId: String(applicationId),
+                amount: remainingAmount, // Amount in cents
+              });
+            } catch (notifErr) {
+              console.error('Error creating final payment notification:', notifErr);
+            }
 
             console.log('Job final payment processed and transferred:', {
               applicationId,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { createJobNotification } from '@/lib/notifications';
 
 export async function POST(req: NextRequest) {
   try {
@@ -87,6 +88,39 @@ export async function POST(req: NextRequest) {
     };
 
     const applicationRef = await adminDb.collection('jobApplications').add(applicationData);
+
+    // Create notification for applicant (confirmation)
+    try {
+      await createJobNotification(userId, 'job_application_submitted', {
+        jobTitle: opportunityData?.title || '',
+        companyName: opportunityData?.company || '',
+        applicationId: applicationRef.id,
+      });
+    } catch (notifErr) {
+      console.error('Error creating application notification:', notifErr);
+      // Don't fail the request if notification fails
+    }
+
+    // Create notification for employer (new application received)
+    try {
+      const employerId = opportunityData?.posterId;
+      if (employerId && employerId !== userId) {
+        // Get applicant name from user document
+        const applicantDoc = await adminDb.collection('users').doc(userId).get();
+        const applicantData = applicantDoc.exists ? applicantDoc.data() : null;
+        const applicantName = applicantData?.displayName || applicantData?.handle || name || 'Someone';
+
+        await createJobNotification(employerId, 'job_application_received', {
+          jobTitle: opportunityData?.title || '',
+          companyName: opportunityData?.company || '',
+          applicationId: applicationRef.id,
+          applicantName,
+        });
+      }
+    } catch (notifErr) {
+      console.error('Error creating employer notification:', notifErr);
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json({
       success: true,
