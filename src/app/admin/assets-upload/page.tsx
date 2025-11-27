@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage, firebaseReady } from '@/lib/firebaseClient';
 import { AssetUploadZone } from '@/components/admin/AssetUploadZone';
 import { ProcessingStatus } from '@/components/admin/ProcessingStatus';
@@ -80,8 +80,8 @@ export default function AdminAssetsUploadPage() {
         );
       });
 
-      // Get the ZIP download URL
-      const zipDownloadURL = await getDownloadURL(zipUploadTask.snapshot.ref);
+      // Note: We don't need to get downloadURL here - the API route uses Admin SDK
+      // which bypasses storage rules and can access files directly via storagePath
 
       // Step 2: Upload thumbnail if provided
       let thumbnailStoragePath: string | undefined;
@@ -123,7 +123,9 @@ export default function AdminAssetsUploadPage() {
         });
 
         thumbnailStoragePath = thumbnailPath;
-        thumbnailDownloadURL = await getDownloadURL(thumbnailUploadTask.snapshot.ref);
+        // Note: We don't need thumbnailDownloadURL - the API route uses Admin SDK
+        // which bypasses storage rules and can access files directly via storagePath
+        thumbnailDownloadURL = undefined;
       }
 
       // Step 3: Call API to process the file from Storage
@@ -144,7 +146,6 @@ export default function AdminAssetsUploadPage() {
         },
         body: JSON.stringify({
           storagePath: zipStoragePath,
-          downloadURL: zipDownloadURL,
           category,
           fileName: zipFileName,
           thumbnailStoragePath,
