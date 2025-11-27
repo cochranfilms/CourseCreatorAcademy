@@ -436,7 +436,7 @@ export async function POST(req: NextRequest) {
       try {
         // Parse request body (JSON with storage path)
         const body = await req.json();
-        const { storagePath, category, fileName } = body;
+        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL } = body;
 
         if (!storagePath || !category || !fileName) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Missing storagePath, category, or fileName' })}\n\n`));
@@ -456,7 +456,7 @@ export async function POST(req: NextRequest) {
         const destFile = bucket.file(zipStoragePath);
         await sourceFile.copy(destFile);
 
-        sendProgress(controller, 35, 'Creating main asset document...', 'processing');
+        sendProgress(controller, 35, 'Processing thumbnail...', 'processing');
 
         // Create temp directory for extracted files only (ZIP will be streamed directly, not downloaded)
         tempDir = path.join(os.tmpdir(), `asset-process-${Date.now()}`);
@@ -482,20 +482,47 @@ export async function POST(req: NextRequest) {
           }
         } catch {}
 
-        // Check if thumbnail exists
+        // Handle thumbnail upload if provided
         let thumbnailUrl: string | null = null;
-        try {
-          const thumbnailFile = bucket.file(thumbnailPath);
-          const [exists] = await thumbnailFile.exists();
-          if (exists) {
+        if (thumbnailStoragePath && thumbnailDownloadURL) {
+          try {
+            // Copy thumbnail to final location
+            const thumbnailSourceFile = bucket.file(thumbnailStoragePath);
+            const thumbnailDestFile = bucket.file(thumbnailPath);
+            await thumbnailSourceFile.copy(thumbnailDestFile);
+            
+            // Delete temporary thumbnail file
+            await thumbnailSourceFile.delete().catch(() => {});
+
+            // Generate signed URL for thumbnail
             const expiresAt = new Date();
             expiresAt.setFullYear(expiresAt.getFullYear() + 10);
-            [thumbnailUrl] = await thumbnailFile.getSignedUrl({
+            [thumbnailUrl] = await thumbnailDestFile.getSignedUrl({
               action: 'read',
               expires: expiresAt,
             });
+          } catch (error: any) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `Failed to process thumbnail: ${error.message}` })}\n\n`));
+            controller.close();
+            return;
           }
-        } catch {}
+        } else {
+          // Check if thumbnail already exists at the expected location
+          try {
+            const thumbnailFile = bucket.file(thumbnailPath);
+            const [exists] = await thumbnailFile.exists();
+            if (exists) {
+              const expiresAt = new Date();
+              expiresAt.setFullYear(expiresAt.getFullYear() + 10);
+              [thumbnailUrl] = await thumbnailFile.getSignedUrl({
+                action: 'read',
+                expires: expiresAt,
+              });
+            }
+          } catch {}
+        }
+
+        sendProgress(controller, 40, 'Creating main asset document...', 'processing');
 
         await assetRef.set({
           title,

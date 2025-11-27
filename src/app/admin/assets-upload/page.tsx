@@ -32,7 +32,7 @@ export default function AdminAssetsUploadPage() {
     progress: 0,
   });
 
-  const handleFileSelect = useCallback(async (file: File, category: string) => {
+  const handleFileSelect = useCallback(async (file: File, category: string, thumbnail?: File) => {
     if (!user || !firebaseReady || !storage) {
       setProcessingState({
         status: 'error',
@@ -45,29 +45,29 @@ export default function AdminAssetsUploadPage() {
     setProcessingState({
       status: 'uploading',
       progress: 0,
-      currentStep: 'Uploading ZIP file to Storage...',
+      currentStep: 'Uploading files to Storage...',
     });
 
     try {
       // Step 1: Upload ZIP file directly to Firebase Storage
       const zipFileName = file.name;
       const timestamp = Date.now();
-      const storagePath = `admin-assets-uploads/${user.uid}/${timestamp}_${zipFileName.replace(/\s+/g, '_')}`;
-      const storageRef = ref(storage, storagePath);
+      const zipStoragePath = `admin-assets-uploads/${user.uid}/${timestamp}_${zipFileName.replace(/\s+/g, '_')}`;
+      const zipStorageRef = ref(storage, zipStoragePath);
       
-      const uploadTask = uploadBytesResumable(storageRef, file, {
+      const zipUploadTask = uploadBytesResumable(zipStorageRef, file, {
         contentType: 'application/zip',
       });
 
-      // Wait for upload to complete with progress tracking
+      // Wait for ZIP upload to complete with progress tracking
       await new Promise<void>((resolve, reject) => {
-        uploadTask.on(
+        zipUploadTask.on(
           'state_changed',
           (snapshot) => {
             const uploadProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
             setProcessingState(prev => ({
               ...prev,
-              progress: Math.min(uploadProgress * 0.3, 30), // Upload is 30% of total progress
+              progress: Math.min(uploadProgress * 0.25, 25), // ZIP upload is 25% of total progress
               currentStep: `Uploading ZIP file... ${Math.round(uploadProgress)}%`,
             }));
           },
@@ -80,13 +80,57 @@ export default function AdminAssetsUploadPage() {
         );
       });
 
-      // Get the download URL
-      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+      // Get the ZIP download URL
+      const zipDownloadURL = await getDownloadURL(zipUploadTask.snapshot.ref);
 
-      // Step 2: Call API to process the file from Storage
+      // Step 2: Upload thumbnail if provided
+      let thumbnailStoragePath: string | undefined;
+      let thumbnailDownloadURL: string | undefined;
+      
+      if (thumbnail) {
+        setProcessingState(prev => ({
+          ...prev,
+          progress: 25,
+          currentStep: 'Uploading thumbnail image...',
+        }));
+
+        const thumbnailFileName = thumbnail.name;
+        const thumbnailPath = `admin-assets-uploads/${user.uid}/${timestamp}_${thumbnailFileName.replace(/\s+/g, '_')}`;
+        const thumbnailStorageRef = ref(storage, thumbnailPath);
+        
+        const thumbnailUploadTask = uploadBytesResumable(thumbnailStorageRef, thumbnail, {
+          contentType: thumbnail.type || 'image/png',
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          thumbnailUploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const uploadProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setProcessingState(prev => ({
+                ...prev,
+                progress: 25 + Math.min(uploadProgress * 0.05, 5), // Thumbnail upload is 5% of total progress
+                currentStep: `Uploading thumbnail... ${Math.round(uploadProgress)}%`,
+              }));
+            },
+            (error) => {
+              reject(error);
+            },
+            async () => {
+              resolve();
+            }
+          );
+        });
+
+        thumbnailStoragePath = thumbnailPath;
+        thumbnailDownloadURL = await getDownloadURL(thumbnailUploadTask.snapshot.ref);
+      }
+
+      // Step 3: Call API to process the file from Storage
+      const hasThumbnail = !!thumbnail;
       setProcessingState(prev => ({
         ...prev,
-        progress: 30,
+        progress: hasThumbnail ? 30 : 25,
         currentStep: 'Processing ZIP file...',
         status: 'processing',
       }));
@@ -99,10 +143,12 @@ export default function AdminAssetsUploadPage() {
           'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
-          storagePath,
-          downloadURL,
+          storagePath: zipStoragePath,
+          downloadURL: zipDownloadURL,
           category,
           fileName: zipFileName,
+          thumbnailStoragePath,
+          thumbnailDownloadURL,
         }),
       });
 
@@ -137,8 +183,9 @@ export default function AdminAssetsUploadPage() {
                 const data = JSON.parse(line.slice(6));
                 
                 if (data.progress !== undefined) {
-                  // Server progress is 30-100%, map it to the overall progress
-                  const serverProgress = Math.max(30, Math.min(100, data.progress));
+                  // Server progress starts at 30% (after ZIP + optional thumbnail upload)
+                  // Map server progress (30-100%) to overall progress
+                  const serverProgress = Math.max(hasThumbnail ? 30 : 25, Math.min(100, data.progress));
                   setProcessingState(prev => ({
                     ...prev,
                     progress: serverProgress,

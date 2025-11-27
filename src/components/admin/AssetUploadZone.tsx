@@ -4,14 +4,17 @@ import { useState, useCallback, useRef } from 'react';
 type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets';
 
 interface AssetUploadZoneProps {
-  onFileSelect: (file: File, category: Category) => void;
+  onFileSelect: (file: File, category: Category, thumbnail?: File) => void;
   disabled?: boolean;
 }
 
 export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>('Overlays & Transitions');
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -31,22 +34,50 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
 
     if (disabled) return;
 
-    const file = e.dataTransfer.files[0];
-    if (file && file.name.endsWith('.zip')) {
-      onFileSelect(file, selectedCategory);
+    const files = Array.from(e.dataTransfer.files);
+    const zipFile = files.find(f => f.name.endsWith('.zip'));
+    const imageFile = files.find(f => /\.(jpg|jpeg|png|webp)$/i.test(f.name));
+
+    if (zipFile) {
+      onFileSelect(zipFile, selectedCategory, imageFile || thumbnailFile || undefined);
     } else {
       alert('Please upload a ZIP file');
     }
-  }, [disabled, selectedCategory, onFileSelect]);
+  }, [disabled, selectedCategory, onFileSelect, thumbnailFile]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.zip')) {
-      onFileSelect(file, selectedCategory);
+      onFileSelect(file, selectedCategory, thumbnailFile || undefined);
     } else {
       alert('Please upload a ZIP file');
     }
-  }, [selectedCategory, onFileSelect]);
+  }, [selectedCategory, onFileSelect, thumbnailFile]);
+
+  const handleThumbnailInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (/\.(jpg|jpeg|png|webp)$/i.test(file.name)) {
+        setThumbnailFile(file);
+        // Create preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setThumbnailPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        alert('Please upload a valid image file (JPG, PNG, or WebP)');
+      }
+    }
+  }, []);
+
+  const handleRemoveThumbnail = useCallback(() => {
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
+    if (thumbnailInputRef.current) {
+      thumbnailInputRef.current.value = '';
+    }
+  }, []);
 
   const handleClick = useCallback(() => {
     if (!disabled) {
@@ -73,50 +104,106 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
         </select>
       </div>
 
-      {/* Upload Zone */}
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={handleClick}
-        className={`
-          border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors
-          ${isDragging 
-            ? 'border-ccaBlue bg-ccaBlue/10' 
-            : 'border-neutral-800 hover:border-neutral-700'
-          }
-          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-        `}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".zip"
-          onChange={handleFileInput}
-          className="hidden"
-          disabled={disabled}
-        />
-        
-        <svg
-          className="w-16 h-16 mx-auto mb-4 text-neutral-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+      {/* Thumbnail Upload */}
+      <div>
+        <label className="block text-sm font-medium text-neutral-300 mb-2">
+          Thumbnail Image (Optional)
+        </label>
+        <div className="flex items-center gap-4">
+          {thumbnailPreview ? (
+            <div className="relative">
+              <img
+                src={thumbnailPreview}
+                alt="Thumbnail preview"
+                className="w-32 h-32 object-cover rounded-lg border border-neutral-800"
+              />
+              <button
+                type="button"
+                onClick={handleRemoveThumbnail}
+                disabled={disabled}
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ×
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => !disabled && thumbnailInputRef.current?.click()}
+              disabled={disabled}
+              className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-neutral-300 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Select Thumbnail
+            </button>
+          )}
+          <input
+            ref={thumbnailInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            onChange={handleThumbnailInput}
+            className="hidden"
+            disabled={disabled}
           />
-        </svg>
-        
-        <p className="text-lg font-medium text-neutral-300 mb-2">
-          Drag and drop ZIP file here
+          {thumbnailFile && (
+            <span className="text-sm text-neutral-400">
+              {thumbnailFile.name}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-neutral-500 mt-1">
+          Upload a custom thumbnail image for the "All" category (JPG, PNG, or WebP)
         </p>
-        <p className="text-sm text-neutral-500">
-          or click to browse
-        </p>
+      </div>
+
+      {/* ZIP Upload Zone */}
+      <div>
+        <label className="block text-sm font-medium text-neutral-300 mb-2">
+          ZIP File
+        </label>
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={handleClick}
+          className={`
+            border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors
+            ${isDragging 
+              ? 'border-ccaBlue bg-ccaBlue/10' 
+              : 'border-neutral-800 hover:border-neutral-700'
+            }
+            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+          `}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".zip"
+            onChange={handleFileInput}
+            className="hidden"
+            disabled={disabled}
+          />
+          
+          <svg
+            className="w-16 h-16 mx-auto mb-4 text-neutral-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            />
+          </svg>
+          
+          <p className="text-lg font-medium text-neutral-300 mb-2">
+            Drag and drop ZIP file here
+          </p>
+          <p className="text-sm text-neutral-500">
+            or click to browse
+          </p>
+        </div>
       </div>
     </div>
   );
