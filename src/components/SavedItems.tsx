@@ -20,6 +20,7 @@ type SavedItem = {
   lessonId?: string;
   price?: number;
   image?: string;
+  images?: string[]; // Add images array for marketplace listings
   thumbnailUrl?: string;
   muxPlaybackId?: string;
   durationSec?: number;
@@ -32,6 +33,7 @@ type SavedItem = {
   category?: string;
   subCategory?: string;
   previewId?: string;
+  overlayId?: string;
   createdAt?: any;
   [key: string]: any;
 };
@@ -76,6 +78,13 @@ function SavedItemCard({
   const [isVisible, setIsVisible] = useState(false);
   const videoUrl = getVideoUrl(item);
   const isVideo = isVideoAsset(item) && videoUrl;
+  
+  // Determine aspect ratio based on item type
+  // Overlays use aspect-video (16:9), regular assets use aspect-square
+  // Marketplace items also use aspect-video to match marketplace page
+  const isOverlay = item.type === 'asset' && (item.subCategory === 'Overlays' || item.subCategory === 'Transitions' || item.previewStoragePath);
+  const isMarketplace = item.type === 'market';
+  const aspectClass = (isOverlay || isMarketplace) ? 'aspect-video' : 'aspect-square';
 
   // Intersection Observer for video playback
   useEffect(() => {
@@ -133,10 +142,10 @@ function SavedItemCard({
   return (
     <div
       ref={containerRef}
-      className="border border-neutral-800 rounded-lg bg-neutral-950/60 overflow-hidden hover:border-neutral-700 transition group"
+      className="group border border-neutral-800 rounded-lg bg-neutral-950/60 overflow-hidden hover:border-neutral-700 hover:shadow-xl hover:shadow-black/20 transition-all transform hover:-translate-y-0.5"
     >
       <Link href={getItemHref(item) as any} className="block">
-        <div className="relative h-40 bg-neutral-800 overflow-hidden">
+        <div className={`relative ${aspectClass} bg-gradient-to-br from-neutral-900 to-black overflow-hidden`}>
           {isVideo && videoUrl ? (
             <>
               {/* Video preview for video assets */}
@@ -179,8 +188,9 @@ function SavedItemCard({
               <img
                 src={getItemImage(item)!}
                 alt={getItemTitle(item)}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
+                decoding="async"
                 onError={(e) => {
                   // Fallback to placeholder if image fails
                   e.currentTarget.style.display = 'none';
@@ -194,15 +204,17 @@ function SavedItemCard({
               </svg>
             </div>
           )}
+          {/* Hover overlay */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
         </div>
-        <div className="p-4">
+        <div className="p-4 bg-black">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold truncate">{getItemTitle(item)}</h3>
+              <h3 className="font-semibold text-white truncate text-sm leading-tight">{getItemTitle(item)}</h3>
               {item.price !== undefined && (
-                <p className="text-sm text-ccaBlue mt-1">${item.price.toFixed(2)}</p>
+                <p className="text-sm text-ccaBlue mt-1.5 font-medium">${item.price.toFixed(2)}</p>
               )}
-              <span className="inline-block mt-2 text-xs px-2 py-1 rounded bg-neutral-800 text-neutral-400">
+              <span className="inline-block mt-2 text-xs px-2 py-1 rounded-md bg-neutral-800/80 text-neutral-400 border border-neutral-700/50">
                 {item.type}
               </span>
             </div>
@@ -212,7 +224,7 @@ function SavedItemCard({
                 e.stopPropagation();
                 await handleUnsave(item);
               }}
-              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition opacity-0 group-hover:opacity-100"
+              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition opacity-0 group-hover:opacity-100 flex-shrink-0"
               aria-label="Unsave"
             >
               <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
@@ -287,6 +299,30 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
             }
           }
           
+          // If it's a marketplace listing, fetch images from listing document
+          if (item.type === 'market') {
+            try {
+              const listingRef = doc(currentDb, `listings/${item.targetId}`);
+              const listingSnap = await getDoc(listingRef);
+              if (listingSnap.exists()) {
+                const listingData = listingSnap.data();
+                // Use images array from listing document
+                if (listingData.images && Array.isArray(listingData.images) && listingData.images.length > 0) {
+                  item.images = listingData.images;
+                }
+                // Fill in missing title and price if not already set
+                if (!item.title && listingData.title) {
+                  item.title = listingData.title;
+                }
+                if (item.price === undefined && listingData.price !== undefined) {
+                  item.price = listingData.price;
+                }
+              }
+            } catch (err) {
+              console.warn('Failed to fetch marketplace listing data:', err);
+            }
+          }
+          
           // If it's an asset, fetch missing data from asset document or overlay document
           if (item.type === 'asset') {
             try {
@@ -311,11 +347,14 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
                   if (!item.category && assetData.category) {
                     item.category = assetData.category;
                   }
+                  if (!item.subCategory && assetData.subCategory) {
+                    item.subCategory = assetData.subCategory;
+                  }
                 }
               }
               
               // For overlays, try to fetch from overlay document
-              if (item.overlayId && !item.storagePath) {
+              if (item.overlayId && item.assetId) {
                 try {
                   const overlayRef = doc(currentDb, `assets/${item.assetId}/overlays/${item.overlayId}`);
                   const overlaySnap = await getDoc(overlayRef);
@@ -329,6 +368,15 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
                     }
                     if (!item.fileType && overlayData.fileType) {
                       item.fileType = overlayData.fileType;
+                    }
+                    if (!item.subCategory) {
+                      // Determine subcategory from storage path
+                      const pathLower = (overlayData.storagePath || '').toLowerCase();
+                      if (pathLower.includes('/overlays/')) {
+                        item.subCategory = 'Overlays';
+                      } else if (pathLower.includes('/transitions/')) {
+                        item.subCategory = 'Transitions';
+                      }
                     }
                   }
                 } catch (overlayErr) {
@@ -438,8 +486,14 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
   };
 
   const getItemImage = (item: SavedItem): string | undefined => {
-    // For market listings, use image field
-    if (item.type === 'market' && item.image) return item.image;
+    // For market listings, use first image from images array
+    if (item.type === 'market') {
+      if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+        return item.images[0];
+      }
+      // Fallback to single image field
+      if (item.image) return item.image;
+    }
     
     // For assets, use thumbnailUrl (photo or video thumbnail)
     if (item.type === 'asset' && item.thumbnailUrl) return item.thumbnailUrl;
@@ -498,15 +552,15 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
       {/* Modal */}
       <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 pointer-events-none">
         <div 
-          className="bg-neutral-900 border border-neutral-800 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col pointer-events-auto"
+          className="bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col pointer-events-auto overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-neutral-800">
-            <h2 className="text-2xl font-bold">Saved Items</h2>
+          <div className="flex items-center justify-between p-6 border-b border-neutral-800 bg-gradient-to-r from-neutral-900 to-neutral-800/50">
+            <h2 className="text-2xl font-bold text-white">Saved Items</h2>
             <button
               onClick={onClose}
-              className="text-neutral-400 hover:text-white transition"
+              className="text-neutral-400 hover:text-white transition-colors p-1 rounded-md hover:bg-neutral-800"
               aria-label="Close"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -516,38 +570,42 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
           </div>
 
           {/* Tabs */}
-          <div className="flex items-center gap-1 px-6 pt-4 border-b border-neutral-800 overflow-x-auto">
+          <div className="flex items-center gap-1 px-6 pt-4 border-b border-neutral-800 bg-neutral-900/50 overflow-x-auto">
             {(['all', 'market', 'video', 'job', 'asset'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-sm font-medium transition whitespace-nowrap ${
+                className={`px-4 py-2.5 text-sm font-medium transition whitespace-nowrap relative ${
                   activeTab === tab
-                    ? 'text-white border-b-2 border-ccaBlue'
+                    ? 'text-white'
                     : 'text-neutral-400 hover:text-white'
                 }`}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {activeTab === tab && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-ccaBlue" />
+                )}
               </button>
             ))}
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-6 bg-neutral-950/30">
             {loading ? (
-              <div className="text-center text-neutral-400 py-12">
-                <p>Loading saved items...</p>
+              <div className="text-center text-neutral-400 py-16">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-ccaBlue mb-4"></div>
+                <p className="text-sm">Loading saved items...</p>
               </div>
             ) : filteredItems.length === 0 ? (
-              <div className="text-center text-neutral-400 py-12">
-                <svg className="w-16 h-16 mx-auto mb-4 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              <div className="text-center text-neutral-400 py-16">
+                <svg className="w-20 h-20 mx-auto mb-4 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
-                <p className="text-lg">No saved items yet</p>
-                <p className="text-sm mt-2">Start saving items to see them here</p>
+                <p className="text-lg font-medium text-white mb-2">No saved items yet</p>
+                <p className="text-sm text-neutral-500">Start saving items to see them here</p>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredItems.map((item) => (
                   <SavedItemCard
                     key={item.id}
