@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     if (hasAllAccess) {
       // If user has all-access membership, return subscriptions for ALL creators
       const allCreatorsSnap = await adminDb.collection('legacy_creators').get();
-      subscriptions = allCreatorsSnap.docs.map((d) => ({
+      subscriptions = allCreatorsSnap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => ({
         id: `all-access-${d.id}`, // Virtual subscription ID
         creatorId: d.id,
         subscriptionId: null, // No individual subscription ID for all-access
