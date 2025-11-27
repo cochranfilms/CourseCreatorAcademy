@@ -231,6 +231,7 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
+      let tempDir: string | undefined;
 
       try {
         // Parse request body (JSON with storage path)
@@ -246,7 +247,7 @@ export async function POST(req: NextRequest) {
         sendProgress(controller, 30, 'Downloading ZIP file from Storage...', 'processing');
 
         // Download ZIP from Storage to temp directory
-        const tempDir = path.join(os.tmpdir(), `asset-process-${Date.now()}`);
+        tempDir = path.join(os.tmpdir(), `asset-process-${Date.now()}`);
         await fs.ensureDir(tempDir);
         const zipLocalPath = path.join(tempDir, fileName);
         
@@ -314,6 +315,8 @@ export async function POST(req: NextRequest) {
         // Extract ZIP (reuse tempDir and zipLocalPath from download above)
         const extractDir = path.join(tempDir, 'extracted');
         await fs.ensureDir(extractDir);
+        
+        // Note: We'll delete the ZIP file after extraction to free disk space
 
         // Process based on category
         let results = {
@@ -332,6 +335,9 @@ export async function POST(req: NextRequest) {
           
           const overlayFiles = await unzipFile(zipLocalPath, extractDir, OVERLAY_EXTENSIONS);
           results.filesProcessed = overlayFiles.length;
+          
+          // Delete ZIP file immediately after extraction to free disk space
+          await fs.remove(zipLocalPath).catch(() => {});
 
           const batch = adminDb.batch();
           let processed = 0;
@@ -343,6 +349,7 @@ export async function POST(req: NextRequest) {
               let needsConversion = false;
 
               // Convert .mov to .mp4 if needed
+              const originalMovPath = overlayFile.localPath;
               if (overlayFile.extension === '.mov') {
                 const mp4Path = overlayFile.localPath.replace(/\.mov$/i, '.mp4');
                 const converted = await convertMovToMp4(overlayFile.localPath, mp4Path);
@@ -353,6 +360,8 @@ export async function POST(req: NextRequest) {
                   overlayFile.extension = '.mp4';
                   results.conversionsCompleted++;
                   needsConversion = true;
+                  // Delete original .mov file immediately after conversion
+                  await fs.remove(originalMovPath).catch(() => {});
                 } else {
                   results.errors.push(`Could not convert ${overlayFile.fileName} (ffmpeg not available)`);
                 }
@@ -361,6 +370,9 @@ export async function POST(req: NextRequest) {
               // Upload original/converted file
               const contentType = getContentType(overlayFile.extension);
               await uploadFile(bucket, overlayFile.localPath, finalStoragePath, contentType);
+              
+              // Delete original file immediately to free disk space
+              await fs.remove(overlayFile.localPath).catch(() => {});
 
               // Generate 720p preview for videos
               if (['.mp4', '.mov'].includes(overlayFile.extension.toLowerCase())) {
@@ -372,6 +384,8 @@ export async function POST(req: NextRequest) {
                 if (previewGenerated) {
                   previewStoragePath = finalStoragePath.replace(/\.(mp4|mov)$/i, '_720p.mp4');
                   await uploadFile(bucket, previewPath, previewStoragePath, 'video/mp4');
+                  // Delete preview file immediately to free disk space
+                  await fs.remove(previewPath).catch(() => {});
                   results.previewsGenerated++;
                 }
               }
@@ -403,6 +417,9 @@ export async function POST(req: NextRequest) {
           
           const audioFiles = await unzipFile(zipLocalPath, extractDir, AUDIO_EXTENSIONS);
           results.filesProcessed = audioFiles.length;
+          
+          // Delete ZIP file immediately after extraction to free disk space
+          await fs.remove(zipLocalPath).catch(() => {});
 
           const batch = adminDb.batch();
           let processed = 0;
@@ -420,6 +437,9 @@ export async function POST(req: NextRequest) {
               // Upload audio file
               const contentType = getContentType(audioFile.extension);
               await uploadFile(bucket, audioFile.localPath, storagePath, contentType);
+              
+              // Delete audio file immediately to free disk space
+              await fs.remove(audioFile.localPath).catch(() => {});
 
               // Create sound effect document
               const sfxRef = adminDb.collection('assets').doc(assetId).collection('soundEffects').doc();
@@ -507,6 +527,9 @@ export async function POST(req: NextRequest) {
               zipfile.on('error', reject);
             });
           });
+          
+          // Delete ZIP file immediately after extraction to free disk space
+          await fs.remove(zipLocalPath).catch(() => {});
 
           results.filesProcessed = cubeFiles.length;
 
@@ -518,6 +541,9 @@ export async function POST(req: NextRequest) {
             
             // Upload .cube file
             await uploadFile(bucket, cubeFile.localPath, cubeStoragePath, 'application/octet-stream');
+            
+            // Delete .cube file immediately to free disk space
+            await fs.remove(cubeFile.localPath).catch(() => {});
 
             // Try to find matching videos (they should be in Storage already)
             const beforePath = `assets/luts/${packName}/${cubeFile.lutName}/before.mp4`;
@@ -565,13 +591,19 @@ export async function POST(req: NextRequest) {
           results.documentsCreated = processed;
         }
 
-        // Cleanup
-        await fs.remove(tempDir).catch(() => {});
+        // Cleanup temp directory
+        if (tempDir) {
+          await fs.remove(tempDir).catch(() => {});
+        }
 
         sendProgress(controller, 100, 'Processing complete!', 'completed');
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ complete: true, results })}\n\n`));
         controller.close();
       } catch (error: any) {
+        // Cleanup temp directory even on error
+        if (typeof tempDir !== 'undefined') {
+          await fs.remove(tempDir).catch(() => {});
+        }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: error.message || 'Processing failed' })}\n\n`));
         controller.close();
       }

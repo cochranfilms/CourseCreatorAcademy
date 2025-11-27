@@ -122,6 +122,20 @@ service firebase.storage {
       allow write: if false;
     }
 
+    // Admin asset uploads - temporary staging area for ZIP files before processing
+    // Owner needs read access to generate downloadURL for server-side processing
+    match /admin-assets-uploads/{userId}/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 2 * 1024 * 1024 * 1024 // 2 GB max
+        && (
+          request.resource.contentType == 'application/zip' ||
+          request.resource.contentType == 'application/x-zip-compressed'
+        );
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Deny all other paths
     match /{allPaths=**} {
       allow read, write: if false;
