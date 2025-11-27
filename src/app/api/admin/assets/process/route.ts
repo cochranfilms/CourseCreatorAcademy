@@ -106,7 +106,108 @@ function sendProgress(controller: ReadableStreamDefaultController, progress: num
 }
 
 /**
- * Unzip file and extract files by type
+ * Unzip file and extract files by type (streaming - processes one at a time)
+ */
+async function processZipFilesStreaming(
+  zipPath: string,
+  extractTo: string,
+  fileTypes: string[],
+  processor: (file: { fileName: string; localPath: string; extension: string; relativePath: string }) => Promise<void>
+): Promise<number> {
+  return new Promise((resolve, reject) => {
+    let fileCount = 0;
+    let pendingOperations = 0;
+    const errors: string[] = [];
+
+    yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
+      if (err) return reject(err);
+
+      zipfile.readEntry();
+
+      zipfile.on('entry', (entry) => {
+        if (/\/$/.test(entry.fileName)) {
+          zipfile.readEntry();
+          return;
+        }
+
+        // Skip macOS metadata
+        if (entry.fileName.includes('/._') || path.basename(entry.fileName).startsWith('._')) {
+          zipfile.readEntry();
+          return;
+        }
+
+        const ext = path.extname(entry.fileName).toLowerCase();
+        if (fileTypes.includes(ext)) {
+          const fileName = path.basename(entry.fileName);
+          if (fileName.startsWith('._')) {
+            zipfile.readEntry();
+            return;
+          }
+
+          const extractPath = path.join(extractTo, `temp_${Date.now()}_${fileName}`);
+          const relativePath = entry.fileName;
+
+          zipfile.openReadStream(entry, (err, readStream) => {
+            if (err) {
+              zipfile.readEntry();
+              return;
+            }
+
+            pendingOperations++;
+            fs.ensureDirSync(path.dirname(extractPath));
+            const writeStream = fs.createWriteStream(extractPath);
+
+            readStream.pipe(writeStream);
+
+            writeStream.on('close', async () => {
+              try {
+                const fileInfo = { fileName, localPath: extractPath, extension: ext, relativePath };
+                await processor(fileInfo);
+                // Delete file immediately after processing
+                await fs.remove(extractPath).catch(() => {});
+                fileCount++;
+              } catch (error: any) {
+                errors.push(`Error processing ${fileName}: ${error.message}`);
+                await fs.remove(extractPath).catch(() => {});
+              } finally {
+                pendingOperations--;
+                zipfile.readEntry();
+              }
+            });
+
+            writeStream.on('error', async (err) => {
+              pendingOperations--;
+              errors.push(`Error extracting ${fileName}: ${err.message}`);
+              await fs.remove(extractPath).catch(() => {});
+              zipfile.readEntry();
+            });
+          });
+        } else {
+          zipfile.readEntry();
+        }
+      });
+
+      zipfile.on('end', () => {
+        // Wait for any remaining processing to finish
+        const checkComplete = setInterval(() => {
+          if (pendingOperations === 0) {
+            clearInterval(checkComplete);
+            if (errors.length > 0) {
+              reject(new Error(errors.join('; ')));
+            } else {
+              resolve(fileCount);
+            }
+          }
+        }, 100);
+      });
+
+      zipfile.on('error', reject);
+    });
+  });
+}
+
+/**
+ * Unzip file and extract files by type (legacy - extracts all first)
  */
 function unzipFile(zipPath: string, extractTo: string, fileTypes: string[]): Promise<Array<{ fileName: string; localPath: string; extension: string; relativePath: string }>> {
   return new Promise((resolve, reject) => {
@@ -333,54 +434,41 @@ export async function POST(req: NextRequest) {
         if (category === 'Overlays & Transitions') {
           sendProgress(controller, 50, 'Processing overlay files...', 'processing');
           
-          const overlayFiles = await unzipFile(zipLocalPath, extractDir, OVERLAY_EXTENSIONS);
-          results.filesProcessed = overlayFiles.length;
-          
-          // Delete ZIP file immediately after extraction to free disk space
-          await fs.remove(zipLocalPath).catch(() => {});
-
           const batch = adminDb.batch();
           let processed = 0;
+          let totalFiles = 0;
 
-          for (const overlayFile of overlayFiles) {
+          // Process files one at a time using streaming
+          const processOverlayFile = async (overlayFile: { fileName: string; localPath: string; extension: string; relativePath: string }) => {
+            totalFiles++;
             try {
               let finalStoragePath = `assets/overlays/${packName}/${overlayFile.fileName}`;
               let previewStoragePath: string | undefined;
               let needsConversion = false;
+              let currentFilePath = overlayFile.localPath;
 
               // Convert .mov to .mp4 if needed
-              const originalMovPath = overlayFile.localPath;
               if (overlayFile.extension === '.mov') {
                 const mp4Path = overlayFile.localPath.replace(/\.mov$/i, '.mp4');
                 const converted = await convertMovToMp4(overlayFile.localPath, mp4Path);
                 if (converted) {
                   finalStoragePath = finalStoragePath.replace(/\.mov$/i, '.mp4');
-                  overlayFile.localPath = mp4Path;
+                  currentFilePath = mp4Path;
                   overlayFile.fileName = overlayFile.fileName.replace(/\.mov$/i, '.mp4');
                   overlayFile.extension = '.mp4';
                   results.conversionsCompleted++;
                   needsConversion = true;
                   // Delete original .mov file immediately after conversion
-                  await fs.remove(originalMovPath).catch(() => {});
+                  await fs.remove(overlayFile.localPath).catch(() => {});
                 } else {
                   results.errors.push(`Could not convert ${overlayFile.fileName} (ffmpeg not available)`);
                 }
               }
 
-              // Upload original/converted file
-              const contentType = getContentType(overlayFile.extension);
-              await uploadFile(bucket, overlayFile.localPath, finalStoragePath, contentType);
-              
-              // Delete original file immediately to free disk space
-              await fs.remove(overlayFile.localPath).catch(() => {});
-
-              // Generate 720p preview for videos
+              // Generate 720p preview for videos BEFORE uploading (need file for preview generation)
               if (['.mp4', '.mov'].includes(overlayFile.extension.toLowerCase())) {
-                const previewPath = overlayFile.localPath.replace(/\.(mp4|mov)$/i, '_720p.mp4');
-                const previewGenerated = await generate720pPreview(
-                  needsConversion ? overlayFile.localPath : overlayFile.localPath,
-                  previewPath
-                );
+                const previewPath = path.join(path.dirname(currentFilePath), path.basename(currentFilePath, path.extname(currentFilePath)) + '_720p.mp4');
+                const previewGenerated = await generate720pPreview(currentFilePath, previewPath);
                 if (previewGenerated) {
                   previewStoragePath = finalStoragePath.replace(/\.(mp4|mov)$/i, '_720p.mp4');
                   await uploadFile(bucket, previewPath, previewStoragePath, 'video/mp4');
@@ -389,6 +477,13 @@ export async function POST(req: NextRequest) {
                   results.previewsGenerated++;
                 }
               }
+
+              // Upload original/converted file
+              const contentType = getContentType(overlayFile.extension);
+              await uploadFile(bucket, currentFilePath, finalStoragePath, contentType);
+              
+              // Delete file immediately after upload to free disk space
+              await fs.remove(currentFilePath).catch(() => {});
 
               // Create overlay document
               const overlayRef = adminDb.collection('assets').doc(assetId).collection('overlays').doc();
@@ -403,11 +498,16 @@ export async function POST(req: NextRequest) {
               });
 
               processed++;
-              sendProgress(controller, 50 + (processed / overlayFiles.length) * 30, `Processing overlay ${processed}/${overlayFiles.length}...`, 'processing');
+              sendProgress(controller, 50 + Math.min(30, (processed / Math.max(1, totalFiles)) * 30), `Processing overlay ${processed}...`, 'processing');
             } catch (error: any) {
               results.errors.push(`Error processing ${overlayFile.fileName}: ${error.message}`);
             }
-          }
+          };
+
+          results.filesProcessed = await processZipFilesStreaming(zipLocalPath, extractDir, OVERLAY_EXTENSIONS, processOverlayFile);
+          
+          // Delete ZIP file immediately after processing to free disk space
+          await fs.remove(zipLocalPath).catch(() => {});
 
           await batch.commit();
           results.documentsCreated = processed;
@@ -415,16 +515,13 @@ export async function POST(req: NextRequest) {
         } else if (category === 'SFX & Plugins') {
           sendProgress(controller, 50, 'Processing audio files...', 'processing');
           
-          const audioFiles = await unzipFile(zipLocalPath, extractDir, AUDIO_EXTENSIONS);
-          results.filesProcessed = audioFiles.length;
-          
-          // Delete ZIP file immediately after extraction to free disk space
-          await fs.remove(zipLocalPath).catch(() => {});
-
           const batch = adminDb.batch();
           let processed = 0;
+          let totalFiles = 0;
 
-          for (const audioFile of audioFiles) {
+          // Process files one at a time using streaming
+          const processAudioFile = async (audioFile: { fileName: string; localPath: string; extension: string; relativePath: string }) => {
+            totalFiles++;
             try {
               const storagePath = `assets/sfx/${packName}/sounds/${audioFile.fileName}`;
               
@@ -454,11 +551,16 @@ export async function POST(req: NextRequest) {
               });
 
               processed++;
-              sendProgress(controller, 50 + (processed / audioFiles.length) * 30, `Processing audio ${processed}/${audioFiles.length}...`, 'processing');
+              sendProgress(controller, 50 + Math.min(30, (processed / Math.max(1, totalFiles)) * 30), `Processing audio ${processed}...`, 'processing');
             } catch (error: any) {
               results.errors.push(`Error processing ${audioFile.fileName}: ${error.message}`);
             }
-          }
+          };
+
+          results.filesProcessed = await processZipFilesStreaming(zipLocalPath, extractDir, AUDIO_EXTENSIONS, processAudioFile);
+          
+          // Delete ZIP file immediately after processing to free disk space
+          await fs.remove(zipLocalPath).catch(() => {});
 
           await batch.commit();
           results.documentsCreated = processed;
@@ -466,10 +568,11 @@ export async function POST(req: NextRequest) {
         } else if (category === 'LUTs & Presets') {
           sendProgress(controller, 50, 'Processing LUT files...', 'processing');
           
-          // Extract .cube files from CUBE folder in ZIP
-          const cubeFiles: Array<{ fileName: string; localPath: string; extension: string; relativePath: string; lutName: string }> = [];
-          
-          // Extract .cube files preserving folder structure
+          const batch = adminDb.batch();
+          let processed = 0;
+          let fileCount = 0;
+
+          // Process .cube files one at a time
           await new Promise<void>((resolve, reject) => {
             yauzl.open(zipLocalPath, { lazyEntries: true }, (err, zipfile) => {
               if (err) {
@@ -479,7 +582,7 @@ export async function POST(req: NextRequest) {
 
               zipfile.readEntry();
 
-              zipfile.on('entry', (entry) => {
+              zipfile.on('entry', async (entry) => {
                 if (/\/$/.test(entry.fileName)) {
                   zipfile.readEntry();
                   return;
@@ -495,9 +598,9 @@ export async function POST(req: NextRequest) {
                 if (entry.fileName.toLowerCase().includes('/cube/') && entry.fileName.toLowerCase().endsWith('.cube')) {
                   const fileName = path.basename(entry.fileName);
                   const lutName = path.basename(fileName, '.cube');
-                  const extractPath = path.join(extractDir, entry.fileName);
+                  const extractPath = path.join(extractDir, `temp_${Date.now()}_${fileName}`);
 
-                  zipfile.openReadStream(entry, (err, readStream) => {
+                  zipfile.openReadStream(entry, async (err, readStream) => {
                     if (err) {
                       zipfile.readEntry();
                       return;
@@ -507,14 +610,55 @@ export async function POST(req: NextRequest) {
                     const writeStream = fs.createWriteStream(extractPath);
                     readStream.pipe(writeStream);
 
-                    writeStream.on('close', () => {
-                      cubeFiles.push({
-                        fileName,
-                        localPath: extractPath,
-                        extension: '.cube',
-                        relativePath: entry.fileName,
-                        lutName,
-                      });
+                    writeStream.on('close', async () => {
+                      try {
+                        fileCount++;
+                        const cubeStoragePath = `assets/luts/${packName}/CUBE/${fileName}`;
+                        
+                        // Upload .cube file
+                        await uploadFile(bucket, extractPath, cubeStoragePath, 'application/octet-stream');
+                        
+                        // Delete .cube file immediately to free disk space
+                        await fs.remove(extractPath).catch(() => {});
+
+                        // Try to find matching videos (they should be in Storage already)
+                        const beforePath = `assets/luts/${packName}/${lutName}/before.mp4`;
+                        const afterPath = `assets/luts/${packName}/${lutName}/after.mp4`;
+
+                        let beforeExists = false;
+                        let afterExists = false;
+
+                        try {
+                          const [beforeFile] = await bucket.file(beforePath).exists();
+                          const [afterFile] = await bucket.file(afterPath).exists();
+                          beforeExists = beforeFile;
+                          afterExists = afterFile;
+                        } catch {}
+
+                        // Create LUT preview document
+                        const lutRef = adminDb.collection('assets').doc(assetId).collection('lutPreviews').doc();
+                        batch.set(lutRef, {
+                          assetId,
+                          assetTitle: title,
+                          lutName,
+                          ...(beforeExists ? { beforeVideoPath: beforePath } : {}),
+                          ...(afterExists ? { afterVideoPath: afterPath } : {}),
+                          lutFilePath: cubeStoragePath,
+                          fileName: fileName,
+                          createdAt: FirebaseFirestore.FieldValue.serverTimestamp(),
+                        });
+                        processed++;
+                        sendProgress(controller, 50 + Math.min(30, (processed / Math.max(1, fileCount)) * 30), `Processing LUT ${processed}...`, 'processing');
+                      } catch (error: any) {
+                        results.errors.push(`Error processing ${fileName}: ${error.message}`);
+                        await fs.remove(extractPath).catch(() => {});
+                      }
+                      zipfile.readEntry();
+                    });
+
+                    writeStream.on('error', async (err) => {
+                      results.errors.push(`Error extracting ${fileName}: ${err.message}`);
+                      await fs.remove(extractPath).catch(() => {});
                       zipfile.readEntry();
                     });
                   });
@@ -523,72 +667,19 @@ export async function POST(req: NextRequest) {
                 }
               });
 
-              zipfile.on('end', () => resolve());
+              zipfile.on('end', async () => {
+                // Delete ZIP file immediately after extraction to free disk space
+                await fs.remove(zipLocalPath).catch(() => {});
+                await batch.commit();
+                results.filesProcessed = fileCount;
+                results.lutPreviewsCreated = processed;
+                results.documentsCreated = processed;
+                resolve();
+              });
+
               zipfile.on('error', reject);
             });
           });
-          
-          // Delete ZIP file immediately after extraction to free disk space
-          await fs.remove(zipLocalPath).catch(() => {});
-
-          results.filesProcessed = cubeFiles.length;
-
-          // Find before/after videos in Storage (they should already be uploaded)
-          const lutPreviews: Array<{ lutName: string; beforePath?: string; afterPath?: string; cubePath: string }> = [];
-
-          for (const cubeFile of cubeFiles) {
-            const cubeStoragePath = `assets/luts/${packName}/CUBE/${cubeFile.fileName}`;
-            
-            // Upload .cube file
-            await uploadFile(bucket, cubeFile.localPath, cubeStoragePath, 'application/octet-stream');
-            
-            // Delete .cube file immediately to free disk space
-            await fs.remove(cubeFile.localPath).catch(() => {});
-
-            // Try to find matching videos (they should be in Storage already)
-            const beforePath = `assets/luts/${packName}/${cubeFile.lutName}/before.mp4`;
-            const afterPath = `assets/luts/${packName}/${cubeFile.lutName}/after.mp4`;
-
-            let beforeExists = false;
-            let afterExists = false;
-
-            try {
-              const [beforeFile] = await bucket.file(beforePath).exists();
-              const [afterFile] = await bucket.file(afterPath).exists();
-              beforeExists = beforeFile;
-              afterExists = afterFile;
-            } catch {}
-
-            lutPreviews.push({
-              lutName: cubeFile.lutName,
-              beforePath: beforeExists ? beforePath : undefined,
-              afterPath: afterExists ? afterPath : undefined,
-              cubePath: cubeStoragePath,
-            });
-          }
-
-          // Create LUT preview documents
-          const batch = adminDb.batch();
-          let processed = 0;
-
-          for (const preview of lutPreviews) {
-            const lutRef = adminDb.collection('assets').doc(assetId).collection('lutPreviews').doc();
-            batch.set(lutRef, {
-              assetId,
-              assetTitle: title,
-              lutName: preview.lutName,
-              ...(preview.beforePath ? { beforeVideoPath: preview.beforePath } : {}),
-              ...(preview.afterPath ? { afterVideoPath: preview.afterPath } : {}),
-              lutFilePath: preview.cubePath,
-              fileName: path.basename(preview.cubePath),
-              createdAt: FirebaseFirestore.FieldValue.serverTimestamp(),
-            });
-            processed++;
-          }
-
-          await batch.commit();
-          results.lutPreviewsCreated = processed;
-          results.documentsCreated = processed;
         }
 
         // Cleanup temp directory
