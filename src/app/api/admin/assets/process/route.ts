@@ -490,7 +490,7 @@ export async function POST(req: NextRequest) {
 
         // Handle thumbnail upload if provided
         let thumbnailUrl: string | null = null;
-        if (thumbnailStoragePath && thumbnailDownloadURL) {
+        if (thumbnailStoragePath) {
           try {
             // Copy thumbnail to final location
             const thumbnailSourceFile = bucket.file(thumbnailStoragePath);
@@ -508,11 +508,14 @@ export async function POST(req: NextRequest) {
               expires: expiresAt,
             });
           } catch (error: any) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `Failed to process thumbnail: ${error.message}` })}\n\n`));
-            controller.close();
-            return;
+            console.error('Failed to process thumbnail:', error);
+            // Don't fail the entire process if thumbnail fails
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ step: `Warning: Failed to process thumbnail: ${error.message}` })}\n\n`));
           }
-        } else {
+        }
+        
+        // Check if thumbnail already exists at the expected location (fallback)
+        if (!thumbnailUrl) {
           // Check if thumbnail already exists at the expected location
           try {
             const thumbnailFile = bucket.file(thumbnailPath);
@@ -599,7 +602,11 @@ export async function POST(req: NextRequest) {
               }
 
               // Generate 720p preview for videos BEFORE uploading (need file for preview generation)
-              if (['.mp4', '.mov'].includes(overlayFile.extension.toLowerCase())) {
+              // Check original extension to catch both .mov and .mp4 files
+              const originalExtension = overlayFile.extension.toLowerCase();
+              const isVideoFile = ['.mp4', '.mov'].includes(originalExtension);
+              
+              if (isVideoFile) {
                 const previewPath = path.join(path.dirname(currentFilePath), path.basename(currentFilePath, path.extname(currentFilePath)) + '_720p.mp4');
                 const previewGenerated = await generate720pPreview(currentFilePath, previewPath);
                 if (previewGenerated) {
@@ -608,6 +615,9 @@ export async function POST(req: NextRequest) {
                   // Delete preview file immediately to free disk space
                   await fs.remove(previewPath).catch(() => {});
                   results.previewsGenerated++;
+                } else {
+                  console.warn(`Failed to generate 720p preview for ${overlayFile.fileName} - ffmpeg may not be available`);
+                  results.errors.push(`Could not generate 720p preview for ${overlayFile.fileName} (ffmpeg not available)`);
                 }
               }
 
