@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs-extra';
 import * as yauzl from 'yauzl';
-import * as unzipper from 'unzipper';
+import StreamZip from 'node-stream-zip';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes max
