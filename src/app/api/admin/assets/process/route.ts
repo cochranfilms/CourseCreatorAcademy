@@ -436,7 +436,7 @@ export async function POST(req: NextRequest) {
       try {
         // Parse request body (JSON with storage path)
         const body = await req.json();
-        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL } = body;
+        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL, subCategory } = body;
 
         if (!storagePath || !category || !fileName) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Missing storagePath, category, or fileName' })}\n\n`));
@@ -447,7 +447,13 @@ export async function POST(req: NextRequest) {
         sendProgress(controller, 30, 'Copying ZIP file to final location...', 'processing');
 
         // Copy ZIP directly in Firebase Storage (no download needed)
-        const categoryFolder = CATEGORY_MAP[category] || 'overlays';
+        // Determine folder based on category and subcategory
+        let categoryFolder = CATEGORY_MAP[category] || 'overlays';
+        if (category === 'Overlays & Transitions' && subCategory === 'Transitions') {
+          categoryFolder = 'transitions';
+        } else if (category === 'Overlays & Transitions') {
+          categoryFolder = 'overlays'; // Default to overlays if no subcategory or Overlays selected
+        }
         const packName = fileName.replace(/\.zip$/i, '');
         const zipStoragePath = `assets/${categoryFolder}/${fileName}`;
 
@@ -555,17 +561,21 @@ export async function POST(req: NextRequest) {
         };
 
         if (category === 'Overlays & Transitions') {
-          sendProgress(controller, 50, 'Processing overlay files...', 'processing');
+          const isTransition = subCategory === 'Transitions';
+          sendProgress(controller, 50, isTransition ? 'Processing transition files...' : 'Processing overlay files...', 'processing');
           
           const batch = adminDb.batch();
           let processed = 0;
           let totalFiles = 0;
 
+          // Determine storage folder based on subcategory
+          const storageFolder = isTransition ? 'transitions' : 'overlays';
+
           // Process files one at a time using streaming
           const processOverlayFile = async (overlayFile: { fileName: string; localPath: string; extension: string; relativePath: string }) => {
             totalFiles++;
             try {
-              let finalStoragePath = `assets/overlays/${packName}/${overlayFile.fileName}`;
+              let finalStoragePath = `assets/${storageFolder}/${packName}/${overlayFile.fileName}`;
               let previewStoragePath: string | undefined;
               let needsConversion = false;
               let currentFilePath = overlayFile.localPath;
@@ -621,7 +631,8 @@ export async function POST(req: NextRequest) {
               });
 
               processed++;
-              sendProgress(controller, 50 + Math.min(30, (processed / Math.max(1, totalFiles)) * 30), `Processing overlay ${processed}...`, 'processing');
+              const fileTypeLabel = isTransition ? 'transition' : 'overlay';
+              sendProgress(controller, 50 + Math.min(30, (processed / Math.max(1, totalFiles)) * 30), `Processing ${fileTypeLabel} ${processed}...`, 'processing');
             } catch (error: any) {
               results.errors.push(`Error processing ${overlayFile.fileName}: ${error.message}`);
             }

@@ -2,15 +2,17 @@
 import { useState, useCallback, useRef } from 'react';
 
 type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets';
+type SubCategory = 'Overlays' | 'Transitions' | null;
 
 interface AssetUploadZoneProps {
-  onFileSelect: (file: File, category: Category, thumbnail?: File) => void;
+  onFileSelect: (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory) => void;
   disabled?: boolean;
 }
 
 export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>('Overlays & Transitions');
+  const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategory>('Overlays');
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,20 +41,22 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
     const imageFile = files.find(f => /\.(jpg|jpeg|png|webp)$/i.test(f.name));
 
     if (zipFile) {
-      onFileSelect(zipFile, selectedCategory, imageFile || thumbnailFile || undefined);
+      const subCategory = selectedCategory === 'Overlays & Transitions' ? selectedSubCategory : undefined;
+      onFileSelect(zipFile, selectedCategory, imageFile || thumbnailFile || undefined, subCategory);
     } else {
       alert('Please upload a ZIP file');
     }
-  }, [disabled, selectedCategory, onFileSelect, thumbnailFile]);
+  }, [disabled, selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.zip')) {
-      onFileSelect(file, selectedCategory, thumbnailFile || undefined);
+      const subCategory = selectedCategory === 'Overlays & Transitions' ? selectedSubCategory : undefined;
+      onFileSelect(file, selectedCategory, thumbnailFile || undefined, subCategory);
     } else {
       alert('Please upload a ZIP file');
     }
-  }, [selectedCategory, onFileSelect, thumbnailFile]);
+  }, [selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile]);
 
   const handleThumbnailInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,7 +98,14 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
         </label>
         <select
           value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value as Category)}
+          onChange={(e) => {
+            const newCategory = e.target.value as Category;
+            setSelectedCategory(newCategory);
+            // Reset subcategory when category changes
+            if (newCategory === 'Overlays & Transitions') {
+              setSelectedSubCategory('Overlays');
+            }
+          }}
           disabled={disabled}
           className="w-full px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -103,6 +114,24 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
           <option value="LUTs & Presets">LUTs & Presets</option>
         </select>
       </div>
+
+      {/* Subcategory Selector for Overlays & Transitions */}
+      {selectedCategory === 'Overlays & Transitions' && (
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-2">
+            Subcategory
+          </label>
+          <select
+            value={selectedSubCategory || ''}
+            onChange={(e) => setSelectedSubCategory(e.target.value as SubCategory)}
+            disabled={disabled}
+            className="w-full px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="Overlays">Overlays</option>
+            <option value="Transitions">Transitions</option>
+          </select>
+        </div>
+      )}
 
       {/* Thumbnail Upload */}
       <div>

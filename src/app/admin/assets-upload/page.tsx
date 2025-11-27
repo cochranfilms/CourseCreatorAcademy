@@ -32,7 +32,7 @@ export default function AdminAssetsUploadPage() {
     progress: 0,
   });
 
-  const handleFileSelect = useCallback(async (file: File, category: string, thumbnail?: File) => {
+  const handleFileSelect = useCallback(async (file: File, category: string, thumbnail?: File, subCategory?: string) => {
     if (!user || !firebaseReady || !storage) {
       setProcessingState({
         status: 'error',
@@ -150,6 +150,7 @@ export default function AdminAssetsUploadPage() {
           fileName: zipFileName,
           thumbnailStoragePath,
           thumbnailDownloadURL,
+          subCategory,
         }),
       });
 

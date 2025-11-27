@@ -1443,7 +1443,7 @@ export default function AssetsPage() {
     }
   }, [selectedSubCategory, selectedCategory, assets]);
 
-  // Load overlays when "Overlays & Transitions" category is selected
+  // Load overlays/transitions when "Overlays & Transitions" category is selected
   useEffect(() => {
     if (selectedCategory !== 'Overlays & Transitions') {
       setOverlays([]);
@@ -1455,7 +1455,23 @@ export default function AssetsPage() {
         const response = await fetch('/api/assets/overlays');
         if (response.ok) {
           const data = await response.json();
-          setOverlays(data.overlays || []);
+          const allOverlays = data.overlays || [];
+          
+          // Filter by subcategory if selected
+          if (selectedSubCategory === 'Overlays') {
+            setOverlays(allOverlays.filter((overlay: Overlay) => {
+              const path = overlay.storagePath.toLowerCase();
+              return path.includes('/overlays/');
+            }));
+          } else if (selectedSubCategory === 'Transitions') {
+            setOverlays(allOverlays.filter((overlay: Overlay) => {
+              const path = overlay.storagePath.toLowerCase();
+              return path.includes('/transitions/');
+            }));
+          } else {
+            // Show all overlays and transitions when no subcategory is selected
+            setOverlays(allOverlays);
+          }
         }
       } catch (error) {
         console.error('Error loading overlays:', error);
@@ -1463,7 +1479,7 @@ export default function AssetsPage() {
     };
 
     loadOverlays();
-  }, [selectedCategory]);
+  }, [selectedCategory, selectedSubCategory]);
 
   // Load LUT previews for LUT assets when LUTs subcategory is selected
   useEffect(() => {
@@ -1522,7 +1538,7 @@ export default function AssetsPage() {
 
   // Get subcategories for the current category
   const getSubCategories = (category: AssetCategory): SubCategory[] => {
-    // Removed 'Overlays & Transitions' subcategories - show all overlays directly
+    if (category === 'Overlays & Transitions') return ['Overlays', 'Transitions'];
     if (category === 'SFX & Plugins') return ['SFX', 'Plugins'];
     if (category === 'LUTs & Presets') return ['LUTs', 'Presets'];
     return [];
