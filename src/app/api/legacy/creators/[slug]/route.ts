@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { hasAccessToCreator } from '@/lib/entitlements';
 
 // GET /api/legacy/creators/[slug]?userId=optional
 // Returns public creator info and up to 3 sample videos.
@@ -53,31 +54,11 @@ export async function GET(req: NextRequest, context: any) {
     };
 
     // Determine subscription status (optional)
+    // Uses hasAccessToCreator which checks for all-access membership OR per-creator subscription
     let subscribed = false;
     if (userId) {
       try {
-        // Global membership (ONLY qualifying plan) grants access to all creators
-        const userDoc = await adminDb.collection('users').doc(String(userId)).get();
-        const udata = userDoc.exists ? (userDoc.data() as any) : null;
-        const active = Boolean(udata?.membershipActive);
-        const plan = String(udata?.membershipPlan || '');
-        const allowedPlansEnv = String(process.env.LEGACY_ALL_ACCESS_PLANS || '').trim();
-        const allowedPlans = allowedPlansEnv
-          ? allowedPlansEnv.split(',').map((s) => s.trim()).filter(Boolean)
-          : ['cca_membership_87'];
-        if (active && allowedPlans.includes(plan)) {
-          subscribed = true;
-        } else {
-          // Else, check per-creator Legacy+ subscription
-          const subs = await adminDb
-            .collection('legacySubscriptions')
-            .where('userId', '==', userId)
-            .where('creatorId', '==', creatorId)
-            .where('status', 'in', ['active', 'trialing'])
-            .limit(1)
-            .get();
-          subscribed = !subs.empty;
-        }
+        subscribed = await hasAccessToCreator(userId, creatorId);
       } catch {}
     }
 

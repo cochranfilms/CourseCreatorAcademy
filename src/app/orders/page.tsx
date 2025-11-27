@@ -24,7 +24,7 @@ type Order = {
 };
 
 export default function OrdersPage() {
-  const { user } = useAuth();
+  const { user, auth } = useAuth();
   const [sold, setSold] = useState<Order[]>([]);
   const [bought, setBought] = useState<Order[]>([]);
 
@@ -110,16 +110,30 @@ export default function OrdersPage() {
   }, [user]);
 
   const submitTracking = async (order: Order, values: { trackingNumber: string; trackingCarrier?: string; trackingUrl?: string; }) => {
-    if (!firebaseReady || !db) return;
     if (!user || order.sellerId !== user.uid) { alert('Only the seller can update tracking'); return; }
     try {
-      await updateDoc(doc(db, 'orders', order.id), {
-        trackingNumber: values.trackingNumber,
-        trackingCarrier: values.trackingCarrier || null,
-        trackingUrl: values.trackingUrl || null,
-        status: 'shipped',
-        shippedAt: new Date()
-      } as any);
+      const idToken = await auth?.currentUser?.getIdToken();
+      if (!idToken) {
+        alert('Please sign in');
+        return;
+      }
+      const response = await fetch('/api/orders/update-tracking', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          trackingNumber: values.trackingNumber,
+          trackingCarrier: values.trackingCarrier,
+          trackingUrl: values.trackingUrl,
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update tracking');
+      }
       alert('Tracking saved');
     } catch (e: any) {
       alert(e.message || 'Failed to save tracking');

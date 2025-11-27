@@ -45,7 +45,7 @@ type MessagesProps = {
 };
 
 export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesProps) {
-  const { user } = useAuth();
+  const { user, auth } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -293,29 +293,36 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
   }, [selectedThreadId, user]);
 
   const handleSendMessage = async () => {
-    if (!newMessageText.trim() || !selectedThreadId || !firebaseReady || !db || !user) return;
+    if (!newMessageText.trim() || !selectedThreadId || !user) return;
 
     try {
-      const messageData = {
-        senderId: user.uid,
-        text: newMessageText.trim(),
-        createdAt: serverTimestamp(),
-        readBy: [user.uid],
-      };
+      const idToken = await auth?.currentUser?.getIdToken();
+      if (!idToken) {
+        alert('Please sign in');
+        return;
+      }
 
-      await addDoc(collection(db, 'threads', selectedThreadId, 'messages'), messageData);
-
-      // Update thread's lastMessageAt and lastMessage
-      await updateDoc(doc(db, 'threads', selectedThreadId), {
-        lastMessageAt: serverTimestamp(),
-        lastMessage: newMessageText.trim(),
-        lastMessageSenderId: user.uid,
+      const response = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          threadId: selectedThreadId,
+          text: newMessageText.trim(),
+        })
       });
 
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send message');
+      }
+
       setNewMessageText('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      alert(error.message || 'Failed to send message. Please try again.');
     }
   };
 

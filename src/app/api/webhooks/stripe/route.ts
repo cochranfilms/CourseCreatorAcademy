@@ -4,7 +4,13 @@ import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendEmailJS } from '@/lib/email';
 import { computeApplicationFeeAmount } from '@/lib/fees';
-import { createJobNotification, createOrderNotification } from '@/lib/notifications';
+import {
+  createJobNotification,
+  createOrderNotification,
+  createPayoutNotification,
+  createMembershipNotification,
+  createNotification,
+} from '@/lib/notifications';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -578,6 +584,18 @@ export async function POST(req: NextRequest) {
                   currency,
                   createdAt: FieldValue.serverTimestamp(),
                 });
+
+              // Create payout notification for legacy creator
+              try {
+                if (sub.creatorId) {
+                  await createPayoutNotification(String(sub.creatorId), {
+                    amount: 700,
+                    currency,
+                  });
+                }
+              } catch (notifErr) {
+                console.error('Error creating legacy+ payout notification:', notifErr);
+              }
             }
           }
 
@@ -631,6 +649,20 @@ export async function POST(req: NextRequest) {
                   currency,
                   createdAt: FieldValue.serverTimestamp(),
                 });
+
+              // Create payout notifications for all legacy creators
+              try {
+                await Promise.all(
+                  recipients.map((r) =>
+                    createPayoutNotification(r.id, {
+                      amount: 300,
+                      currency,
+                    })
+                  )
+                );
+              } catch (notifErr) {
+                console.error('Error creating CCA membership payout notifications:', notifErr);
+              }
             }
           }
         }
@@ -684,6 +716,18 @@ export async function POST(req: NextRequest) {
                   currency,
                   createdAt: FieldValue.serverTimestamp(),
                 });
+
+              // Create payout notification for legacy creator
+              try {
+                if (sub.creatorId) {
+                  await createPayoutNotification(String(sub.creatorId), {
+                    amount: 300,
+                    currency,
+                  });
+                }
+              } catch (notifErr) {
+                console.error('Error creating legacy+ payout notification (invoice.paid):', notifErr);
+              }
               break;
             }
           }
@@ -732,6 +776,20 @@ export async function POST(req: NextRequest) {
                 currency,
                 createdAt: FieldValue.serverTimestamp(),
               });
+
+            // Create payout notifications for all legacy creators
+            try {
+              await Promise.all(
+                recipients.map((r) =>
+                  createPayoutNotification(r.id, {
+                    amount: 300,
+                    currency,
+                  })
+                )
+              );
+            } catch (notifErr) {
+              console.error('Error creating CCA membership payout notifications (invoice.paid):', notifErr);
+            }
           }
         }
       } catch (err) {
@@ -824,6 +882,46 @@ export async function POST(req: NextRequest) {
                   },
                   { merge: true }
                 );
+
+              // Create membership expired notification
+              try {
+                await createMembershipNotification(String(userIdToUpdate), 'membership_expired', {
+                  planName: planType === 'cca_membership_87' ? 'CCA Membership ($87)' : planType === 'cca_monthly_37' ? 'CCA Monthly ($37)' : 'CCA No Fees ($60)',
+                });
+              } catch (notifErr) {
+                console.error('Error creating membership expired notification:', notifErr);
+              }
+            }
+          }
+
+          // Handle Legacy+ subscription cancellation
+          const legacyCreatorId = (sub.metadata && (sub.metadata as any).legacyCreatorId) || null;
+          if (legacyCreatorId) {
+            try {
+              // Find the user who owns this subscription
+              const legacySubQuery = await adminDb
+                .collection('legacySubscriptions')
+                .where('subscriptionId', '==', String(sub.id))
+                .limit(1)
+                .get();
+              
+              if (!legacySubQuery.empty) {
+                const legacySubData = legacySubQuery.docs[0].data();
+                const userId = legacySubData?.userId;
+                
+                if (userId) {
+                  await createNotification(String(userId), {
+                    type: 'legacy_subscription_canceled',
+                    title: 'Legacy+ Subscription Canceled',
+                    message: `Your Legacy+ subscription has been canceled.`,
+                    actionUrl: '/dashboard',
+                    actionLabel: 'View Dashboard',
+                    metadata: { subscriptionId: String(sub.id), creatorId: String(legacyCreatorId) },
+                  });
+                }
+              }
+            } catch (notifErr) {
+              console.error('Error creating legacy subscription canceled notification:', notifErr);
             }
           }
         }
@@ -1197,6 +1295,16 @@ export async function POST(req: NextRequest) {
                   applicantId: String(appData?.applicantId || '')
                 }
               });
+
+              // Create payout notification for contractor (deposit transfer)
+              try {
+                await createPayoutNotification(String(appData?.applicantId), {
+                  amount: depositTransferAmount,
+                  currency: 'usd',
+                });
+              } catch (notifErr) {
+                console.error('Error creating deposit payout notification:', notifErr);
+              }
             }
 
             // Transfer remaining amount to applicant
@@ -1214,6 +1322,16 @@ export async function POST(req: NextRequest) {
                   applicantId: String(appData?.applicantId || '')
                 }
               });
+
+              // Create payout notification for contractor (remaining payment transfer)
+              try {
+                await createPayoutNotification(String(appData?.applicantId), {
+                  amount: remainingTransferAmount,
+                  currency: 'usd',
+                });
+              } catch (notifErr) {
+                console.error('Error creating remaining payout notification:', notifErr);
+              }
             }
 
             // Update application status

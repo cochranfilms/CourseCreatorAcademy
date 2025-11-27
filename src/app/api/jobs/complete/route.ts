@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getUserIdFromAuthHeader } from '@/lib/api/auth';
 import { badRequest, forbidden, notFound, serverError } from '@/lib/api/responses';
+import { createJobNotification } from '@/lib/notifications';
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,6 +45,18 @@ export async function POST(req: NextRequest) {
       completedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp()
     });
+
+    // Create notification for employer (job completed)
+    try {
+      await createJobNotification(String(applicationData?.posterId), 'job_completed', {
+        jobTitle: applicationData?.opportunityTitle || 'Job Opportunity',
+        companyName: applicationData?.opportunityCompany || '',
+        applicationId,
+      });
+    } catch (notifErr) {
+      console.error('Error creating job completed notification:', notifErr);
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json({ success: true, message: 'Job marked as complete. The poster will be notified to complete final payment.' });
   } catch (error: any) {

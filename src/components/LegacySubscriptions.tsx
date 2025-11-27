@@ -84,6 +84,7 @@ export function LegacySubscriptions() {
   const [subscriptionDetails, setSubscriptionDetails] = useState<any>(null);
   const [changingPlan, setChangingPlan] = useState(false);
   const [prorationPreview, setProrationPreview] = useState<{ amount: number; isUpgrade: boolean; message: string; planType: string } | null>(null);
+  const [hasAllAccess, setHasAllAccess] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -100,6 +101,8 @@ export function LegacySubscriptions() {
           const json = await res.json();
           if (res.ok && Array.isArray(json.subscriptions)) {
             subs = json.subscriptions as Subscription[];
+            // Check if user has all-access membership
+            setHasAllAccess(Boolean(json.hasAllAccess));
           }
         } catch {}
 
@@ -460,6 +463,19 @@ export function LegacySubscriptions() {
       {/* Legacy+ Subscriptions Section */}
       <div>
         <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-white">Legacy+ Subscriptions</h2>
+        {hasAllAccess ? (
+          <div className="bg-gradient-to-r from-ccaBlue/20 to-purple-500/20 border border-ccaBlue/50 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-ccaBlue flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <div>
+                <p className="text-white font-semibold mb-1">All-Access Membership Active</p>
+                <p className="text-neutral-300 text-sm">You have access to all Legacy Creator profiles, including any we add in the future. This is included with your All-Access Membership.</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <p className="text-neutral-400 text-sm mb-4">Manage your Legacy+ creator subscriptions</p>
         {subscriptions.length === 0 ? (
           <div className="text-center py-6">
@@ -482,9 +498,13 @@ export function LegacySubscriptions() {
                   <div>
                     <div className="font-semibold text-white">{sub.creator?.displayName || 'Creator'}</div>
                     {sub.creator?.handle && <div className="text-sm text-neutral-400">@{sub.creator.handle}</div>}
-                    <div className="text-xs text-neutral-500 mt-1">
-                      ${(sub.amount / 100).toFixed(2)}/{sub.currency === 'usd' ? 'mo' : 'month'}
-                    </div>
+                    {hasAllAccess ? (
+                      <div className="text-xs text-green-400 mt-1">Included with All-Access</div>
+                    ) : (
+                      <div className="text-xs text-neutral-500 mt-1">
+                        ${(sub.amount / 100).toFixed(2)}/{sub.currency === 'usd' ? 'mo' : 'month'}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

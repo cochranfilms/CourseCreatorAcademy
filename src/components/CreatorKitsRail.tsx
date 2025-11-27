@@ -29,12 +29,34 @@ export function CreatorKitsRail({ showAll = false, showSamplesOnly = false }: Pr
     const load = async () => {
       if (!firebaseReady || !db) { setCreators([]); setLoading(false); return; }
       try {
+        // Check if user has all-access membership
+        let hasAllAccess = false;
+        if (user) {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+              const userData = userDoc.data() as any;
+              const membershipActive = Boolean(userData?.membershipActive);
+              const planType = String(userData?.membershipPlan || '');
+              // Check if user has all-access membership (cca_membership_87)
+              hasAllAccess = membershipActive && planType === 'cca_membership_87';
+            }
+          } catch {}
+        }
+
         if (showAll) {
           // Show all legacy creators
           const creatorsQ = query(collection(db, 'legacy_creators'), orderBy('order', 'asc'));
           const creatorsSnap = await getDocs(creatorsQ).catch(() => getDocs(collection(db, 'legacy_creators')));
           const subscribedIds = new Set<string>();
-          if (user) {
+          
+          if (hasAllAccess) {
+            // If user has all-access membership, mark all creators as subscribed
+            creatorsSnap.docs.forEach(d => {
+              subscribedIds.add(d.id);
+            });
+          } else if (user) {
+            // Otherwise, check individual subscriptions
             const subsQ = query(collection(db, 'legacySubscriptions'), where('userId', '==', user.uid), where('status', 'in', ['active', 'trialing']));
             const subsSnap = await getDocs(subsQ);
             subsSnap.docs.forEach(d => {
@@ -42,6 +64,7 @@ export function CreatorKitsRail({ showAll = false, showSamplesOnly = false }: Pr
               if (cId) subscribedIds.add(String(cId));
             });
           }
+          
           const results: Creator[] = [];
           for (const d of creatorsSnap.docs) {
             const data = d.data();
@@ -65,25 +88,46 @@ export function CreatorKitsRail({ showAll = false, showSamplesOnly = false }: Pr
         } else {
           // Show only subscribed creators (original behavior)
           if (!user) { setCreators([]); setLoading(false); return; }
-          const subsQ = query(collection(db, 'legacySubscriptions'), where('userId', '==', user.uid), where('status', 'in', ['active', 'trialing']));
-          const subsSnap = await getDocs(subsQ);
-          const creatorIds = Array.from(new Set(subsSnap.docs.map(d => (d.data() as any).creatorId).filter(Boolean)));
-          const results: Creator[] = [];
-          for (const id of creatorIds) {
-            const cDoc = await getDoc(doc(db, 'legacy_creators', String(id)));
-            if (cDoc.exists()) {
-              const data = cDoc.data() as any;
+          
+          if (hasAllAccess) {
+            // If user has all-access membership, show all creators
+            const creatorsQ = query(collection(db, 'legacy_creators'), orderBy('order', 'asc'));
+            const creatorsSnap = await getDocs(creatorsQ).catch(() => getDocs(collection(db, 'legacy_creators')));
+            const results: Creator[] = [];
+            for (const d of creatorsSnap.docs) {
+              const data = d.data();
               results.push({
-                id: cDoc.id,
+                id: d.id,
                 displayName: data.displayName || data.handle || 'Creator',
                 handle: data.handle,
                 bannerUrl: data.bannerUrl || null,
-                kitSlug: data.kitSlug || cDoc.id,
+                kitSlug: data.kitSlug || d.id,
                 isSubscribed: true,
               });
             }
+            setCreators(results);
+          } else {
+            // Otherwise, show only individually subscribed creators
+            const subsQ = query(collection(db, 'legacySubscriptions'), where('userId', '==', user.uid), where('status', 'in', ['active', 'trialing']));
+            const subsSnap = await getDocs(subsQ);
+            const creatorIds = Array.from(new Set(subsSnap.docs.map(d => (d.data() as any).creatorId).filter(Boolean)));
+            const results: Creator[] = [];
+            for (const id of creatorIds) {
+              const cDoc = await getDoc(doc(db, 'legacy_creators', String(id)));
+              if (cDoc.exists()) {
+                const data = cDoc.data() as any;
+                results.push({
+                  id: cDoc.id,
+                  displayName: data.displayName || data.handle || 'Creator',
+                  handle: data.handle,
+                  bannerUrl: data.bannerUrl || null,
+                  kitSlug: data.kitSlug || cDoc.id,
+                  isSubscribed: true,
+                });
+              }
+            }
+            setCreators(results);
           }
-          setCreators(results);
         }
       } catch (e) {
         setCreators([]);
