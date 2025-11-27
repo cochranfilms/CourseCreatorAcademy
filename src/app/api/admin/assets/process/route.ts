@@ -112,12 +112,14 @@ async function processZipFilesStreaming(
   zipPath: string,
   extractTo: string,
   fileTypes: string[],
-  processor: (file: { fileName: string; localPath: string; extension: string; relativePath: string }) => Promise<void>
+  processor: (file: { fileName: string; localPath: string; extension: string; relativePath: string }) => Promise<void>,
+  onExtractionComplete?: () => Promise<void>
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     let fileCount = 0;
     let pendingOperations = 0;
     const errors: string[] = [];
+    let extractionComplete = false;
 
     yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
       if (err) return reject(err);
@@ -187,7 +189,13 @@ async function processZipFilesStreaming(
         }
       });
 
-      zipfile.on('end', () => {
+      zipfile.on('end', async () => {
+        extractionComplete = true;
+        // Delete ZIP file immediately after extraction completes (before processing finishes)
+        if (onExtractionComplete) {
+          await onExtractionComplete().catch(() => {});
+        }
+        
         // Wait for any remaining processing to finish
         const checkComplete = setInterval(() => {
           if (pendingOperations === 0) {
@@ -345,24 +353,26 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        sendProgress(controller, 30, 'Downloading ZIP file from Storage...', 'processing');
+        sendProgress(controller, 30, 'Copying ZIP file to final location...', 'processing');
 
-        // Download ZIP from Storage to temp directory
-        tempDir = path.join(os.tmpdir(), `asset-process-${Date.now()}`);
-        await fs.ensureDir(tempDir);
-        const zipLocalPath = path.join(tempDir, fileName);
-        
-        await downloadFile(bucket, storagePath, zipLocalPath);
-
-        sendProgress(controller, 35, 'Moving ZIP file to final location...', 'processing');
-
-        // Move ZIP to final location in Storage
+        // Copy ZIP directly in Firebase Storage (no download needed)
         const categoryFolder = CATEGORY_MAP[category] || 'overlays';
         const packName = fileName.replace(/\.zip$/i, '');
         const zipStoragePath = `assets/${categoryFolder}/${fileName}`;
 
-        // Upload the downloaded file to the final location
-        await uploadFile(bucket, zipLocalPath, zipStoragePath, 'application/zip');
+        // Copy file directly in Storage (no temp download)
+        const sourceFile = bucket.file(storagePath);
+        const destFile = bucket.file(zipStoragePath);
+        await sourceFile.copy(destFile);
+
+        sendProgress(controller, 35, 'Downloading ZIP file for extraction...', 'processing');
+
+        // Now download ZIP to temp directory for extraction (will be deleted immediately after extraction starts)
+        tempDir = path.join(os.tmpdir(), `asset-process-${Date.now()}`);
+        await fs.ensureDir(tempDir);
+        const zipLocalPath = path.join(tempDir, fileName);
+        
+        await downloadFile(bucket, zipStoragePath, zipLocalPath);
 
         sendProgress(controller, 40, 'Creating main asset document...', 'processing');
 
@@ -504,10 +514,16 @@ export async function POST(req: NextRequest) {
             }
           };
 
-          results.filesProcessed = await processZipFilesStreaming(zipLocalPath, extractDir, OVERLAY_EXTENSIONS, processOverlayFile);
-          
-          // Delete ZIP file immediately after processing to free disk space
-          await fs.remove(zipLocalPath).catch(() => {});
+          results.filesProcessed = await processZipFilesStreaming(
+            zipLocalPath, 
+            extractDir, 
+            OVERLAY_EXTENSIONS, 
+            processOverlayFile,
+            async () => {
+              // Delete ZIP file immediately after extraction completes (before processing finishes)
+              await fs.remove(zipLocalPath).catch(() => {});
+            }
+          );
 
           await batch.commit();
           results.documentsCreated = processed;
@@ -557,10 +573,16 @@ export async function POST(req: NextRequest) {
             }
           };
 
-          results.filesProcessed = await processZipFilesStreaming(zipLocalPath, extractDir, AUDIO_EXTENSIONS, processAudioFile);
-          
-          // Delete ZIP file immediately after processing to free disk space
-          await fs.remove(zipLocalPath).catch(() => {});
+          results.filesProcessed = await processZipFilesStreaming(
+            zipLocalPath, 
+            extractDir, 
+            AUDIO_EXTENSIONS, 
+            processAudioFile,
+            async () => {
+              // Delete ZIP file immediately after extraction completes (before processing finishes)
+              await fs.remove(zipLocalPath).catch(() => {});
+            }
+          );
 
           await batch.commit();
           results.documentsCreated = processed;
