@@ -44,10 +44,10 @@ function corsHeaders(origin?: string | null) {
 function isAllowedMuxUploadUrl(url: string): boolean {
   try {
     const u = new URL(url);
-    return (
-      /(^|\.)mux\.com$/i.test(u.hostname) ||
-      /(^|\.)production\.mux\.com$/i.test(u.hostname)
-    ) && u.pathname.includes('/upload/');
+    // Match MUX direct upload URLs (various subdomains)
+    const isMuxDomain = /\.mux\.com$/i.test(u.hostname) || u.hostname === 'mux.com';
+    const hasUploadPath = u.pathname.includes('/upload/');
+    return isMuxDomain && hasUploadPath;
   } catch {
     return false;
   }
@@ -68,26 +68,38 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   }
 
   const target = req.nextUrl.searchParams.get('u');
-  if (!target || !isAllowedMuxUploadUrl(target)) {
-    return NextResponse.json({ error: 'Invalid target' }, { status: 400, headers: corsHeaders(allowedOrigin) });
+  if (!target) {
+    console.error('TUS proxy: Missing target URL parameter');
+    return NextResponse.json({ error: 'Missing target URL' }, { status: 400, headers: corsHeaders(allowedOrigin) });
+  }
+  
+  if (!isAllowedMuxUploadUrl(target)) {
+    console.error('TUS proxy: Invalid target URL:', target);
+    return NextResponse.json({ error: 'Invalid target URL' }, { status: 400, headers: corsHeaders(allowedOrigin) });
   }
 
   const headers = new Headers();
   // Forward relevant headers (keep case-insensitive)
   req.headers.forEach((value, key) => {
-    // Do not forward Host/Origin to remote
+    // Do not forward Host/Origin/Referer to remote
     if (/^(host|origin|referer)$/i.test(key)) return;
+    // Forward all TUS-related headers
     headers.set(key, value);
   });
+
+  // Ensure TUS-Resumable header is set for TUS protocol compliance
+  if (!headers.has('tus-resumable') && !headers.has('Tus-Resumable')) {
+    headers.set('Tus-Resumable', '1.0.0');
+  }
 
   // Per TUS: POST (create) has empty body; PATCH streams bytes
   let body: ReadableStream | null = null;
   if (method === 'PATCH') {
     body = req.body;
   } else if (method === 'POST') {
-    // Ensure POST has Content-Length: 0
-    if (!headers.has('content-length')) {
-      headers.set('content-length', '0');
+    // Ensure POST has Content-Length: 0 for TUS create request
+    if (!headers.has('content-length') && !headers.has('Content-Length')) {
+      headers.set('Content-Length', '0');
     }
     // Explicitly set empty body for POST
     body = null;
@@ -137,10 +149,14 @@ export async function OPTIONS(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    return await handle('POST', req);
-  } catch (err: any) {
+    console.log('TUS proxy POST request received');
+    const result = await handle('POST', req);
+    console.log('TUS proxy POST response:', result.status);
+    return result;
+  } catch (err: unknown) {
     console.error('TUS proxy POST error:', err);
-    return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500, headers: corsHeaders(req.headers.get('origin')) });
+    const error = err as Error;
+    return NextResponse.json({ error: error?.message || 'Proxy error' }, { status: 500, headers: corsHeaders(req.headers.get('origin')) });
   }
 }
 
