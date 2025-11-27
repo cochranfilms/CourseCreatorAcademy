@@ -174,13 +174,17 @@ export async function POST(req: NextRequest) {
           .collection('courses').doc(courseId)
           .collection('modules').doc(moduleId)
           .collection('lessons').doc(lessonId);
-        await ref.set({
+        const updateData: any = {
           muxAssetId: assetId,
           muxPlaybackId: playbackId || null,
           muxAnimatedGifUrl: animatedGifUrl,
           durationSec: durationSec || 0,
           updatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true });
+        };
+        // Preserve title and description from passthrough if provided
+        if (title) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
+        await ref.set(updateData, { merge: true });
         updates++;
       } else if (adminDb) {
         // Fallback: find lessons that already reference this assetId
