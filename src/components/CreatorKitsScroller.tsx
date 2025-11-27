@@ -62,7 +62,8 @@ export function CreatorKitsScroller() {
     const animate = () => {
       if (!isScrolling || !track) return;
       
-      const itemWidth = 320 + 24; // card width + gap
+      // Larger avatar size + gap
+      const itemWidth = 200 + 32; // avatar width + gap
       const firstSetWidth = itemWidth * creators.length;
       
       // If we've moved past the first set, loop back seamlessly
@@ -94,123 +95,82 @@ export function CreatorKitsScroller() {
         <SectionHeader title="Creator Kits" subtitle="Discover exclusive content from top creators" align="center" />
       </div>
 
-      <div
-        ref={scrollContainerRef}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        aria-label="Creator Kits carousel"
-        className="overflow-hidden pb-4 px-6"
-        style={{
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-        }}
-      >
-        <div ref={trackRef} className="flex gap-6 will-change-transform">
-        {creators.map((creator) => (
-          <Link
-            key={creator.id}
-            href={`/creator-kits/${creator.kitSlug}`}
-            className="flex-shrink-0 w-80 rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-ccaBlue/50 transition group"
-          >
-            <div className="relative h-64 bg-neutral-900">
-              {creator.bannerUrl ? (
-                <Image
-                  src={creator.bannerUrl}
-                  alt={creator.displayName}
-                  fill
-                  sizes="320px"
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-900 to-neutral-950">
-                  <div className="text-6xl text-neutral-700">
+      {/* Black box wrapper */}
+      <div className="bg-black border border-neutral-900 rounded-lg overflow-hidden mx-6">
+        <div
+          ref={scrollContainerRef}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          aria-label="Creator Kits carousel"
+          className="overflow-hidden py-8 px-8"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+        >
+          <div ref={trackRef} className="flex gap-8 will-change-transform items-center">
+            {/* Original items */}
+            {creators.map((creator) => (
+              <Link
+                key={creator.id}
+                href={`/creator-kits/${creator.kitSlug}`}
+                className="flex-shrink-0 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group"
+              >
+                {creator.avatarUrl ? (
+                  <div className="relative w-[200px] h-[200px] rounded-full overflow-hidden border-4 border-neutral-800 bg-neutral-900 group-hover:border-neutral-700 transition-colors">
+                    <Image 
+                      src={creator.avatarUrl} 
+                      alt={creator.displayName} 
+                      fill 
+                      sizes="200px" 
+                      className="object-cover group-hover:scale-105 transition-transform duration-300" 
+                    />
+                  </div>
+                ) : (
+                  <div className="w-[200px] h-[200px] rounded-full bg-neutral-800 border-4 border-neutral-700 flex items-center justify-center text-6xl font-semibold text-neutral-400 group-hover:border-neutral-600 transition-colors">
                     {creator.displayName.charAt(0)}
                   </div>
-                </div>
-              )}
-              {/* Gradient overlay for better text readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/50 to-transparent" />
-              
-              {/* Creator info overlay */}
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <div className="flex items-center gap-4 mb-3">
-                  {creator.avatarUrl ? (
-                    <div className="relative w-16 h-16 rounded-full overflow-hidden border-4 border-neutral-900 bg-neutral-800 flex-shrink-0">
-                      <Image src={creator.avatarUrl} alt={creator.displayName} fill sizes="64px" className="object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-neutral-800 border-4 border-neutral-900 flex items-center justify-center text-xl font-semibold text-neutral-400 flex-shrink-0">
-                      {creator.displayName.charAt(0)}
-                    </div>
+                )}
+                <div className="text-center">
+                  <div className="text-lg font-bold text-white">{creator.displayName}</div>
+                  {creator.handle && (
+                    <div className="text-sm text-neutral-400">@{creator.handle}</div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xl font-bold text-white truncate">{creator.displayName}</div>
-                    {creator.handle && (
-                      <div className="text-sm text-neutral-300 truncate">@{creator.handle}</div>
-                    )}
+                </div>
+              </Link>
+            ))}
+            
+            {/* Duplicate items for seamless loop */}
+            {creators.map((creator) => (
+              <Link
+                key={`${creator.id}-duplicate`}
+                href={`/creator-kits/${creator.kitSlug}`}
+                className="flex-shrink-0 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group"
+              >
+                {creator.avatarUrl ? (
+                  <div className="relative w-[200px] h-[200px] rounded-full overflow-hidden border-4 border-neutral-800 bg-neutral-900 group-hover:border-neutral-700 transition-colors">
+                    <Image 
+                      src={creator.avatarUrl} 
+                      alt={creator.displayName} 
+                      fill 
+                      sizes="200px" 
+                      className="object-cover group-hover:scale-105 transition-transform duration-300" 
+                    />
                   </div>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-neutral-300">
-                  <span className="px-3 py-1 bg-ccaBlue/20 text-ccaBlue rounded-full font-medium">
-                    Legacy+ Creator
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Link>
-        ))}
-        
-        {/* Duplicate items for seamless loop */}
-        {creators.map((creator) => (
-          <Link
-            key={`${creator.id}-duplicate`}
-            href={`/creator-kits/${creator.kitSlug}`}
-            className="flex-shrink-0 w-80 rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 hover:border-ccaBlue/50 transition group"
-          >
-            <div className="relative h-64 bg-neutral-900">
-              {creator.bannerUrl ? (
-                <Image
-                  src={creator.bannerUrl}
-                  alt={creator.displayName}
-                  fill
-                  sizes="320px"
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-900 to-neutral-950">
-                  <div className="text-6xl text-neutral-700">
+                ) : (
+                  <div className="w-[200px] h-[200px] rounded-full bg-neutral-800 border-4 border-neutral-700 flex items-center justify-center text-6xl font-semibold text-neutral-400 group-hover:border-neutral-600 transition-colors">
                     {creator.displayName.charAt(0)}
                   </div>
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/50 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <div className="flex items-center gap-4 mb-3">
-                  {creator.avatarUrl ? (
-                    <div className="relative w-16 h-16 rounded-full overflow-hidden border-4 border-neutral-900 bg-neutral-800 flex-shrink-0">
-                      <Image src={creator.avatarUrl} alt={creator.displayName} fill sizes="64px" className="object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-neutral-800 border-4 border-neutral-900 flex items-center justify-center text-xl font-semibold text-neutral-400 flex-shrink-0">
-                      {creator.displayName.charAt(0)}
-                    </div>
+                )}
+                <div className="text-center">
+                  <div className="text-lg font-bold text-white">{creator.displayName}</div>
+                  {creator.handle && (
+                    <div className="text-sm text-neutral-400">@{creator.handle}</div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xl font-bold text-white truncate">{creator.displayName}</div>
-                    {creator.handle && (
-                      <div className="text-sm text-neutral-300 truncate">@{creator.handle}</div>
-                    )}
-                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-neutral-300">
-                  <span className="px-3 py-1 bg-ccaBlue/20 text-ccaBlue rounded-full font-medium">
-                    Legacy+ Creator
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Link>
-        ))}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 
