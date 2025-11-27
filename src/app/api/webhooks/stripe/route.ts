@@ -101,14 +101,107 @@ export async function POST(req: NextRequest) {
               ? session.payment_intent 
               : session.payment_intent.id || session.payment_intent;
             
-            await adminDb.collection('jobApplications').doc(String(applicationId)).update({
-              depositPaid: true,
-              depositPaidAt: FieldValue.serverTimestamp(),
-              depositCheckoutSessionId: session.id,
-              depositPaymentIntentId: String(paymentIntentId),
-              updatedAt: FieldValue.serverTimestamp()
-            });
-            console.log('Job deposit checkout completed:', applicationId, 'PaymentIntent:', paymentIntentId);
+            const applicationDoc = await adminDb.collection('jobApplications').doc(String(applicationId)).get();
+            if (applicationDoc.exists) {
+              const appData = applicationDoc.data();
+              
+              await adminDb.collection('jobApplications').doc(String(applicationId)).update({
+                depositPaid: true,
+                depositPaidAt: FieldValue.serverTimestamp(),
+                depositCheckoutSessionId: session.id,
+                depositPaymentIntentId: String(paymentIntentId),
+                updatedAt: FieldValue.serverTimestamp()
+              });
+              console.log('Job deposit checkout completed:', applicationId, 'PaymentIntent:', paymentIntentId);
+
+              // Send email notification to contractor (idempotent)
+              try {
+                const emailSentRef = adminDb.collection('emails').doc(`deposit_paid_${String(applicationId)}`);
+                const emailSent = await emailSentRef.get();
+                
+                console.log('[checkout.session.completed] Checking email send conditions:', {
+                  emailAlreadySent: emailSent.exists,
+                  applicantId: appData?.applicantId,
+                  emailInAppData: appData?.email,
+                });
+                
+                if (!emailSent.exists && appData?.applicantId) {
+                  // Get contractor user data
+                  const contractorDoc = await adminDb.collection('users').doc(String(appData.applicantId)).get();
+                  const contractorData = contractorDoc.exists ? contractorDoc.data() : null;
+                  
+                  // Get contractor email - prefer from application, fallback to user document
+                  const contractorEmail = appData?.email || contractorData?.email;
+                  
+                  if (!contractorEmail) {
+                    console.error('[checkout.session.completed] No email found for contractor:', {
+                      applicationId,
+                      applicantId: appData?.applicantId,
+                      emailInAppData: appData?.email,
+                      emailInUserDoc: contractorData?.email,
+                    });
+                  } else {
+                    // Get employer user data
+                    const employerDoc = appData?.posterId 
+                      ? await adminDb.collection('users').doc(String(appData.posterId)).get()
+                      : null;
+                    const employerData = employerDoc?.exists ? employerDoc.data() : null;
+
+                    const templateId = 'template_3luyirf';
+                    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+                    const depositAmount = appData?.depositAmount 
+                      ? (typeof appData.depositAmount === 'number' ? appData.depositAmount / 100 : parseFloat(String(appData.depositAmount)) / 100)
+                      : 0;
+
+                    console.log('[checkout.session.completed] Sending deposit paid email:', {
+                      templateId,
+                      contractorEmail,
+                      contractorName: appData?.name || contractorData?.displayName,
+                      jobTitle: appData?.opportunityTitle,
+                      depositAmount,
+                    });
+
+                    try {
+                      await sendEmailJS(templateId, {
+                        contractor_name: appData?.name || contractorData?.displayName || 'Contractor',
+                        job_title: appData?.opportunityTitle || 'Job Opportunity',
+                        company_name: appData?.opportunityCompany || 'Company',
+                        employer_name: employerData?.displayName || employerData?.handle || 'Employer',
+                        deposit_amount: depositAmount.toFixed(2),
+                        dashboard_url: `${baseUrl}/dashboard`,
+                        to_email: String(contractorEmail),
+                        year: new Date().getFullYear().toString(),
+                      });
+                      
+                      // Mark email as sent
+                      await emailSentRef.set({ 
+                        createdAt: FieldValue.serverTimestamp(),
+                        applicationId: String(applicationId)
+                      });
+                      console.log('[checkout.session.completed] ✅ Deposit paid email sent successfully to contractor:', contractorEmail);
+                    } catch (emailSendErr: any) {
+                      console.error('[checkout.session.completed] ❌ Failed to send deposit paid email via EmailJS:', {
+                        error: emailSendErr?.message || emailSendErr,
+                        stack: emailSendErr?.stack,
+                        templateId,
+                        contractorEmail,
+                      });
+                    }
+                  }
+                } else {
+                  console.log('[checkout.session.completed] Email not sent - conditions not met:', {
+                    emailAlreadySent: emailSent.exists,
+                    missingApplicantId: !appData?.applicantId,
+                  });
+                }
+              } catch (emailErr: any) {
+                console.error('[checkout.session.completed] ❌ Error in deposit paid email handler:', {
+                  error: emailErr?.message || emailErr,
+                  stack: emailErr?.stack,
+                  applicationId,
+                });
+              }
+            }
           }
         } catch (err) {
           console.error('Error processing job deposit checkout:', err);
@@ -903,48 +996,88 @@ export async function POST(req: NextRequest) {
                 const emailSentRef = adminDb.collection('emails').doc(`deposit_paid_${String(applicationId)}`);
                 const emailSent = await emailSentRef.get();
                 
-                if (!emailSent.exists && appData?.applicantId && appData?.email) {
+                console.log('Checking email send conditions:', {
+                  emailAlreadySent: emailSent.exists,
+                  applicantId: appData?.applicantId,
+                  emailInAppData: appData?.email,
+                });
+                
+                if (!emailSent.exists && appData?.applicantId) {
                   // Get contractor user data
                   const contractorDoc = await adminDb.collection('users').doc(String(appData.applicantId)).get();
                   const contractorData = contractorDoc.exists ? contractorDoc.data() : null;
                   
-                  // Get employer user data
-                  const employerDoc = appData?.posterId 
-                    ? await adminDb.collection('users').doc(String(appData.posterId)).get()
-                    : null;
-                  const employerData = employerDoc?.exists ? employerDoc.data() : null;
-
-                  const templateId = 'template_3luyirf'; // EmailJS template for deposit payment notification
-                  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
-                  const depositAmount = appData?.depositAmount 
-                    ? (typeof appData.depositAmount === 'number' ? appData.depositAmount / 100 : parseFloat(String(appData.depositAmount)) / 100)
-                    : 0;
-
-                  try {
-                    await sendEmailJS(templateId, {
-                      contractor_name: appData?.name || contractorData?.displayName || 'Contractor',
-                      job_title: appData?.opportunityTitle || 'Job Opportunity',
-                      company_name: appData?.opportunityCompany || 'Company',
-                      employer_name: employerData?.displayName || employerData?.handle || 'Employer',
-                      deposit_amount: depositAmount.toFixed(2),
-                      dashboard_url: `${baseUrl}/dashboard`,
-                      to_email: String(appData.email),
-                      year: new Date().getFullYear().toString(),
+                  // Get contractor email - prefer from application, fallback to user document
+                  const contractorEmail = appData?.email || contractorData?.email;
+                  
+                  if (!contractorEmail) {
+                    console.error('No email found for contractor:', {
+                      applicationId,
+                      applicantId: appData?.applicantId,
+                      emailInAppData: appData?.email,
+                      emailInUserDoc: contractorData?.email,
                     });
-                    
-                    // Mark email as sent
-                    await emailSentRef.set({ 
-                      createdAt: FieldValue.serverTimestamp(),
-                      applicationId: String(applicationId)
+                  } else {
+                    // Get employer user data
+                    const employerDoc = appData?.posterId 
+                      ? await adminDb.collection('users').doc(String(appData.posterId)).get()
+                      : null;
+                    const employerData = employerDoc?.exists ? employerDoc.data() : null;
+
+                    const templateId = 'template_3luyirf'; // EmailJS template for deposit payment notification
+                    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+                    const depositAmount = appData?.depositAmount 
+                      ? (typeof appData.depositAmount === 'number' ? appData.depositAmount / 100 : parseFloat(String(appData.depositAmount)) / 100)
+                      : 0;
+
+                    console.log('Sending deposit paid email:', {
+                      templateId,
+                      contractorEmail,
+                      contractorName: appData?.name || contractorData?.displayName,
+                      jobTitle: appData?.opportunityTitle,
+                      depositAmount,
                     });
-                    console.log('Deposit paid email sent to contractor:', appData.email);
-                  } catch (emailSendErr) {
-                    console.error('Failed to send deposit paid email via EmailJS:', emailSendErr);
+
+                    try {
+                      await sendEmailJS(templateId, {
+                        contractor_name: appData?.name || contractorData?.displayName || 'Contractor',
+                        job_title: appData?.opportunityTitle || 'Job Opportunity',
+                        company_name: appData?.opportunityCompany || 'Company',
+                        employer_name: employerData?.displayName || employerData?.handle || 'Employer',
+                        deposit_amount: depositAmount.toFixed(2),
+                        dashboard_url: `${baseUrl}/dashboard`,
+                        to_email: String(contractorEmail),
+                        year: new Date().getFullYear().toString(),
+                      });
+                      
+                      // Mark email as sent
+                      await emailSentRef.set({ 
+                        createdAt: FieldValue.serverTimestamp(),
+                        applicationId: String(applicationId)
+                      });
+                      console.log('✅ Deposit paid email sent successfully to contractor:', contractorEmail);
+                    } catch (emailSendErr: any) {
+                      console.error('❌ Failed to send deposit paid email via EmailJS:', {
+                        error: emailSendErr?.message || emailSendErr,
+                        stack: emailSendErr?.stack,
+                        templateId,
+                        contractorEmail,
+                      });
+                    }
                   }
+                } else {
+                  console.log('Email not sent - conditions not met:', {
+                    emailAlreadySent: emailSent.exists,
+                    missingApplicantId: !appData?.applicantId,
+                  });
                 }
-              } catch (emailErr) {
+              } catch (emailErr: any) {
                 // Don't fail the webhook if email fails
-                console.error('Failed to send deposit paid email:', emailErr);
+                console.error('❌ Error in deposit paid email handler:', {
+                  error: emailErr?.message || emailErr,
+                  stack: emailErr?.stack,
+                  applicationId,
+                });
               }
             }
           }
