@@ -83,9 +83,15 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   req.headers.forEach((value, key) => {
     // Do not forward Host/Origin/Referer to remote
     if (/^(host|origin|referer)$/i.test(key)) return;
-    // Forward all TUS-related headers
+    // Forward all TUS-related headers (preserve original case for TUS headers)
     headers.set(key, value);
   });
+
+  // Log headers for debugging
+  if (method === 'POST') {
+    console.log('TUS proxy POST headers:', Object.fromEntries(headers.entries()));
+    console.log('TUS proxy target URL:', target);
+  }
 
   // Ensure TUS-Resumable header is set for TUS protocol compliance
   if (!headers.has('tus-resumable') && !headers.has('Tus-Resumable')) {
@@ -97,7 +103,8 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   if (method === 'PATCH') {
     body = req.body;
   } else if (method === 'POST') {
-    // Ensure POST has Content-Length: 0 for TUS create request
+    // For TUS POST, body must be empty but Content-Length should match actual body length (0)
+    // Don't override if client already set it
     if (!headers.has('content-length') && !headers.has('Content-Length')) {
       headers.set('Content-Length', '0');
     }
@@ -113,7 +120,14 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
     duplex: method === 'PATCH' ? 'half' : undefined,
   };
 
+  console.log(`TUS proxy ${method} forwarding to:`, target);
+  console.log(`TUS proxy ${method} forwarded headers:`, Object.fromEntries(headers.entries()));
+  
   const upstream = await fetch(target, init);
+  
+  console.log(`TUS proxy ${method} upstream response status:`, upstream.status);
+  console.log(`TUS proxy ${method} upstream response headers:`, Object.fromEntries(upstream.headers.entries()));
+  
   const resHeaders = new Headers(corsHeaders(allowedOrigin));
 
   // Copy upstream headers
