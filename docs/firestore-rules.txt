@@ -85,6 +85,11 @@ service cloud.firestore {
           allow read, write: if isAuthenticated() && isOwner(userId);
         }
       }
+      
+      // Notifications subcollection - users can only access their own notifications
+      match /notifications/{notificationId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
     }
     
     // Orders (Marketplace)

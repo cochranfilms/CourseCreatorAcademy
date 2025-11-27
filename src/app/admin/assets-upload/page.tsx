@@ -33,6 +33,17 @@ export default function AdminAssetsUploadPage() {
   const handleFileSelect = useCallback(async (file: File, category: string) => {
     if (!user) return;
 
+    // Check file size (Vercel has a 4.5MB limit for API routes)
+    const MAX_SIZE = 4 * 1024 * 1024; // 4MB
+    if (file.size > MAX_SIZE) {
+      setProcessingState({
+        status: 'error',
+        progress: 0,
+        error: `File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 4MB. Please compress the ZIP file or split it into smaller archives.`,
+      });
+      return;
+    }
+
     setProcessingState({
       status: 'uploading',
       progress: 0,
@@ -55,8 +66,18 @@ export default function AdminAssetsUploadPage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Processing failed');
+        let errorMessage = 'Processing failed';
+        if (response.status === 413) {
+          errorMessage = 'File is too large. Maximum size is 4MB. Please compress the ZIP file or split it into smaller archives.';
+        } else {
+          try {
+            const error = await response.json();
+            errorMessage = error.error || errorMessage;
+          } catch {
+            errorMessage = `Server error: ${response.status} ${response.statusText}`;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       // Handle streaming response for progress updates

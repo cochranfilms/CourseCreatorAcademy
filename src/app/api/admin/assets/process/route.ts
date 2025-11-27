@@ -234,6 +234,14 @@ export async function POST(req: NextRequest) {
           return;
         }
 
+        // Check file size (Vercel has a 4.5MB limit for API routes)
+        const MAX_SIZE = 4 * 1024 * 1024; // 4MB
+        if (file.size > MAX_SIZE) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 4MB. Please compress the ZIP file or split it into smaller archives.` })}\n\n`));
+          controller.close();
+          return;
+        }
+
         sendProgress(controller, 5, 'Uploading ZIP file to Storage...', 'uploading');
 
         // Upload ZIP to Storage
