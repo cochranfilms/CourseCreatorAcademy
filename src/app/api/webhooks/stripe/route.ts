@@ -914,14 +914,14 @@ export async function POST(req: NextRequest) {
                     : null;
                   const employerData = employerDoc?.exists ? employerDoc.data() : null;
 
-                  const templateId = process.env.EMAILJS_TEMPLATE_ID_DEPOSIT_PAID;
-                  if (templateId) {
-                    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
-                    const depositAmount = appData?.depositAmount 
-                      ? (typeof appData.depositAmount === 'number' ? appData.depositAmount / 100 : parseFloat(String(appData.depositAmount)) / 100)
-                      : 0;
+                  const templateId = 'template_3luyirf'; // EmailJS template for deposit payment notification
+                  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+                  const depositAmount = appData?.depositAmount 
+                    ? (typeof appData.depositAmount === 'number' ? appData.depositAmount / 100 : parseFloat(String(appData.depositAmount)) / 100)
+                    : 0;
 
-                    await sendEmailJS(String(templateId), {
+                  try {
+                    await sendEmailJS(templateId, {
                       contractor_name: appData?.name || contractorData?.displayName || 'Contractor',
                       job_title: appData?.opportunityTitle || 'Job Opportunity',
                       company_name: appData?.opportunityCompany || 'Company',
@@ -938,8 +938,8 @@ export async function POST(req: NextRequest) {
                       applicationId: String(applicationId)
                     });
                     console.log('Deposit paid email sent to contractor:', appData.email);
-                  } else {
-                    console.warn('EMAILJS_TEMPLATE_ID_DEPOSIT_PAID not configured, skipping email');
+                  } catch (emailSendErr) {
+                    console.error('Failed to send deposit paid email via EmailJS:', emailSendErr);
                   }
                 }
               } catch (emailErr) {
