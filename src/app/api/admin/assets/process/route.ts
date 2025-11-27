@@ -571,13 +571,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
-      } catch (error: any) {
-        writer.write(encoder.encode(`data: ${JSON.stringify({ error: error.message || 'Processing failed' })}\n\n`));
-        writer.close();
-      }
-    },
-  });
-
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
