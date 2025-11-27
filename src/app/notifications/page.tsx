@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { useNotifications, markNotificationAsRead, markAllNotificationsAsRead, Notification, NotificationType } from '@/hooks/useNotifications';
+import { useNotifications, markNotificationAsRead, markAllNotificationsAsRead, type Notification, type NotificationType } from '@/hooks/useNotifications';
 
 export default function NotificationsPage() {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ export default function NotificationsPage() {
     
     // Navigate if action URL exists
     if (notification.actionUrl) {
-      router.push(notification.actionUrl);
+      router.push(notification.actionUrl as any);
     }
   };
 
