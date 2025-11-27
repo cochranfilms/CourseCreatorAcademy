@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAlert } from '@/contexts/AlertContext';
 import { collection, onSnapshot, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 
@@ -25,6 +26,7 @@ type Order = {
 
 export default function OrdersTab() {
   const { user } = useAuth();
+  const { alert } = useAlert();
   const [sold, setSold] = useState<Order[]>([]);
   const [bought, setBought] = useState<Order[]>([]);
 
@@ -114,11 +116,11 @@ export default function OrdersTab() {
   }, [user]);
 
   const submitTracking = async (order: Order, values: { trackingNumber: string; trackingCarrier?: string; trackingUrl?: string; }) => {
-    if (!user || order.sellerId !== user.uid) { alert('Only the seller can update tracking'); return; }
+    if (!user || order.sellerId !== user.uid) { await alert('Only the seller can update tracking'); return; }
     try {
       const idToken = await user.getIdToken();
       if (!idToken) {
-        alert('Please sign in');
+        await alert('Please sign in');
         return;
       }
       const response = await fetch('/api/orders/update-tracking', {
@@ -138,18 +140,18 @@ export default function OrdersTab() {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update tracking');
       }
-      alert('Tracking saved');
+      await alert('Tracking saved');
     } catch (e: any) {
-      alert(e.message || 'Failed to save tracking');
+      await alert(e.message || 'Failed to save tracking');
     }
   };
 
   const markDelivered = async (order: Order) => {
-    if (!user || order.buyerId !== user.uid) { alert('Only the buyer can mark delivered'); return; }
+    if (!user || order.buyerId !== user.uid) { await alert('Only the buyer can mark delivered'); return; }
     try {
       const idToken = await user.getIdToken();
       if (!idToken) {
-        alert('Please sign in');
+        await alert('Please sign in');
         return;
       }
       const response = await fetch('/api/orders/mark-delivered', {
@@ -164,9 +166,9 @@ export default function OrdersTab() {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to mark delivered');
       }
-      alert('Marked as delivered');
+      await alert('Marked as delivered');
     } catch (e: any) {
-      alert(e.message || 'Failed to mark delivered');
+      await alert(e.message || 'Failed to mark delivered');
     }
   };
 

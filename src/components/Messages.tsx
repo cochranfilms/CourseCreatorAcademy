@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAlert } from '@/contexts/AlertContext';
 import { collection, query, where, onSnapshot, orderBy, doc, getDoc, addDoc, serverTimestamp, updateDoc, Timestamp, getDocs } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { UserDirectory } from './UserDirectory';
@@ -46,6 +47,7 @@ type MessagesProps = {
 
 export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesProps) {
   const { user } = useAuth();
+  const { alert } = useAlert();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -298,7 +300,7 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
     try {
       const idToken = await user.getIdToken();
       if (!idToken) {
-        alert('Please sign in');
+        await alert('Please sign in');
         return;
       }
 
@@ -322,7 +324,7 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
       setNewMessageText('');
     } catch (error: any) {
       console.error('Error sending message:', error);
-      alert(error.message || 'Failed to send message. Please try again.');
+      await alert(error.message || 'Failed to send message. Please try again.');
     }
   };
 
@@ -379,7 +381,7 @@ export function Messages({ isOpen, onClose, initialRecipientUserId }: MessagesPr
       setShowUserDirectory(false);
     } catch (error) {
       console.error('Error creating thread:', error);
-      alert('Failed to create conversation. Please try again.');
+      await alert('Failed to create conversation. Please try again.');
     }
   };
 

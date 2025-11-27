@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { collection, onSnapshot, orderBy, query, addDoc, updateDoc, serverTimestamp, where, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth, firebaseReady } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAlert } from '@/contexts/AlertContext';
 import { ListingImageUpload } from '@/components/ListingImageUpload';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -30,6 +31,7 @@ const locations = ['All Locations', 'United States', 'Canada', 'International'];
 
 export default function MarketplacePage() {
   const { user } = useAuth();
+  const { alert, confirm } = useAlert();
   const [listings, setListings] = useState<Listing[]>([]);
   const [filteredListings, setFilteredListings] = useState<Listing[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,7 +132,7 @@ export default function MarketplacePage() {
       setShowTermsModal(false);
     } catch (e) {
       console.error('Failed to accept terms', e);
-      alert('Could not save your acceptance. Please try again.');
+      await alert('Could not save your acceptance. Please try again.');
     }
   };
 
@@ -293,9 +295,9 @@ export default function MarketplacePage() {
     setEditingListing(null);
   };
 
-  const handleEditListing = (listing: Listing) => {
+  const handleEditListing = async (listing: Listing) => {
     if (!user || listing.creatorId !== user.uid) {
-      alert('You can only edit your own listings.');
+      await alert('You can only edit your own listings.');
       return;
     }
     setEditingListing(listing);
@@ -312,17 +314,18 @@ export default function MarketplacePage() {
 
   const handlePostListing = async () => {
     if (!user) {
-      alert('Please sign in to post a listing.');
+      await alert('Please sign in to post a listing.');
       return;
     }
     if (!myConnectAccountId) {
-      if (confirm('You must connect your Stripe account before posting a listing. Go to Connect now?')) {
+      const shouldConnect = await confirm('You must connect your Stripe account before posting a listing. Go to Connect now?');
+      if (shouldConnect) {
         window.location.href = '/creator/onboarding';
       }
       return;
     }
     if (!title || !price) {
-      alert('Please fill in title and price.');
+      await alert('Please fill in title and price.');
       return;
     }
     if (!firebaseReady || !db) return;
@@ -331,7 +334,7 @@ export default function MarketplacePage() {
     const shippingNum = shipping ? Number(shipping) : 0;
 
     if (isNaN(priceNum) || (shipping && isNaN(shippingNum))) {
-      alert('Please enter valid numbers for price and shipping.');
+      await alert('Please enter valid numbers for price and shipping.');
       return;
     }
 
@@ -367,19 +370,20 @@ export default function MarketplacePage() {
       setShowPostForm(false);
     } catch (error) {
       console.error('Error posting listing:', error);
-      alert('Failed to post listing. Please try again.');
+      await alert('Failed to post listing. Please try again.');
     }
   };
 
   const handleDeleteListing = async (listingId: string) => {
-    if (!confirm('Are you sure you want to delete this listing?')) return;
+    const confirmed = await confirm('Are you sure you want to delete this listing?');
+    if (!confirmed) return;
     if (!firebaseReady || !db) return;
     try {
       await deleteDoc(doc(db, 'listings', listingId));
       setShowManageModal(false);
     } catch (error) {
       console.error('Error deleting listing:', error);
-      alert('Failed to delete listing. Please try again.');
+      await alert('Failed to delete listing. Please try again.');
     }
   };
 
@@ -449,11 +453,11 @@ export default function MarketplacePage() {
             </div>
 
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (user) {
                   setShowManageModal(true);
                 } else {
-                  alert('Please sign in to view your listings.');
+                  await alert('Please sign in to view your listings.');
                 }
               }}
               className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 rounded-lg text-white hover:bg-neutral-800/80 transition-all font-medium text-sm sm:text-base whitespace-nowrap flex-shrink-0"
@@ -466,7 +470,7 @@ export default function MarketplacePage() {
             </button>
 
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (user) {
                   const needs = termsRequiredVersion && (!hasAcceptedTerms || userTermsVersion !== termsRequiredVersion);
                   if (needs) {
@@ -475,7 +479,7 @@ export default function MarketplacePage() {
                     setShowPostForm(true);
                   }
                 } else {
-                  alert('Please sign in to sell an item.');
+                  await alert('Please sign in to sell an item.');
                 }
               }}
               className="px-4 sm:px-6 py-2 sm:py-2.5 bg-red-500 text-white hover:bg-red-600 transition-all font-semibold rounded-lg shadow-lg shadow-red-500/20 text-sm sm:text-base whitespace-nowrap flex-shrink-0"
@@ -973,7 +977,7 @@ export default function MarketplacePage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       onClick={() => {
-                        if (!user) { alert('Please sign in to message the seller.'); return; }
+                        if (!user) { await alert('Please sign in to message the seller.'); return; }
                         setShowListingModal(false);
                         setShowMessageToSeller(true);
                       }}
@@ -983,10 +987,11 @@ export default function MarketplacePage() {
                     </button>
                     <button
                       onClick={async () => {
-                        if (!user) { alert('Please sign in to purchase.'); return; }
-                        if (!selectedListing?.connectAccountId) { alert('Seller has not connected Stripe yet.'); return; }
+                        if (!user) { await alert('Please sign in to purchase.'); return; }
+                        if (!selectedListing?.connectAccountId) { await alert('Seller has not connected Stripe yet.'); return; }
                         if (!myConnectAccountId) {
-                          if (confirm('You must connect your Stripe account before purchasing. Go to Connect now?')) {
+                          const shouldConnect = await confirm('You must connect your Stripe account before purchasing. Go to Connect now?');
+                          if (shouldConnect) {
                             window.location.href = '/creator/onboarding';
                           }
                           return;
@@ -1008,9 +1013,9 @@ export default function MarketplacePage() {
                           });
                           const json = await res.json();
                           if (json.url) window.location.href = json.url;
-                          else if (json.error) alert(json.error);
+                          else if (json.error) await alert(json.error);
                         } catch (e: any) {
-                          alert(e.message || 'Failed to start checkout');
+                          await alert(e.message || 'Failed to start checkout');
                         }
                       }}
                       className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 sm:py-3 rounded-lg transition shadow-lg shadow-red-600/20 text-sm sm:text-base"

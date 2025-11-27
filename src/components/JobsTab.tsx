@@ -5,6 +5,7 @@ import { collection, query, where, getDocs, orderBy, onSnapshot, doc, updateDoc,
 import { db, firebaseReady, auth } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Messages } from '@/components/Messages';
+import { useAlert } from '@/contexts/AlertContext';
 
 type JobApplication = {
   id: string;
@@ -41,6 +42,7 @@ type JobsTabProps = {
 
 export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
   const { user } = useAuth();
+  const { alert } = useAlert();
   const [applicationsSent, setApplicationsSent] = useState<JobApplication[]>([]);
   const [applicationsReceived, setApplicationsReceived] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,7 +244,7 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
 
   const handleHire = async (applicationId: string) => {
     if (!user || !auth?.currentUser) {
-      alert('Please sign in');
+      await alert('Please sign in');
       return;
     }
 
@@ -290,14 +292,14 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
       }
     } catch (error: any) {
       console.error('Error hiring:', error);
-      alert(error.message || 'Failed to hire applicant');
+      await alert(error.message || 'Failed to hire applicant');
       setProcessingHire(null);
     }
   };
 
   const handleMarkComplete = async (applicationId: string) => {
     if (!user || !auth?.currentUser) {
-      alert('Please sign in');
+      await alert('Please sign in');
       return;
     }
 
@@ -319,10 +321,10 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
         throw new Error(data.error || 'Failed to mark job as complete');
       }
 
-      alert('Job marked as complete! The poster will be notified to complete payment.');
+      await alert('Job marked as complete! The poster will be notified to complete payment.');
     } catch (error: any) {
       console.error('Error marking complete:', error);
-      alert(error.message || 'Failed to mark job as complete');
+      await alert(error.message || 'Failed to mark job as complete');
     } finally {
       setProcessingComplete(null);
     }
@@ -330,7 +332,7 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
 
   const handlePayFinal = async (applicationId: string) => {
     if (!user || !auth?.currentUser) {
-      alert('Please sign in');
+      await alert('Please sign in');
       return;
     }
 
@@ -362,7 +364,7 @@ export function JobsTab({ userId, isOwnProfile }: JobsTabProps) {
       }
     } catch (error: any) {
       console.error('Error processing final payment:', error);
-      alert(error.message || 'Failed to process final payment');
+      await alert(error.message || 'Failed to process final payment');
       setProcessingPayment(null);
     }
   };
