@@ -311,12 +311,7 @@ export async function POST(req: NextRequest) {
 
         sendProgress(controller, 45, 'Extracting ZIP file...', 'processing');
 
-        // Extract ZIP
-        const tempDir = path.join(os.tmpdir(), `asset-process-${assetId}-${Date.now()}`);
-        const zipLocalPath = path.join(tempDir, 'asset.zip');
-        await fs.ensureDir(tempDir);
-        await fs.writeFile(zipLocalPath, zipBuffer);
-
+        // Extract ZIP (reuse tempDir and zipLocalPath from download above)
         const extractDir = path.join(tempDir, 'extracted');
         await fs.ensureDir(extractDir);
 
