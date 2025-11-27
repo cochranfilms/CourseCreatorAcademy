@@ -117,9 +117,9 @@ export function CreatorKitsScroller() {
                 className="flex-shrink-0 w-[400px] h-[400px] rounded-lg overflow-hidden hover:opacity-90 transition-opacity group"
               >
                 <div className="relative w-full h-full bg-neutral-900">
-                  {(creator.bannerUrl || creator.avatarUrl) ? (
+                  {creator.avatarUrl ? (
                     <Image 
-                      src={creator.bannerUrl || creator.avatarUrl || ''} 
+                      src={creator.avatarUrl} 
                       alt={creator.displayName} 
                       fill 
                       sizes="400px" 
@@ -154,9 +154,9 @@ export function CreatorKitsScroller() {
                 className="flex-shrink-0 w-[400px] h-[400px] rounded-lg overflow-hidden hover:opacity-90 transition-opacity group"
               >
                 <div className="relative w-full h-full bg-neutral-900">
-                  {(creator.bannerUrl || creator.avatarUrl) ? (
+                  {creator.avatarUrl ? (
                     <Image 
-                      src={creator.bannerUrl || creator.avatarUrl || ''} 
+                      src={creator.avatarUrl} 
                       alt={creator.displayName} 
                       fill 
                       sizes="400px" 
