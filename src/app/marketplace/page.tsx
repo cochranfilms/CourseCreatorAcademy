@@ -977,7 +977,7 @@ export default function MarketplacePage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       onClick={() => {
-                        if (!user) { await alert('Please sign in to message the seller.'); return; }
+                        if (!user) { alert('Please sign in to message the seller.'); return; }
                         setShowListingModal(false);
                         setShowMessageToSeller(true);
                       }}
