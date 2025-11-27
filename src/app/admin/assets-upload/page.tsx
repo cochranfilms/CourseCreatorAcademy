@@ -2,6 +2,8 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage, firebaseReady } from '@/lib/firebaseClient';
 import { AssetUploadZone } from '@/components/admin/AssetUploadZone';
 import { ProcessingStatus } from '@/components/admin/ProcessingStatus';
 
@@ -31,15 +33,11 @@ export default function AdminAssetsUploadPage() {
   });
 
   const handleFileSelect = useCallback(async (file: File, category: string) => {
-    if (!user) return;
-
-    // Check file size (Vercel has a 4.5MB limit for API routes)
-    const MAX_SIZE = 4 * 1024 * 1024; // 4MB
-    if (file.size > MAX_SIZE) {
+    if (!user || !firebaseReady || !storage) {
       setProcessingState({
         status: 'error',
         progress: 0,
-        error: `File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 4MB. Please compress the ZIP file or split it into smaller archives.`,
+        error: 'Firebase is not ready. Please refresh the page.',
       });
       return;
     }
@@ -47,35 +45,74 @@ export default function AdminAssetsUploadPage() {
     setProcessingState({
       status: 'uploading',
       progress: 0,
-      currentStep: 'Uploading ZIP file...',
+      currentStep: 'Uploading ZIP file to Storage...',
     });
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('category', category);
+      // Step 1: Upload ZIP file directly to Firebase Storage
+      const zipFileName = file.name;
+      const timestamp = Date.now();
+      const storagePath = `admin-assets-uploads/${user.uid}/${timestamp}_${zipFileName.replace(/\s+/g, '_')}`;
+      const storageRef = ref(storage, storagePath);
+      
+      const uploadTask = uploadBytesResumable(storageRef, file, {
+        contentType: 'application/zip',
+      });
+
+      // Wait for upload to complete with progress tracking
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const uploadProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setProcessingState(prev => ({
+              ...prev,
+              progress: Math.min(uploadProgress * 0.3, 30), // Upload is 30% of total progress
+              currentStep: `Uploading ZIP file... ${Math.round(uploadProgress)}%`,
+            }));
+          },
+          (error) => {
+            reject(error);
+          },
+          async () => {
+            resolve();
+          }
+        );
+      });
+
+      // Get the download URL
+      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+      // Step 2: Call API to process the file from Storage
+      setProcessingState(prev => ({
+        ...prev,
+        progress: 30,
+        currentStep: 'Processing ZIP file...',
+        status: 'processing',
+      }));
 
       const idToken = await user.getIdToken();
-
       const response = await fetch('/api/admin/assets/process', {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
         },
-        body: formData,
+        body: JSON.stringify({
+          storagePath,
+          downloadURL,
+          category,
+          fileName: zipFileName,
+        }),
       });
 
       if (!response.ok) {
         let errorMessage = 'Processing failed';
-        if (response.status === 413) {
-          errorMessage = 'File is too large. Maximum size is 4MB. Please compress the ZIP file or split it into smaller archives.';
-        } else {
-          try {
-            const error = await response.json();
-            errorMessage = error.error || errorMessage;
-          } catch {
-            errorMessage = `Server error: ${response.status} ${response.statusText}`;
-          }
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch {
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
         }
         throw new Error(errorMessage);
       }
@@ -100,9 +137,11 @@ export default function AdminAssetsUploadPage() {
                 const data = JSON.parse(line.slice(6));
                 
                 if (data.progress !== undefined) {
+                  // Server progress is 30-100%, map it to the overall progress
+                  const serverProgress = Math.max(30, Math.min(100, data.progress));
                   setProcessingState(prev => ({
                     ...prev,
-                    progress: data.progress,
+                    progress: serverProgress,
                     currentStep: data.step,
                     status: (data.status as any) || prev.status,
                   }));

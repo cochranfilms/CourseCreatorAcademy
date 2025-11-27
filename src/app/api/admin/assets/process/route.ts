@@ -88,6 +88,16 @@ async function uploadFile(bucket: any, localPath: string, storagePath: string, c
 }
 
 /**
+ * Download file from Firebase Storage
+ */
+async function downloadFile(bucket: any, storagePath: string, localPath: string): Promise<void> {
+  const file = bucket.file(storagePath);
+  const [buffer] = await file.download();
+  await fs.ensureDir(path.dirname(localPath));
+  await fs.writeFile(localPath, buffer);
+}
+
+/**
  * Send progress update via SSE
  */
 function sendProgress(controller: ReadableStreamDefaultController, progress: number, step: string, status?: string) {
@@ -223,43 +233,39 @@ export async function POST(req: NextRequest) {
       const encoder = new TextEncoder();
 
       try {
-        // Parse form data
-        const formData = await req.formData();
-        const file = formData.get('file') as File;
-        const category = formData.get('category') as string;
+        // Parse request body (JSON with storage path)
+        const body = await req.json();
+        const { storagePath, category, fileName } = body;
 
-        if (!file || !category) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Missing file or category' })}\n\n`));
+        if (!storagePath || !category || !fileName) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Missing storagePath, category, or fileName' })}\n\n`));
           controller.close();
           return;
         }
 
-        // Check file size (Vercel has a 4.5MB limit for API routes)
-        const MAX_SIZE = 4 * 1024 * 1024; // 4MB
-        if (file.size > MAX_SIZE) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: `File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 4MB. Please compress the ZIP file or split it into smaller archives.` })}\n\n`));
-          controller.close();
-          return;
-        }
+        sendProgress(controller, 30, 'Downloading ZIP file from Storage...', 'processing');
 
-        sendProgress(controller, 5, 'Uploading ZIP file to Storage...', 'uploading');
+        // Download ZIP from Storage to temp directory
+        const tempDir = path.join(os.tmpdir(), `asset-process-${Date.now()}`);
+        await fs.ensureDir(tempDir);
+        const zipLocalPath = path.join(tempDir, fileName);
+        
+        await downloadFile(bucket, storagePath, zipLocalPath);
 
-        // Upload ZIP to Storage
-        const zipFileName = file.name;
+        sendProgress(controller, 35, 'Moving ZIP file to final location...', 'processing');
+
+        // Move ZIP to final location in Storage
         const categoryFolder = CATEGORY_MAP[category] || 'overlays';
-        const packName = zipFileName.replace(/\.zip$/i, '');
-        const zipStoragePath = `assets/${categoryFolder}/${zipFileName}`;
+        const packName = fileName.replace(/\.zip$/i, '');
+        const zipStoragePath = `assets/${categoryFolder}/${fileName}`;
 
-        const zipBuffer = Buffer.from(await file.arrayBuffer());
-        const zipFile = bucket.file(zipStoragePath);
-        await zipFile.save(zipBuffer, {
-          metadata: { contentType: 'application/zip' },
-        });
+        // Upload the downloaded file to the final location
+        await uploadFile(bucket, zipLocalPath, zipStoragePath, 'application/zip');
 
-        sendProgress(controller, 10, 'Creating main asset document...', 'processing');
+        sendProgress(controller, 40, 'Creating main asset document...', 'processing');
 
         // Create main asset document
-        const title = filenameToTitle(zipFileName);
+        const title = filenameToTitle(fileName);
         const assetRef = adminDb.collection('assets').doc();
         const assetId = assetRef.id;
 
@@ -303,7 +309,7 @@ export async function POST(req: NextRequest) {
           updatedAt: FirebaseFirestore.FieldValue.serverTimestamp(),
         });
 
-        sendProgress(controller, 15, 'Extracting ZIP file...', 'processing');
+        sendProgress(controller, 45, 'Extracting ZIP file...', 'processing');
 
         // Extract ZIP
         const tempDir = path.join(os.tmpdir(), `asset-process-${assetId}-${Date.now()}`);
@@ -327,7 +333,7 @@ export async function POST(req: NextRequest) {
         };
 
         if (category === 'Overlays & Transitions') {
-          sendProgress(controller, 20, 'Processing overlay files...', 'processing');
+          sendProgress(controller, 50, 'Processing overlay files...', 'processing');
           
           const overlayFiles = await unzipFile(zipLocalPath, extractDir, OVERLAY_EXTENSIONS);
           results.filesProcessed = overlayFiles.length;
@@ -388,7 +394,7 @@ export async function POST(req: NextRequest) {
               });
 
               processed++;
-              sendProgress(controller, 20 + (processed / overlayFiles.length) * 60, `Processing overlay ${processed}/${overlayFiles.length}...`, 'processing');
+              sendProgress(controller, 50 + (processed / overlayFiles.length) * 30, `Processing overlay ${processed}/${overlayFiles.length}...`, 'processing');
             } catch (error: any) {
               results.errors.push(`Error processing ${overlayFile.fileName}: ${error.message}`);
             }
@@ -398,7 +404,7 @@ export async function POST(req: NextRequest) {
           results.documentsCreated = processed;
 
         } else if (category === 'SFX & Plugins') {
-          sendProgress(controller, 20, 'Processing audio files...', 'processing');
+          sendProgress(controller, 50, 'Processing audio files...', 'processing');
           
           const audioFiles = await unzipFile(zipLocalPath, extractDir, AUDIO_EXTENSIONS);
           results.filesProcessed = audioFiles.length;
@@ -433,7 +439,7 @@ export async function POST(req: NextRequest) {
               });
 
               processed++;
-              sendProgress(controller, 20 + (processed / audioFiles.length) * 60, `Processing audio ${processed}/${audioFiles.length}...`, 'processing');
+              sendProgress(controller, 50 + (processed / audioFiles.length) * 30, `Processing audio ${processed}/${audioFiles.length}...`, 'processing');
             } catch (error: any) {
               results.errors.push(`Error processing ${audioFile.fileName}: ${error.message}`);
             }
@@ -443,7 +449,7 @@ export async function POST(req: NextRequest) {
           results.documentsCreated = processed;
 
         } else if (category === 'LUTs & Presets') {
-          sendProgress(controller, 20, 'Processing LUT files...', 'processing');
+          sendProgress(controller, 50, 'Processing LUT files...', 'processing');
           
           // Extract .cube files from CUBE folder in ZIP
           const cubeFiles: Array<{ fileName: string; localPath: string; extension: string; relativePath: string; lutName: string }> = [];
