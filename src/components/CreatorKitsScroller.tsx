@@ -62,8 +62,8 @@ export function CreatorKitsScroller() {
     const animate = () => {
       if (!isScrolling || !track) return;
       
-      // Larger avatar size + gap
-      const itemWidth = 200 + 32; // avatar width + gap
+      // Large square card size + gap
+      const itemWidth = 400 + 24; // card width + gap
       const firstSetWidth = itemWidth * creators.length;
       
       // If we've moved past the first set, loop back seamlessly
@@ -102,40 +102,46 @@ export function CreatorKitsScroller() {
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           aria-label="Creator Kits carousel"
-          className="overflow-hidden py-8 px-8"
+          className="overflow-hidden py-6 px-6"
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
           }}
         >
-          <div ref={trackRef} className="flex gap-8 will-change-transform items-center">
+          <div ref={trackRef} className="flex gap-6 will-change-transform">
             {/* Original items */}
             {creators.map((creator) => (
               <Link
                 key={creator.id}
                 href={`/creator-kits/${creator.kitSlug}`}
-                className="flex-shrink-0 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group"
+                className="flex-shrink-0 w-[400px] h-[400px] rounded-lg overflow-hidden hover:opacity-90 transition-opacity group"
               >
-                {creator.avatarUrl ? (
-                  <div className="relative w-[200px] h-[200px] rounded-full overflow-hidden border-4 border-neutral-800 bg-neutral-900 group-hover:border-neutral-700 transition-colors">
+                <div className="relative w-full h-full bg-neutral-900">
+                  {(creator.bannerUrl || creator.avatarUrl) ? (
                     <Image 
-                      src={creator.avatarUrl} 
+                      src={creator.bannerUrl || creator.avatarUrl || ''} 
                       alt={creator.displayName} 
                       fill 
-                      sizes="200px" 
+                      sizes="400px" 
                       className="object-cover group-hover:scale-105 transition-transform duration-300" 
                     />
-                  </div>
-                ) : (
-                  <div className="w-[200px] h-[200px] rounded-full bg-neutral-800 border-4 border-neutral-700 flex items-center justify-center text-6xl font-semibold text-neutral-400 group-hover:border-neutral-600 transition-colors">
-                    {creator.displayName.charAt(0)}
-                  </div>
-                )}
-                <div className="text-center">
-                  <div className="text-lg font-bold text-white">{creator.displayName}</div>
-                  {creator.handle && (
-                    <div className="text-sm text-neutral-400">@{creator.handle}</div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-900 to-neutral-950">
+                      <div className="text-8xl text-neutral-700">
+                        {creator.displayName.charAt(0)}
+                      </div>
+                    </div>
                   )}
+                  {/* Gradient overlay for better text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                  
+                  {/* Creator info overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <div className="text-xl font-bold text-white mb-1">{creator.displayName}</div>
+                    {creator.handle && (
+                      <div className="text-sm text-neutral-300">@{creator.handle}</div>
+                    )}
+                  </div>
                 </div>
               </Link>
             ))}
@@ -145,28 +151,34 @@ export function CreatorKitsScroller() {
               <Link
                 key={`${creator.id}-duplicate`}
                 href={`/creator-kits/${creator.kitSlug}`}
-                className="flex-shrink-0 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group"
+                className="flex-shrink-0 w-[400px] h-[400px] rounded-lg overflow-hidden hover:opacity-90 transition-opacity group"
               >
-                {creator.avatarUrl ? (
-                  <div className="relative w-[200px] h-[200px] rounded-full overflow-hidden border-4 border-neutral-800 bg-neutral-900 group-hover:border-neutral-700 transition-colors">
+                <div className="relative w-full h-full bg-neutral-900">
+                  {(creator.bannerUrl || creator.avatarUrl) ? (
                     <Image 
-                      src={creator.avatarUrl} 
+                      src={creator.bannerUrl || creator.avatarUrl || ''} 
                       alt={creator.displayName} 
                       fill 
-                      sizes="200px" 
+                      sizes="400px" 
                       className="object-cover group-hover:scale-105 transition-transform duration-300" 
                     />
-                  </div>
-                ) : (
-                  <div className="w-[200px] h-[200px] rounded-full bg-neutral-800 border-4 border-neutral-700 flex items-center justify-center text-6xl font-semibold text-neutral-400 group-hover:border-neutral-600 transition-colors">
-                    {creator.displayName.charAt(0)}
-                  </div>
-                )}
-                <div className="text-center">
-                  <div className="text-lg font-bold text-white">{creator.displayName}</div>
-                  {creator.handle && (
-                    <div className="text-sm text-neutral-400">@{creator.handle}</div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-900 to-neutral-950">
+                      <div className="text-8xl text-neutral-700">
+                        {creator.displayName.charAt(0)}
+                      </div>
+                    </div>
                   )}
+                  {/* Gradient overlay for better text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                  
+                  {/* Creator info overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <div className="text-xl font-bold text-white mb-1">{creator.displayName}</div>
+                    {creator.handle && (
+                      <div className="text-sm text-neutral-300">@{creator.handle}</div>
+                    )}
+                  </div>
                 </div>
               </Link>
             ))}
