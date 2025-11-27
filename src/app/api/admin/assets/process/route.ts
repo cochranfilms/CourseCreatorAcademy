@@ -5,7 +5,6 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs-extra';
 import * as yauzl from 'yauzl';
-import { Readable } from 'stream';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes max
@@ -91,9 +90,9 @@ async function uploadFile(bucket: any, localPath: string, storagePath: string, c
 /**
  * Send progress update via SSE
  */
-function sendProgress(writer: WritableStreamDefaultWriter, progress: number, step: string, status?: string) {
+function sendProgress(controller: ReadableStreamDefaultController, progress: number, step: string, status?: string) {
   const data = JSON.stringify({ progress, step, status });
-  writer.write(new TextEncoder().encode(`data: ${data}\n\n`));
+  controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
 }
 
 /**
@@ -221,7 +220,6 @@ export async function POST(req: NextRequest) {
   // Create a readable stream for SSE
   const stream = new ReadableStream({
     async start(controller) {
-      const writer = controller.getWriter();
       const encoder = new TextEncoder();
 
       try {
@@ -231,12 +229,12 @@ export async function POST(req: NextRequest) {
         const category = formData.get('category') as string;
 
         if (!file || !category) {
-          writer.write(encoder.encode(`data: ${JSON.stringify({ error: 'Missing file or category' })}\n\n`));
-          writer.close();
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Missing file or category' })}\n\n`));
+          controller.close();
           return;
         }
 
-        sendProgress(writer, 5, 'Uploading ZIP file to Storage...', 'uploading');
+        sendProgress(controller, 5, 'Uploading ZIP file to Storage...', 'uploading');
 
         // Upload ZIP to Storage
         const zipFileName = file.name;
@@ -250,7 +248,7 @@ export async function POST(req: NextRequest) {
           metadata: { contentType: 'application/zip' },
         });
 
-        sendProgress(writer, 10, 'Creating main asset document...', 'processing');
+        sendProgress(controller, 10, 'Creating main asset document...', 'processing');
 
         // Create main asset document
         const title = filenameToTitle(zipFileName);
@@ -297,7 +295,7 @@ export async function POST(req: NextRequest) {
           updatedAt: FirebaseFirestore.FieldValue.serverTimestamp(),
         });
 
-        sendProgress(writer, 15, 'Extracting ZIP file...', 'processing');
+        sendProgress(controller, 15, 'Extracting ZIP file...', 'processing');
 
         // Extract ZIP
         const tempDir = path.join(os.tmpdir(), `asset-process-${assetId}-${Date.now()}`);
@@ -321,7 +319,7 @@ export async function POST(req: NextRequest) {
         };
 
         if (category === 'Overlays & Transitions') {
-          sendProgress(writer, 20, 'Processing overlay files...', 'processing');
+          sendProgress(controller, 20, 'Processing overlay files...', 'processing');
           
           const overlayFiles = await unzipFile(zipLocalPath, extractDir, OVERLAY_EXTENSIONS);
           results.filesProcessed = overlayFiles.length;
@@ -382,7 +380,7 @@ export async function POST(req: NextRequest) {
               });
 
               processed++;
-              sendProgress(writer, 20 + (processed / overlayFiles.length) * 60, `Processing overlay ${processed}/${overlayFiles.length}...`, 'processing');
+              sendProgress(controller, 20 + (processed / overlayFiles.length) * 60, `Processing overlay ${processed}/${overlayFiles.length}...`, 'processing');
             } catch (error: any) {
               results.errors.push(`Error processing ${overlayFile.fileName}: ${error.message}`);
             }
@@ -392,7 +390,7 @@ export async function POST(req: NextRequest) {
           results.documentsCreated = processed;
 
         } else if (category === 'SFX & Plugins') {
-          sendProgress(writer, 20, 'Processing audio files...', 'processing');
+          sendProgress(controller, 20, 'Processing audio files...', 'processing');
           
           const audioFiles = await unzipFile(zipLocalPath, extractDir, AUDIO_EXTENSIONS);
           results.filesProcessed = audioFiles.length;
@@ -427,7 +425,7 @@ export async function POST(req: NextRequest) {
               });
 
               processed++;
-              sendProgress(writer, 20 + (processed / audioFiles.length) * 60, `Processing audio ${processed}/${audioFiles.length}...`, 'processing');
+              sendProgress(controller, 20 + (processed / audioFiles.length) * 60, `Processing audio ${processed}/${audioFiles.length}...`, 'processing');
             } catch (error: any) {
               results.errors.push(`Error processing ${audioFile.fileName}: ${error.message}`);
             }
@@ -437,7 +435,7 @@ export async function POST(req: NextRequest) {
           results.documentsCreated = processed;
 
         } else if (category === 'LUTs & Presets') {
-          sendProgress(writer, 20, 'Processing LUT files...', 'processing');
+          sendProgress(controller, 20, 'Processing LUT files...', 'processing');
           
           // Extract .cube files from CUBE folder in ZIP
           const cubeFiles: Array<{ fileName: string; localPath: string; extension: string; relativePath: string; lutName: string }> = [];
@@ -561,12 +559,12 @@ export async function POST(req: NextRequest) {
         // Cleanup
         await fs.remove(tempDir).catch(() => {});
 
-        sendProgress(writer, 100, 'Processing complete!', 'completed');
-        writer.write(encoder.encode(`data: ${JSON.stringify({ complete: true, results })}\n\n`));
-        writer.close();
+        sendProgress(controller, 100, 'Processing complete!', 'completed');
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ complete: true, results })}\n\n`));
+        controller.close();
       } catch (error: any) {
-        writer.write(encoder.encode(`data: ${JSON.stringify({ error: error.message || 'Processing failed' })}\n\n`));
-        writer.close();
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: error.message || 'Processing failed' })}\n\n`));
+        controller.close();
       }
     },
   });
