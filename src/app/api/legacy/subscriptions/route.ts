@@ -89,6 +89,7 @@ export async function GET(req: NextRequest) {
               displayName: creator.displayName || creator.handle || 'Creator',
               handle: creator.handle,
               avatarUrl: creator.avatarUrl || null,
+              kitSlug: creator.kitSlug || creatorDoc.id,
             },
           };
         }

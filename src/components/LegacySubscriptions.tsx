@@ -18,6 +18,7 @@ type Subscription = {
     displayName: string;
     handle?: string;
     avatarUrl?: string | null;
+    kitSlug?: string;
   };
 };
 
@@ -517,7 +518,7 @@ export function LegacySubscriptions() {
                   </span>
                   {sub.creator && (
                     <Link
-                      href={`/learn?section=creator-kits&kit=${encodeURIComponent(sub.creator.id)}`}
+                      href={`/creator-kits/${encodeURIComponent(sub.creator.kitSlug || sub.creator.id)}`}
                       className="px-4 py-2 bg-ccaBlue hover:bg-ccaBlue/90 text-white rounded-lg text-sm font-medium transition"
                     >
                       View Kit
