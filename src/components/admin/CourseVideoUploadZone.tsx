@@ -58,7 +58,6 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'error'>('idle');
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [muxAssetId, setMuxAssetId] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<tus.Upload | null>(null);
@@ -122,7 +121,7 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
       }
     }
     loadModules();
-  }, [selectedCourseId]);
+  }, [selectedCourseId, selectedModuleId]);
 
   // Load lessons when module changes
   useEffect(() => {
@@ -157,7 +156,7 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
       }
     }
     loadLessons();
-  }, [selectedCourseId, selectedModuleId]);
+  }, [selectedCourseId, selectedModuleId, selectedLessonId]);
 
   const handleCreateCourse = useCallback(async () => {
     if (!db || !newCourseTitle.trim()) return;
@@ -188,10 +187,11 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
         coursesData.push({ id: doc.id, title: data.title || 'Untitled Course', slug: data.slug || doc.id });
       });
       setCourses(coursesData);
-    } catch (error: any) {
-      alert(`Error creating course: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      alert(`Error creating course: ${err.message}`);
     }
-  }, [newCourseTitle, newCourseSlug, db]);
+  }, [newCourseTitle, newCourseSlug]);
 
   const handleCreateModule = useCallback(async () => {
     if (!db || !selectedCourseId || !newModuleTitle.trim()) return;
@@ -223,10 +223,11 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
         modulesData.push({ id: doc.id, title: data.title || 'Untitled Module', index: data.index || 0 });
       });
       setModules(modulesData);
-    } catch (error: any) {
-      alert(`Error creating module: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      alert(`Error creating module: ${err.message}`);
     }
-  }, [selectedCourseId, newModuleTitle, newModuleIndex, db]);
+  }, [selectedCourseId, newModuleTitle, newModuleIndex]);
 
   const handleCreateLesson = useCallback(async () => {
     if (!db || !selectedCourseId || !selectedModuleId || !newLessonTitle.trim()) return;
@@ -268,10 +269,11 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
         });
       });
       setLessons(lessonsData);
-    } catch (error: any) {
-      alert(`Error creating lesson: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      alert(`Error creating lesson: ${err.message}`);
     }
-  }, [selectedCourseId, selectedModuleId, newLessonTitle, newLessonIndex, newLessonDescription, newLessonFreePreview, db]);
+  }, [selectedCourseId, selectedModuleId, newLessonTitle, newLessonIndex, newLessonDescription, newLessonFreePreview]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -354,9 +356,10 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
 
       uploadRef.current = upload;
       upload.start();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Upload error:', error);
-      setUploadError(error.message || 'Upload failed');
+      const err = error as Error;
+      setUploadError(err.message || 'Upload failed');
       setUploadStatus('error');
     }
   }, [videoFile, selectedCourseId, selectedModuleId, selectedLessonId, lessons, newLessonTitle, newLessonDescription, onUploadComplete]);
