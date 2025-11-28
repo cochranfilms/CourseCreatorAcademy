@@ -31,8 +31,6 @@ export async function GET(req: NextRequest) {
       .limit(1)
       .get();
 
-    console.log(`[Home Assets API] Found ${assetsSnapshot.docs.length} assets for user ${uid}`);
-
     if (assetsSnapshot.empty) {
       return NextResponse.json({ asset: null });
     }
@@ -50,7 +48,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ asset });
   } catch (error: any) {
-    console.error('[Home Assets API] Error fetching asset:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch asset' },
       { status: 500 }

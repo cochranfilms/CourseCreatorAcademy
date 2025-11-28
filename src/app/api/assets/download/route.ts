@@ -54,7 +54,6 @@ export async function GET(req: NextRequest) {
     // Check if file exists
     const [exists] = await file.exists();
     if (!exists) {
-      console.error(`File not found at path: ${storagePath}`);
       return NextResponse.json({ 
         error: 'File not found in storage',
         details: `Path: ${storagePath}`
@@ -62,7 +61,6 @@ export async function GET(req: NextRequest) {
     }
     
     // Generate signed URL (valid for 1 hour)
-    // Firebase Admin Storage expects expires as a Date object or timestamp string
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1);
     
@@ -74,13 +72,9 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({ downloadUrl: signedUrl });
     } catch (signError: any) {
-      console.error('Error generating signed URL:', signError);
-      console.error('Storage path:', storagePath);
-      console.error('Bucket name:', bucket.name);
       throw signError;
     }
   } catch (err: any) {
-    console.error('Error generating download URL:', err);
     return NextResponse.json({ error: err?.message || 'Failed to generate download URL' }, { status: 500 });
   }
 }

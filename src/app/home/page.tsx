@@ -115,7 +115,6 @@ function ClaimFromSessionId() {
             router.replace('/home');
             return;
           } catch (signInError: any) {
-            console.error('Failed to sign in with password:', signInError);
             // Fall through to custom token method if password sign-in fails
           }
         }
@@ -198,7 +197,6 @@ export default function HomePage() {
           setHasMembership(null); // Couldn't verify
         }
       } catch (error) {
-        console.error('Error checking membership:', error);
         setHasMembership(null);
       } finally {
         setMembershipLoading(false);
@@ -265,7 +263,6 @@ export default function HomePage() {
             });
           }
         } catch (error) {
-          console.error('Error fetching profile:', error);
           // Fallback to Firebase Auth data
           setUserProfile({
             displayName: user.displayName || user.email?.split('@')[0] || 'Creator',
@@ -295,11 +292,9 @@ export default function HomePage() {
       return await getDocFromCache(docRef);
     } catch (cacheError) {
       // Cache miss or error - fall back to network
-      console.log('[HomePage] Cache miss for doc, fetching from network');
       try {
         return await getDoc(docRef);
       } catch (networkError) {
-        console.error('[HomePage] Error fetching doc from network:', networkError);
         throw networkError;
       }
     }
@@ -310,17 +305,9 @@ export default function HomePage() {
       return await getDocsFromCache(queryRef);
     } catch (cacheError: any) {
       // Cache miss or error - fall back to network
-      console.log('[HomePage] Cache miss for query, fetching from network');
       try {
-        const result = await getDocs(queryRef);
-        return result;
+        return await getDocs(queryRef);
       } catch (networkError: any) {
-        console.error('[HomePage] Error fetching query from network:', {
-          error: networkError,
-          message: networkError?.message,
-          code: networkError?.code,
-          name: networkError?.name,
-        });
         throw networkError;
       }
     }
@@ -333,13 +320,6 @@ export default function HomePage() {
         setDataLoading(false);
         return;
       }
-
-      console.log('[HomePage] Starting data fetch', {
-        user: user?.uid,
-        authenticated: !!user,
-        firebaseReady,
-        dbReady: !!db,
-      });
 
       try {
         // Fetch critical data first (cache-first strategy)
@@ -364,16 +344,13 @@ export default function HomePage() {
           idToken
             ? fetch('/api/home/listings?limit=3', {
                 headers: { Authorization: `Bearer ${idToken}` },
-              }).then(async (r) => {
+                }).then(async (r) => {
                 if (r.ok) {
                   return r.json();
                 } else {
-                  const errorData = await r.json().catch(() => ({}));
-                  console.warn('[HomePage] Listings API error:', r.status, errorData.error || 'Unknown error');
                   return { listings: [] };
                 }
-              }).catch((err) => {
-                console.error('[HomePage] Failed to fetch listings:', err);
+              }).catch(() => {
                 return { listings: [] };
               })
             : Promise.resolve({ listings: [] }),
@@ -391,13 +368,9 @@ export default function HomePage() {
                 if (r.ok) {
                   return r.json();
                 } else {
-                  const errorData = await r.json().catch(() => ({}));
-                  console.warn('[HomePage] Discounts API error:', r.status, errorData.error || 'Unknown error');
-                  // Return empty discounts array instead of null so UI doesn't break
                   return { discounts: [] };
                 }
-              }).catch((err) => {
-                console.error('[HomePage] Failed to fetch discounts:', err);
+              }).catch(() => {
                 return { discounts: [] };
               })
             : Promise.resolve({ discounts: [] }),
@@ -409,12 +382,9 @@ export default function HomePage() {
                 if (r.ok) {
                   return r.json();
                 } else {
-                  const errorData = await r.json().catch(() => ({}));
-                  console.warn('[HomePage] Assets API error:', r.status, errorData.error || 'Unknown error');
                   return { asset: null };
                 }
-              }).catch((err) => {
-                console.error('[HomePage] Failed to fetch assets:', err);
+              }).catch(() => {
                 return { asset: null };
               })
             : Promise.resolve({ asset: null })
@@ -426,52 +396,22 @@ export default function HomePage() {
           startTransition(() => {
             setRecentlyAdded(recentLessonsResponse.value.lessons);
           });
-        } else if (recentLessonsResponse.status === 'rejected') {
-          console.error('[HomePage] Failed to fetch recent lessons:', recentLessonsResponse.reason);
         }
 
         // Process marketplace listings (progressive rendering)
         if (listingsResponse.status === 'fulfilled' && listingsResponse.value) {
           const listingsData = listingsResponse.value.listings || [];
-          console.log('[HomePage] Loaded marketplace listings:', listingsData.length, 'User:', user?.uid);
-          if (listingsData.length === 0) {
-            console.log('[HomePage] No marketplace listings found - API returned empty');
-          }
           startTransition(() => {
             setProducts(listingsData);
-          });
-        } else if (listingsResponse.status === 'rejected') {
-          console.error('[HomePage] Failed to fetch listings:', listingsResponse.reason);
-          console.error('[HomePage] Listings error details:', {
-            error: listingsResponse.reason,
-            message: listingsResponse.reason?.message,
-            code: listingsResponse.reason?.code,
-            name: listingsResponse.reason?.name,
-            user: user?.uid,
           });
         }
 
         // Process discounts (progressive rendering)
         if (discountsData.status === 'fulfilled' && discountsData.value) {
           const discountList = discountsData.value.discounts || [];
-          console.log('[HomePage] Loaded discounts:', discountList.length, discountList.map((d: any) => ({
-            id: d.id,
-            title: d.title,
-            expirationDate: d.expirationDate,
-            isActive: d.isActive
-          })));
-          if (discountList.length === 0) {
-            console.warn('[HomePage] No discounts returned - check server logs for filtering reasons');
-          }
           startTransition(() => {
             setDiscounts(discountList.slice(0, 3));
           });
-        } else if (discountsData.status === 'rejected') {
-          console.error('[HomePage] Failed to fetch discounts:', discountsData.reason);
-        } else if (discountsData.status === 'fulfilled' && !discountsData.value) {
-          console.warn('[HomePage] Discounts API returned null/undefined');
-        } else {
-          console.warn('[HomePage] Discounts data status:', discountsData.status, discountsData);
         }
 
         // Process Garrett King (progressive rendering)
@@ -490,7 +430,6 @@ export default function HomePage() {
         if (assetsResponse.status === 'fulfilled' && assetsResponse.value) {
           const assetData = assetsResponse.value.asset;
           if (assetData) {
-            console.log('[HomePage] Loaded featured asset:', assetData.id, assetData.title, 'User:', user?.uid);
             startTransition(() => {
               setFeaturedAsset({
                 id: assetData.id,
@@ -500,19 +439,7 @@ export default function HomePage() {
                 description: assetData.description || '',
               });
             });
-          } else {
-            console.log('[HomePage] Assets API returned null - no assets found in database', 'User:', user?.uid, 'Authenticated:', !!user);
           }
-        } else if (assetsResponse.status === 'rejected') {
-          console.error('[HomePage] Failed to fetch assets:', assetsResponse.reason);
-          console.error('[HomePage] Assets error details:', {
-            error: assetsResponse.reason,
-            message: assetsResponse.reason?.message,
-            code: assetsResponse.reason?.code,
-            name: assetsResponse.reason?.name,
-            user: user?.uid,
-            authenticated: !!user,
-          });
         }
 
         // Process show episode
@@ -549,7 +476,7 @@ export default function HomePage() {
               });
             }
           } catch (error) {
-            console.error('Error fetching show episode:', error);
+            // Silently fail - show episode is optional
           }
         }
 
@@ -583,11 +510,11 @@ export default function HomePage() {
               });
             }
           } catch (error) {
-            console.error('Error fetching walkthrough video:', error);
+            // Silently fail - walkthrough is optional
           }
         }
       } catch (error) {
-        console.error('[HomePage] Error fetching data:', error);
+        // Silently handle errors - UI will show loading states
       } finally {
         // Set loading to false after all data fetching attempts
         setDataLoading(false);
@@ -1141,7 +1068,6 @@ export default function HomePage() {
               onClick={async () => {
                 try {
                   if (!user || !auth.currentUser) {
-                    console.error('[HomePage] User not authenticated for download');
                     window.location.href = '/assets';
                     return;
                   }
@@ -1154,9 +1080,6 @@ export default function HomePage() {
                   });
                   
                   if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    console.error('[HomePage] Download failed:', response.status, errorData.error || 'Unknown error');
-                    // If download fails, navigate to assets page instead
                     window.location.href = '/assets';
                     return;
                   }
@@ -1171,8 +1094,6 @@ export default function HomePage() {
                     document.body.removeChild(link);
                   }
                 } catch (error) {
-                  console.error('[HomePage] Error downloading asset:', error);
-                  // Fallback to assets page on error
                   window.location.href = '/assets';
                 }
               }}

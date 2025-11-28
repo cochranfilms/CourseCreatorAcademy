@@ -30,7 +30,6 @@ export async function hasGlobalMembership(userId: string): Promise<boolean> {
       }
     } catch (legacyCheckError) {
       // If legacy check fails, continue with membership check result
-      console.warn('[hasGlobalMembership] Error checking legacy creator status:', legacyCheckError);
     }
     
     return false;

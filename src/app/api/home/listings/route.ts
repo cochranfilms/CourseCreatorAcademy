@@ -34,8 +34,6 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .get();
 
-    console.log(`[Home Listings API] Found ${listingsSnapshot.docs.length} listings for user ${uid}`);
-
     const listings = listingsSnapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
@@ -50,7 +48,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ listings });
   } catch (error: any) {
-    console.error('[Home Listings API] Error fetching listings:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch listings' },
       { status: 500 }
