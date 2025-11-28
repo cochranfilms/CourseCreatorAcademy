@@ -1,15 +1,17 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, where } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface Asset {
+interface OverlayFile {
   id: string;
-  title: string;
-  category: string;
-  storagePath?: string;
-  thumbnailUrl?: string;
+  assetId: string;
+  assetTitle: string;
+  fileName: string;
+  storagePath: string;
+  previewStoragePath?: string;
+  fileType?: string;
 }
 
 type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
@@ -17,10 +19,10 @@ type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
 /**
  * Gets subcategory from storage path
  */
-function getSubCategory(asset: Asset): SubCategory {
-  if (!asset.storagePath) return null;
+function getSubCategory(storagePath: string): SubCategory {
+  if (!storagePath) return null;
   
-  const path = asset.storagePath.toLowerCase();
+  const path = storagePath.toLowerCase();
   if (path.includes('/overlays/')) return 'Overlays';
   if (path.includes('/transitions/')) return 'Transitions';
   if (path.includes('/sfx/')) return 'SFX';
@@ -35,61 +37,83 @@ interface AssetCategoryManagerProps {
 
 export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerProps) {
   const { user } = useAuth();
-  const [assets, setAssets] = useState<Asset[]>([]);
+  const [overlayFiles, setOverlayFiles] = useState<OverlayFile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [draggedAsset, setDraggedAsset] = useState<Asset | null>(null);
+  const [draggedFile, setDraggedFile] = useState<OverlayFile | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<SubCategory | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
 
-  // Group assets by subcategory
-  const groupedAssets = {
-    Overlays: assets.filter(a => getSubCategory(a) === 'Overlays'),
-    Transitions: assets.filter(a => getSubCategory(a) === 'Transitions'),
-    SFX: assets.filter(a => getSubCategory(a) === 'SFX'),
-    Plugins: assets.filter(a => getSubCategory(a) === 'Plugins'),
+  // Group overlay files by subcategory
+  const groupedFiles = {
+    Overlays: overlayFiles.filter(f => getSubCategory(f.storagePath) === 'Overlays'),
+    Transitions: overlayFiles.filter(f => getSubCategory(f.storagePath) === 'Transitions'),
+    SFX: overlayFiles.filter(f => getSubCategory(f.storagePath) === 'SFX'),
+    Plugins: overlayFiles.filter(f => getSubCategory(f.storagePath) === 'Plugins'),
   };
 
-  // Load assets
+  // Load individual overlay/transition files
   useEffect(() => {
-    const loadAssets = async () => {
+    const loadOverlayFiles = async () => {
       if (!firebaseReady || !db) {
         setLoading(false);
         return;
       }
 
       try {
-        // Only load assets from relevant categories
-        const q = query(
+        // Get all assets in Overlays & Transitions category
+        const assetsQuery = query(
           collection(db, 'assets'),
-          orderBy('createdAt', 'desc')
+          where('category', '==', 'Overlays & Transitions')
         );
-        const snapshot = await getDocs(q);
-        const loadedAssets: Asset[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          // Only include assets that can be categorized
-          if (data.category === 'Overlays & Transitions' || data.category === 'SFX & Plugins') {
-            loadedAssets.push({
-              id: doc.id,
-              ...data
-            } as Asset);
+        const assetsSnapshot = await getDocs(assetsQuery);
+        
+        const allFiles: OverlayFile[] = [];
+
+        // Fetch overlay files from each asset's subcollection
+        for (const assetDoc of assetsSnapshot.docs) {
+          const assetId = assetDoc.id;
+          const assetData = assetDoc.data();
+          const assetTitle = assetData.title || 'Untitled';
+
+          try {
+            const overlaysQuery = query(
+              collection(db, 'assets', assetId, 'overlays'),
+              orderBy('fileName', 'asc')
+            );
+            const overlaysSnapshot = await getDocs(overlaysQuery);
+            
+            overlaysSnapshot.forEach((doc) => {
+              const data = doc.data();
+              allFiles.push({
+                id: doc.id,
+                assetId,
+                assetTitle,
+                fileName: data.fileName || '',
+                storagePath: data.storagePath || '',
+                previewStoragePath: data.previewStoragePath,
+                fileType: data.fileType,
+              });
+            });
+          } catch (error) {
+            console.error(`Error loading overlays for asset ${assetId}:`, error);
           }
-        });
-        setAssets(loadedAssets);
+        }
+
+        setOverlayFiles(allFiles);
       } catch (error) {
-        console.error('Error loading assets:', error);
+        console.error('Error loading overlay files:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadAssets();
+    loadOverlayFiles();
   }, []);
 
-  const handleDragStart = useCallback((e: React.DragEvent, asset: Asset) => {
-    setDraggedAsset(asset);
+  const handleDragStart = useCallback((e: React.DragEvent, file: OverlayFile) => {
+    setDraggedFile(file);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', asset.id);
+    e.dataTransfer.setData('text/plain', file.id);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent, category: SubCategory) => {
@@ -106,46 +130,38 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
     e.preventDefault();
     setDragOverCategory(null);
 
-    if (!draggedAsset || !user) return;
+    if (!draggedFile || !user) return;
 
-    const currentCategory = getSubCategory(draggedAsset);
+    const currentCategory = getSubCategory(draggedFile.storagePath);
     if (currentCategory === targetCategory) {
-      setDraggedAsset(null);
+      setDraggedFile(null);
       return;
     }
 
-    // Determine the new storage path
-    const oldPath = draggedAsset.storagePath || '';
-    let newPath = oldPath;
-
-    if (targetCategory === 'Overlays') {
-      newPath = oldPath.replace(/\/transitions\//g, '/overlays/');
-    } else if (targetCategory === 'Transitions') {
-      newPath = oldPath.replace(/\/overlays\//g, '/transitions/');
-    } else if (targetCategory === 'SFX') {
-      newPath = oldPath.replace(/\/plugins\//g, '/sfx/');
-    } else if (targetCategory === 'Plugins') {
-      newPath = oldPath.replace(/\/sfx\//g, '/plugins/');
-    }
-
-    if (newPath === oldPath) {
-      setDraggedAsset(null);
+    // Only allow moving between Overlays and Transitions
+    if (targetCategory !== 'Overlays' && targetCategory !== 'Transitions') {
+      setDraggedFile(null);
       return;
     }
 
-    setUpdating(draggedAsset.id);
+    if (currentCategory !== 'Overlays' && currentCategory !== 'Transitions') {
+      setDraggedFile(null);
+      return;
+    }
+
+    setUpdating(draggedFile.id);
 
     try {
       const idToken = await user.getIdToken();
-      const response = await fetch('/api/admin/assets/update-category', {
+      const response = await fetch('/api/admin/assets/update-overlay-category', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
-          assetId: draggedAsset.id,
-          newStoragePath: newPath,
+          assetId: draggedFile.assetId,
+          overlayId: draggedFile.id,
           targetCategory,
         }),
       });
@@ -155,20 +171,45 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
         throw new Error(error.error || 'Failed to update category');
       }
 
-      // Reload assets
-      const q = query(collection(db, 'assets'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const loadedAssets: Asset[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.category === 'Overlays & Transitions' || data.category === 'SFX & Plugins') {
-          loadedAssets.push({
-            id: doc.id,
-            ...data
-          } as Asset);
+      // Reload overlay files
+      const assetsQuery = query(
+        collection(db, 'assets'),
+        where('category', '==', 'Overlays & Transitions')
+      );
+      const assetsSnapshot = await getDocs(assetsQuery);
+      
+      const allFiles: OverlayFile[] = [];
+
+      for (const assetDoc of assetsSnapshot.docs) {
+        const assetId = assetDoc.id;
+        const assetData = assetDoc.data();
+        const assetTitle = assetData.title || 'Untitled';
+
+        try {
+          const overlaysQuery = query(
+            collection(db, 'assets', assetId, 'overlays'),
+            orderBy('fileName', 'asc')
+          );
+          const overlaysSnapshot = await getDocs(overlaysQuery);
+          
+          overlaysSnapshot.forEach((doc) => {
+            const data = doc.data();
+            allFiles.push({
+              id: doc.id,
+              assetId,
+              assetTitle,
+              fileName: data.fileName || '',
+              storagePath: data.storagePath || '',
+              previewStoragePath: data.previewStoragePath,
+              fileType: data.fileType,
+            });
+          });
+        } catch (error) {
+          console.error(`Error loading overlays for asset ${assetId}:`, error);
         }
-      });
-      setAssets(loadedAssets);
+      }
+
+      setOverlayFiles(allFiles);
 
       if (onCategoryChange) {
         onCategoryChange();
@@ -179,12 +220,12 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
       alert(`Failed to update category: ${errorMessage}`);
     } finally {
       setUpdating(null);
-      setDraggedAsset(null);
+      setDraggedFile(null);
     }
-  }, [draggedAsset, user, onCategoryChange]);
+  }, [draggedFile, user, onCategoryChange]);
 
   const handleDragEnd = useCallback(() => {
-    setDraggedAsset(null);
+    setDraggedFile(null);
     setDragOverCategory(null);
   }, []);
 
@@ -199,22 +240,20 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
   const categories: { name: SubCategory; label: string }[] = [
     { name: 'Overlays', label: 'Overlays' },
     { name: 'Transitions', label: 'Transitions' },
-    { name: 'SFX', label: 'SFX' },
-    { name: 'Plugins', label: 'Plugins' },
   ];
 
   return (
     <div className="mt-8 space-y-6">
-      <h2 className="text-2xl font-bold mb-4">Asset Category Manager</h2>
+      <h2 className="text-2xl font-bold mb-4">Individual Overlay/Transition File Manager</h2>
       <p className="text-neutral-400 mb-6">
-        Drag and drop assets between categories to reorganize them. Changes will update the storage paths and Firestore documents.
+        Drag and drop individual overlay/transition files between categories. This moves the actual files in Firebase Storage and updates their Firestore documents.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {categories.map(({ name, label }) => {
-          const categoryAssets = groupedAssets[name as keyof typeof groupedAssets] || [];
+          const categoryFiles = groupedFiles[name as keyof typeof groupedFiles] || [];
           const isDragOver = dragOverCategory === name;
-          const isUpdating = updating !== null && categoryAssets.some(a => a.id === updating);
+          const isUpdating = updating !== null && categoryFiles.some(f => f.id === updating);
 
           return (
             <div
@@ -233,7 +272,7 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
               <h3 className="text-lg font-semibold mb-3 flex items-center justify-between">
                 <span>{label}</span>
                 <span className="text-sm text-neutral-400 font-normal">
-                  ({categoryAssets.length} assets)
+                  ({categoryFiles.length} files)
                 </span>
               </h3>
 
@@ -244,40 +283,36 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
                 </div>
               )}
 
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {categoryAssets.length === 0 ? (
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                {categoryFiles.length === 0 ? (
                   <p className="text-neutral-500 text-sm py-8 text-center">
-                    No assets in this category
+                    No files in this category
                   </p>
                 ) : (
-                  categoryAssets.map((asset) => (
+                  categoryFiles.map((file) => (
                     <div
-                      key={asset.id}
+                      key={file.id}
                       draggable
-                      onDragStart={(e) => handleDragStart(e, asset)}
+                      onDragStart={(e) => handleDragStart(e, file)}
                       onDragEnd={handleDragEnd}
                       className={`
                         p-3 rounded-lg border cursor-move transition-all
-                        ${draggedAsset?.id === asset.id
+                        ${draggedFile?.id === file.id
                           ? 'opacity-50 border-ccaBlue bg-ccaBlue/10'
                           : 'border-neutral-700 bg-neutral-800 hover:border-neutral-600'
                         }
-                        ${updating === asset.id ? 'opacity-50 pointer-events-none' : ''}
+                        ${updating === file.id ? 'opacity-50 pointer-events-none' : ''}
                       `}
                     >
-                      <div className="flex items-center gap-3">
-                        {asset.thumbnailUrl && (
-                          <img
-                            src={asset.thumbnailUrl}
-                            alt={asset.title}
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                        )}
+                      <div className="flex items-start gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{asset.title}</p>
-                          {asset.storagePath && (
-                            <p className="text-xs text-neutral-500 truncate">
-                              {asset.storagePath}
+                          <p className="text-sm font-medium truncate">{file.fileName}</p>
+                          <p className="text-xs text-neutral-400 truncate mt-1">
+                            From: {file.assetTitle}
+                          </p>
+                          {file.storagePath && (
+                            <p className="text-xs text-neutral-500 truncate mt-1">
+                              {file.storagePath}
                             </p>
                           )}
                         </div>
@@ -293,4 +328,3 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
     </div>
   );
 }
-
