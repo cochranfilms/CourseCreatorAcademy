@@ -344,19 +344,39 @@ export default function HomePage() {
       try {
         // Fetch critical data first (cache-first strategy)
         // Use API route for recent lessons (server-side aggregation is much faster)
+        // Get auth token for API requests
+        const idToken = user && auth.currentUser 
+          ? await auth.currentUser.getIdToken().catch(() => null)
+          : null;
+
         const [
           recentLessonsResponse,
-          listingsSnap,
+          listingsResponse,
           configDoc,
           walkthroughConfigDoc,
           creatorsResponse,
           discountsData,
-          assetsSnap
+          assetsResponse
         ] = await Promise.allSettled([
           // Use API route for lessons - server-side aggregation avoids nested queries
           fetch('/api/home/recent-lessons').then(r => r.ok ? r.json() : null).catch(() => null),
-          // Fetch marketplace listings (cache-first)
-          getDocsCacheFirst(query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(3))),
+          // Fetch marketplace listings via API (if authenticated)
+          idToken
+            ? fetch('/api/home/listings?limit=3', {
+                headers: { Authorization: `Bearer ${idToken}` },
+              }).then(async (r) => {
+                if (r.ok) {
+                  return r.json();
+                } else {
+                  const errorData = await r.json().catch(() => ({}));
+                  console.warn('[HomePage] Listings API error:', r.status, errorData.error || 'Unknown error');
+                  return { listings: [] };
+                }
+              }).catch((err) => {
+                console.error('[HomePage] Failed to fetch listings:', err);
+                return { listings: [] };
+              })
+            : Promise.resolve({ listings: [] }),
           // Fetch show config (cache-first)
           db ? getDocCacheFirst(doc(db, 'config', 'show')) : Promise.resolve(null),
           // Fetch walkthrough config (cache-first)
@@ -364,27 +384,40 @@ export default function HomePage() {
           // Fetch legacy creators
           fetch('/api/legacy/creators').then(r => r.ok ? r.json() : null).catch(() => null),
           // Fetch discounts (if user authenticated)
-          user && auth.currentUser 
-            ? auth.currentUser.getIdToken().then((token: string) => 
-                fetch('/api/discounts', {
-                  headers: { Authorization: `Bearer ${token}` },
-                }).then(async (r) => {
-                  if (r.ok) {
-                    return r.json();
-                  } else {
-                    const errorData = await r.json().catch(() => ({}));
-                    console.warn('[HomePage] Discounts API error:', r.status, errorData.error || 'Unknown error');
-                    // Return empty discounts array instead of null so UI doesn't break
-                    return { discounts: [] };
-                  }
-                }).catch((err) => {
-                  console.error('[HomePage] Failed to fetch discounts:', err);
+          idToken
+            ? fetch('/api/discounts', {
+                headers: { Authorization: `Bearer ${idToken}` },
+              }).then(async (r) => {
+                if (r.ok) {
+                  return r.json();
+                } else {
+                  const errorData = await r.json().catch(() => ({}));
+                  console.warn('[HomePage] Discounts API error:', r.status, errorData.error || 'Unknown error');
+                  // Return empty discounts array instead of null so UI doesn't break
                   return { discounts: [] };
-                })
-              )
+                }
+              }).catch((err) => {
+                console.error('[HomePage] Failed to fetch discounts:', err);
+                return { discounts: [] };
+              })
             : Promise.resolve({ discounts: [] }),
-          // Fetch assets (for featured asset) - cache-first
-          getDocsCacheFirst(query(collection(db, 'assets'), orderBy('createdAt', 'desc'), limit(1)))
+          // Fetch assets via API (if authenticated)
+          idToken
+            ? fetch('/api/home/assets', {
+                headers: { Authorization: `Bearer ${idToken}` },
+              }).then(async (r) => {
+                if (r.ok) {
+                  return r.json();
+                } else {
+                  const errorData = await r.json().catch(() => ({}));
+                  console.warn('[HomePage] Assets API error:', r.status, errorData.error || 'Unknown error');
+                  return { asset: null };
+                }
+              }).catch((err) => {
+                console.error('[HomePage] Failed to fetch assets:', err);
+                return { asset: null };
+              })
+            : Promise.resolve({ asset: null })
         ]);
 
         // Process recent lessons from API (instant - no nested queries!)
@@ -398,33 +431,22 @@ export default function HomePage() {
         }
 
         // Process marketplace listings (progressive rendering)
-        if (listingsSnap.status === 'fulfilled') {
-          const listingsData: Product[] = [];
-          listingsSnap.value.forEach((doc) => {
-            const data = doc.data() as any;
-            listingsData.push({
-              id: doc.id,
-              title: data.title || 'Untitled Listing',
-              image: data.images && data.images.length > 0 ? data.images[0] : '',
-              price: data.price || 0,
-              condition: data.condition || '',
-              images: data.images || [],
-            });
-          });
+        if (listingsResponse.status === 'fulfilled' && listingsResponse.value) {
+          const listingsData = listingsResponse.value.listings || [];
           console.log('[HomePage] Loaded marketplace listings:', listingsData.length, 'User:', user?.uid);
           if (listingsData.length === 0) {
-            console.log('[HomePage] No marketplace listings found - query succeeded but returned empty');
+            console.log('[HomePage] No marketplace listings found - API returned empty');
           }
           startTransition(() => {
             setProducts(listingsData);
           });
-        } else if (listingsSnap.status === 'rejected') {
-          console.error('[HomePage] Failed to fetch listings:', listingsSnap.reason);
+        } else if (listingsResponse.status === 'rejected') {
+          console.error('[HomePage] Failed to fetch listings:', listingsResponse.reason);
           console.error('[HomePage] Listings error details:', {
-            error: listingsSnap.reason,
-            message: listingsSnap.reason?.message,
-            code: listingsSnap.reason?.code,
-            name: listingsSnap.reason?.name,
+            error: listingsResponse.reason,
+            message: listingsResponse.reason?.message,
+            code: listingsResponse.reason?.code,
+            name: listingsResponse.reason?.name,
             user: user?.uid,
           });
         }
@@ -465,14 +487,13 @@ export default function HomePage() {
         }
 
         // Process featured asset (progressive rendering)
-        if (assetsSnap.status === 'fulfilled' && assetsSnap.value) {
-          if (!assetsSnap.value.empty) {
-            const firstAsset = assetsSnap.value.docs[0];
-            const assetData = firstAsset.data() as any;
-            console.log('[HomePage] Loaded featured asset:', firstAsset.id, assetData.title, 'User:', user?.uid);
+        if (assetsResponse.status === 'fulfilled' && assetsResponse.value) {
+          const assetData = assetsResponse.value.asset;
+          if (assetData) {
+            console.log('[HomePage] Loaded featured asset:', assetData.id, assetData.title, 'User:', user?.uid);
             startTransition(() => {
               setFeaturedAsset({
-                id: firstAsset.id,
+                id: assetData.id,
                 title: assetData.title || 'Untitled Asset',
                 category: assetData.category || '',
                 thumbnailUrl: assetData.thumbnailUrl || '',
@@ -480,15 +501,15 @@ export default function HomePage() {
               });
             });
           } else {
-            console.log('[HomePage] Assets query returned empty - no assets found in database', 'User:', user?.uid, 'Authenticated:', !!user);
+            console.log('[HomePage] Assets API returned null - no assets found in database', 'User:', user?.uid, 'Authenticated:', !!user);
           }
-        } else if (assetsSnap.status === 'rejected') {
-          console.error('[HomePage] Failed to fetch assets:', assetsSnap.reason);
+        } else if (assetsResponse.status === 'rejected') {
+          console.error('[HomePage] Failed to fetch assets:', assetsResponse.reason);
           console.error('[HomePage] Assets error details:', {
-            error: assetsSnap.reason,
-            message: assetsSnap.reason?.message,
-            code: assetsSnap.reason?.code,
-            name: assetsSnap.reason?.name,
+            error: assetsResponse.reason,
+            message: assetsResponse.reason?.message,
+            code: assetsResponse.reason?.code,
+            name: assetsResponse.reason?.name,
             user: user?.uid,
             authenticated: !!user,
           });
