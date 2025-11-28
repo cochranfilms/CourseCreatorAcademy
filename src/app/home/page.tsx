@@ -398,11 +398,17 @@ export default function HomePage() {
               images: data.images || [],
             });
           });
+          console.log('[HomePage] Loaded marketplace listings:', listingsData.length);
           startTransition(() => {
             setProducts(listingsData);
           });
         } else if (listingsSnap.status === 'rejected') {
           console.error('[HomePage] Failed to fetch listings:', listingsSnap.reason);
+          console.error('[HomePage] Listings error details:', {
+            error: listingsSnap.reason,
+            message: listingsSnap.reason?.message,
+            code: listingsSnap.reason?.code,
+          });
         }
 
         // Process discounts (progressive rendering)
@@ -456,10 +462,15 @@ export default function HomePage() {
               });
             });
           } else {
-            console.warn('[HomePage] Assets query returned empty - no assets found');
+            console.log('[HomePage] Assets query returned empty - no assets found in database');
           }
         } else if (assetsSnap.status === 'rejected') {
           console.error('[HomePage] Failed to fetch assets:', assetsSnap.reason);
+          console.error('[HomePage] Assets error details:', {
+            error: assetsSnap.reason,
+            message: assetsSnap.reason?.message,
+            code: assetsSnap.reason?.code,
+          });
         }
 
         // Process show episode
@@ -1083,7 +1094,32 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
+            <div 
+              className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0 cursor-pointer group hover:border-ccaBlue/50 transition-all"
+              onClick={async () => {
+                try {
+                  const response = await fetch(`/api/assets/download?assetId=${featuredAsset.id}`);
+                  if (!response.ok) {
+                    // If download fails, navigate to assets page instead
+                    window.location.href = '/assets';
+                    return;
+                  }
+                  const data = await response.json();
+                  if (data.downloadUrl) {
+                    const link = document.createElement('a');
+                    link.href = data.downloadUrl;
+                    link.download = featuredAsset.title.replace(/\s+/g, '_') + '.zip';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                } catch (error) {
+                  console.error('Error downloading asset:', error);
+                  // Fallback to assets page on error
+                  window.location.href = '/assets';
+                }
+              }}
+            >
               <div className="relative aspect-video bg-neutral-900">
                 {featuredAsset.thumbnailUrl && 
                  featuredAsset.thumbnailUrl.startsWith('https://') && 
@@ -1092,7 +1128,7 @@ export default function HomePage() {
                   <img 
                     src={featuredAsset.thumbnailUrl} 
                     alt={featuredAsset.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
                     loading="eager"
                     decoding="async"
                     onError={(e) => {
@@ -1106,6 +1142,11 @@ export default function HomePage() {
                     </svg>
                   </div>
                 )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <svg className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </div>
               </div>
               <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0 min-h-0">
                 <div className="text-[9px] sm:text-[10px] md:text-xs text-neutral-400 mb-1 sm:mb-1.5 md:mb-2 flex-shrink-0">ASSETS</div>
@@ -1115,12 +1156,12 @@ export default function HomePage() {
                 ) : featuredAsset.category ? (
                   <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed line-clamp-2 break-words overflow-hidden">{featuredAsset.category}</p>
                 ) : null}
-                <Link href="/assets" className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center flex-shrink-0">
-                  CHECK IT OUT
+                <div className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-medium text-white group-hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center flex-shrink-0">
+                  DOWNLOAD ASSET
                   <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                </Link>
+                </div>
               </div>
             </div>
           )}

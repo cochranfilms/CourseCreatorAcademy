@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getUserIdFromAuthHeader } from '@/lib/api/auth';
+import { hasGlobalMembership } from '@/lib/entitlements';
 
 // GET /api/assets/download?assetId=xxx
 // Returns a signed download URL for the asset file
@@ -14,6 +16,18 @@ export async function GET(req: NextRequest) {
 
     if (!adminDb || !adminStorage) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+    }
+
+    // Verify user is authenticated and has membership (including legacy creators)
+    const uid = await getUserIdFromAuthHeader(req);
+    if (!uid) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check membership (includes legacy creators)
+    const hasMembership = await hasGlobalMembership(uid);
+    if (!hasMembership) {
+      return NextResponse.json({ error: 'Membership required' }, { status: 403 });
     }
 
     // Get asset document from Firestore
