@@ -5,7 +5,7 @@ import {
   getFirestore,
   initializeFirestore,
   persistentLocalCache,
-  persistentSingleTabManager,
+  persistentMultipleTabManager,
   CACHE_SIZE_UNLIMITED
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -54,7 +54,7 @@ export const db = firebaseReady && app
   ? (typeof window !== 'undefined'
       ? initializeFirestore(app, {
           localCache: persistentLocalCache({
-            tabManager: persistentSingleTabManager({}),
+            tabManager: persistentMultipleTabManager({}),
             cacheSizeBytes: CACHE_SIZE_UNLIMITED
           }),
         } as any)
