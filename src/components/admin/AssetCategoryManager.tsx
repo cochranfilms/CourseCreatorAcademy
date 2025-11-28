@@ -1,7 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, getDocs, orderBy, where } from 'firebase/firestore';
-import { db, firebaseReady } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface OverlayFile {
@@ -51,55 +49,28 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
     Plugins: overlayFiles.filter(f => getSubCategory(f.storagePath) === 'Plugins'),
   };
 
-  // Load individual overlay/transition files
+  // Load individual overlay/transition files via API
   useEffect(() => {
     const loadOverlayFiles = async () => {
-      if (!firebaseReady || !db) {
+      if (!user) {
         setLoading(false);
         return;
       }
 
       try {
-        // Get all assets in Overlays & Transitions category
-        const assetsQuery = query(
-          collection(db, 'assets'),
-          where('category', '==', 'Overlays & Transitions')
-        );
-        const assetsSnapshot = await getDocs(assetsQuery);
-        
-        const allFiles: OverlayFile[] = [];
+        const idToken = await user.getIdToken();
+        const response = await fetch('/api/admin/assets/overlay-files', {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
 
-        // Fetch overlay files from each asset's subcollection
-        for (const assetDoc of assetsSnapshot.docs) {
-          const assetId = assetDoc.id;
-          const assetData = assetDoc.data();
-          const assetTitle = assetData.title || 'Untitled';
-
-          try {
-            const overlaysQuery = query(
-              collection(db, 'assets', assetId, 'overlays'),
-              orderBy('fileName', 'asc')
-            );
-            const overlaysSnapshot = await getDocs(overlaysQuery);
-            
-            overlaysSnapshot.forEach((doc) => {
-              const data = doc.data();
-              allFiles.push({
-                id: doc.id,
-                assetId,
-                assetTitle,
-                fileName: data.fileName || '',
-                storagePath: data.storagePath || '',
-                previewStoragePath: data.previewStoragePath,
-                fileType: data.fileType,
-              });
-            });
-          } catch (error) {
-            console.error(`Error loading overlays for asset ${assetId}:`, error);
-          }
+        if (!response.ok) {
+          throw new Error('Failed to fetch overlay files');
         }
 
-        setOverlayFiles(allFiles);
+        const data = await response.json();
+        setOverlayFiles(data.files || []);
       } catch (error) {
         console.error('Error loading overlay files:', error);
       } finally {
@@ -108,7 +79,7 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
     };
 
     loadOverlayFiles();
-  }, []);
+  }, [user]);
 
   const handleDragStart = useCallback((e: React.DragEvent, file: OverlayFile) => {
     setDraggedFile(file);
@@ -171,45 +142,17 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
         throw new Error(error.error || 'Failed to update category');
       }
 
-      // Reload overlay files
-      const assetsQuery = query(
-        collection(db, 'assets'),
-        where('category', '==', 'Overlays & Transitions')
-      );
-      const assetsSnapshot = await getDocs(assetsQuery);
-      
-      const allFiles: OverlayFile[] = [];
+      // Reload overlay files via API
+      const reloadResponse = await fetch('/api/admin/assets/overlay-files', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
 
-      for (const assetDoc of assetsSnapshot.docs) {
-        const assetId = assetDoc.id;
-        const assetData = assetDoc.data();
-        const assetTitle = assetData.title || 'Untitled';
-
-        try {
-          const overlaysQuery = query(
-            collection(db, 'assets', assetId, 'overlays'),
-            orderBy('fileName', 'asc')
-          );
-          const overlaysSnapshot = await getDocs(overlaysQuery);
-          
-          overlaysSnapshot.forEach((doc) => {
-            const data = doc.data();
-            allFiles.push({
-              id: doc.id,
-              assetId,
-              assetTitle,
-              fileName: data.fileName || '',
-              storagePath: data.storagePath || '',
-              previewStoragePath: data.previewStoragePath,
-              fileType: data.fileType,
-            });
-          });
-        } catch (error) {
-          console.error(`Error loading overlays for asset ${assetId}:`, error);
-        }
+      if (reloadResponse.ok) {
+        const reloadData = await reloadResponse.json();
+        setOverlayFiles(reloadData.files || []);
       }
-
-      setOverlayFiles(allFiles);
 
       if (onCategoryChange) {
         onCategoryChange();
