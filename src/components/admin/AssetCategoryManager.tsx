@@ -173,9 +173,10 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
       if (onCategoryChange) {
         onCategoryChange();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating category:', error);
-      alert(`Failed to update category: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update category';
+      alert(`Failed to update category: ${errorMessage}`);
     } finally {
       setUpdating(null);
       setDraggedAsset(null);

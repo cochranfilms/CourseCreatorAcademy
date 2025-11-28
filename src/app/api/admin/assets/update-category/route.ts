@@ -141,12 +141,12 @@ export async function POST(req: NextRequest) {
 
     // Step 4: Update all overlay/transition documents in the subcollection
     const overlaysSnapshot = await assetRef.collection('overlays').get();
-    const updatePromises = overlaysSnapshot.docs.map(async (doc) => {
+    const updatePromises = overlaysSnapshot.docs.map(async (doc: FirebaseFirestore.QueryDocumentSnapshot) => {
       const overlayData = doc.data();
       const oldOverlayPath = overlayData.storagePath || '';
       const newOverlayPath = oldOverlayPath.replace(oldFolderPrefix, newFolderPrefix);
 
-      const updates: any = {
+      const updates: Record<string, string> = {
         storagePath: newOverlayPath,
       };
 
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
 
     // Step 5: Update sound effects if this is an SFX/Plugins asset
     const soundEffectsSnapshot = await assetRef.collection('soundEffects').get();
-    const sfxUpdatePromises = soundEffectsSnapshot.docs.map(async (doc) => {
+    const sfxUpdatePromises = soundEffectsSnapshot.docs.map(async (doc: FirebaseFirestore.QueryDocumentSnapshot) => {
       const sfxData = doc.data();
       const oldSfxPath = sfxData.storagePath || '';
       const newSfxPath = oldSfxPath.replace(oldFolderPrefix, newFolderPrefix);
@@ -182,10 +182,11 @@ export async function POST(req: NextRequest) {
       oldPath: oldStoragePath,
       newPath: newStoragePath,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating asset category:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update asset category';
     return NextResponse.json(
-      { error: error.message || 'Failed to update asset category' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
