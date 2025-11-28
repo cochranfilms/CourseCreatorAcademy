@@ -308,13 +308,19 @@ export default function HomePage() {
   const getDocsCacheFirst = useCallback(async (queryRef: ReturnType<typeof query>) => {
     try {
       return await getDocsFromCache(queryRef);
-    } catch (cacheError) {
+    } catch (cacheError: any) {
       // Cache miss or error - fall back to network
       console.log('[HomePage] Cache miss for query, fetching from network');
       try {
-        return await getDocs(queryRef);
-      } catch (networkError) {
-        console.error('[HomePage] Error fetching query from network:', networkError);
+        const result = await getDocs(queryRef);
+        return result;
+      } catch (networkError: any) {
+        console.error('[HomePage] Error fetching query from network:', {
+          error: networkError,
+          message: networkError?.message,
+          code: networkError?.code,
+          name: networkError?.name,
+        });
         throw networkError;
       }
     }
@@ -327,6 +333,13 @@ export default function HomePage() {
         setDataLoading(false);
         return;
       }
+
+      console.log('[HomePage] Starting data fetch', {
+        user: user?.uid,
+        authenticated: !!user,
+        firebaseReady,
+        dbReady: !!db,
+      });
 
       try {
         // Fetch critical data first (cache-first strategy)
@@ -398,7 +411,10 @@ export default function HomePage() {
               images: data.images || [],
             });
           });
-          console.log('[HomePage] Loaded marketplace listings:', listingsData.length);
+          console.log('[HomePage] Loaded marketplace listings:', listingsData.length, 'User:', user?.uid);
+          if (listingsData.length === 0) {
+            console.log('[HomePage] No marketplace listings found - query succeeded but returned empty');
+          }
           startTransition(() => {
             setProducts(listingsData);
           });
@@ -408,6 +424,8 @@ export default function HomePage() {
             error: listingsSnap.reason,
             message: listingsSnap.reason?.message,
             code: listingsSnap.reason?.code,
+            name: listingsSnap.reason?.name,
+            user: user?.uid,
           });
         }
 
@@ -451,7 +469,7 @@ export default function HomePage() {
           if (!assetsSnap.value.empty) {
             const firstAsset = assetsSnap.value.docs[0];
             const assetData = firstAsset.data() as any;
-            console.log('[HomePage] Loaded featured asset:', firstAsset.id, assetData.title);
+            console.log('[HomePage] Loaded featured asset:', firstAsset.id, assetData.title, 'User:', user?.uid);
             startTransition(() => {
               setFeaturedAsset({
                 id: firstAsset.id,
@@ -462,7 +480,7 @@ export default function HomePage() {
               });
             });
           } else {
-            console.log('[HomePage] Assets query returned empty - no assets found in database');
+            console.log('[HomePage] Assets query returned empty - no assets found in database', 'User:', user?.uid, 'Authenticated:', !!user);
           }
         } else if (assetsSnap.status === 'rejected') {
           console.error('[HomePage] Failed to fetch assets:', assetsSnap.reason);
@@ -470,6 +488,9 @@ export default function HomePage() {
             error: assetsSnap.reason,
             message: assetsSnap.reason?.message,
             code: assetsSnap.reason?.code,
+            name: assetsSnap.reason?.name,
+            user: user?.uid,
+            authenticated: !!user,
           });
         }
 
@@ -1098,12 +1119,27 @@ export default function HomePage() {
               className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0 cursor-pointer group hover:border-ccaBlue/50 transition-all"
               onClick={async () => {
                 try {
-                  const response = await fetch(`/api/assets/download?assetId=${featuredAsset.id}`);
+                  if (!user || !auth.currentUser) {
+                    console.error('[HomePage] User not authenticated for download');
+                    window.location.href = '/assets';
+                    return;
+                  }
+                  
+                  const idToken = await auth.currentUser.getIdToken();
+                  const response = await fetch(`/api/assets/download?assetId=${featuredAsset.id}`, {
+                    headers: {
+                      'Authorization': `Bearer ${idToken}`,
+                    },
+                  });
+                  
                   if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('[HomePage] Download failed:', response.status, errorData.error || 'Unknown error');
                     // If download fails, navigate to assets page instead
                     window.location.href = '/assets';
                     return;
                   }
+                  
                   const data = await response.json();
                   if (data.downloadUrl) {
                     const link = document.createElement('a');
@@ -1114,7 +1150,7 @@ export default function HomePage() {
                     document.body.removeChild(link);
                   }
                 } catch (error) {
-                  console.error('Error downloading asset:', error);
+                  console.error('[HomePage] Error downloading asset:', error);
                   // Fallback to assets page on error
                   window.location.href = '/assets';
                 }
