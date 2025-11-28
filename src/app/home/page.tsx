@@ -293,16 +293,30 @@ export default function HomePage() {
   const getDocCacheFirst = useCallback(async (docRef: ReturnType<typeof doc>) => {
     try {
       return await getDocFromCache(docRef);
-    } catch {
-      return getDoc(docRef);
+    } catch (cacheError) {
+      // Cache miss or error - fall back to network
+      console.log('[HomePage] Cache miss for doc, fetching from network');
+      try {
+        return await getDoc(docRef);
+      } catch (networkError) {
+        console.error('[HomePage] Error fetching doc from network:', networkError);
+        throw networkError;
+      }
     }
   }, []);
 
   const getDocsCacheFirst = useCallback(async (queryRef: ReturnType<typeof query>) => {
     try {
       return await getDocsFromCache(queryRef);
-    } catch {
-      return getDocs(queryRef);
+    } catch (cacheError) {
+      // Cache miss or error - fall back to network
+      console.log('[HomePage] Cache miss for query, fetching from network');
+      try {
+        return await getDocs(queryRef);
+      } catch (networkError) {
+        console.error('[HomePage] Error fetching query from network:', networkError);
+        throw networkError;
+      }
     }
   }, []);
 
@@ -354,6 +368,8 @@ export default function HomePage() {
           startTransition(() => {
             setRecentlyAdded(recentLessonsResponse.value.lessons);
           });
+        } else if (recentLessonsResponse.status === 'rejected') {
+          console.error('[HomePage] Failed to fetch recent lessons:', recentLessonsResponse.reason);
         }
 
         // Process marketplace listings (progressive rendering)
@@ -373,13 +389,21 @@ export default function HomePage() {
           startTransition(() => {
             setProducts(listingsData);
           });
+        } else if (listingsSnap.status === 'rejected') {
+          console.error('[HomePage] Failed to fetch listings:', listingsSnap.reason);
         }
 
         // Process discounts (progressive rendering)
         if (discountsData.status === 'fulfilled' && discountsData.value) {
+          const discountList = discountsData.value.discounts || [];
+          console.log('[HomePage] Loaded discounts:', discountList.length);
           startTransition(() => {
-            setDiscounts((discountsData.value.discounts || []).slice(0, 3));
+            setDiscounts(discountList.slice(0, 3));
           });
+        } else if (discountsData.status === 'rejected') {
+          console.error('[HomePage] Failed to fetch discounts:', discountsData.reason);
+        } else if (discountsData.status === 'fulfilled' && !discountsData.value) {
+          console.warn('[HomePage] Discounts API returned null/undefined');
         }
 
         // Process Garrett King (progressive rendering)
@@ -481,10 +505,10 @@ export default function HomePage() {
           }
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('[HomePage] Error fetching data:', error);
       } finally {
-        // Only set loading to false if we haven't already (progressive rendering)
-        setDataLoading((prev) => prev ? false : prev);
+        // Set loading to false after all data fetching attempts
+        setDataLoading(false);
       }
     };
 
