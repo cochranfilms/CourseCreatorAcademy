@@ -39,10 +39,17 @@ export default function DiscountsPage() {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch discounts');
+          // If 403, user might have membership but check failed - log and show empty
+          if (response.status === 403) {
+            console.warn('[Discounts Page] Membership check failed, but user is authenticated. Check user document membershipActive field.');
+            setDiscounts([]);
+            setError('Unable to verify membership. Please contact support if you believe this is an error.');
+          } else {
+            throw new Error(data.error || 'Failed to fetch discounts');
+          }
+        } else {
+          setDiscounts(data.discounts || []);
         }
-
-        setDiscounts(data.discounts || []);
       } catch (err: any) {
         setError(err.message || 'Failed to load discounts');
       } finally {

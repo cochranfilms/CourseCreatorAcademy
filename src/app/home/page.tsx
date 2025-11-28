@@ -355,9 +355,21 @@ export default function HomePage() {
             ? auth.currentUser.getIdToken().then((token: string) => 
                 fetch('/api/discounts', {
                   headers: { Authorization: `Bearer ${token}` },
-                }).then(r => r.ok ? r.json() : null).catch(() => null)
+                }).then(async (r) => {
+                  if (r.ok) {
+                    return r.json();
+                  } else {
+                    const errorData = await r.json().catch(() => ({}));
+                    console.warn('[HomePage] Discounts API error:', r.status, errorData.error || 'Unknown error');
+                    // Return empty discounts array instead of null so UI doesn't break
+                    return { discounts: [] };
+                  }
+                }).catch((err) => {
+                  console.error('[HomePage] Failed to fetch discounts:', err);
+                  return { discounts: [] };
+                })
               )
-            : Promise.resolve(null),
+            : Promise.resolve({ discounts: [] }),
           // Fetch assets (for featured asset) - cache-first
           getDocsCacheFirst(query(collection(db, 'assets'), orderBy('createdAt', 'desc'), limit(1)))
         ]);
@@ -1055,7 +1067,7 @@ export default function HomePage() {
                 {featuredAsset.description ? (
                   <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1 line-clamp-2 break-words">{featuredAsset.description}</p>
                 ) : featuredAsset.category ? (
-                  <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1 break-words">{featuredAsset.category}</p>
+                  <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1 line-clamp-2 break-words">{featuredAsset.category}</p>
                 ) : null}
                 <Link href="/assets" className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center">
                   CHECK IT OUT
