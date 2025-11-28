@@ -64,16 +64,12 @@ export async function GET(req: NextRequest) {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1);
     
-    try {
-      const [signedUrl] = await file.getSignedUrl({
-        action: 'read',
-        expires: expiresAt,
-      });
+    const [signedUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: expiresAt,
+    });
 
-      return NextResponse.json({ downloadUrl: signedUrl });
-    } catch (signError: any) {
-      throw signError;
-    }
+    return NextResponse.json({ downloadUrl: signedUrl });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'Failed to generate download URL' }, { status: 500 });
   }

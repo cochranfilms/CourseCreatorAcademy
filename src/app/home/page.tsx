@@ -292,11 +292,7 @@ export default function HomePage() {
       return await getDocFromCache(docRef);
     } catch (cacheError) {
       // Cache miss or error - fall back to network
-      try {
-        return await getDoc(docRef);
-      } catch (networkError) {
-        throw networkError;
-      }
+      return await getDoc(docRef);
     }
   }, []);
 
@@ -305,11 +301,7 @@ export default function HomePage() {
       return await getDocsFromCache(queryRef);
     } catch (cacheError: any) {
       // Cache miss or error - fall back to network
-      try {
-        return await getDocs(queryRef);
-      } catch (networkError: any) {
-        throw networkError;
-      }
+      return await getDocs(queryRef);
     }
   }, []);
 
