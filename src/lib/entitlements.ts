@@ -3,13 +3,37 @@ import { adminDb } from '@/lib/firebaseAdmin';
 /**
  * Returns true if the user has any CCA membership active.
  * Source of truth: users/{uid}.membershipActive (kept in sync via Stripe webhook)
+ * Also returns true for legacy creators (users who own a legacy_creators document)
  */
 export async function hasGlobalMembership(userId: string): Promise<boolean> {
   if (!adminDb || !userId) return false;
   try {
     const userDoc = await adminDb.collection('users').doc(String(userId)).get();
     const data = userDoc.exists ? (userDoc.data() as any) : null;
-    return Boolean(data?.membershipActive);
+    const hasMembership = Boolean(data?.membershipActive);
+    
+    // If user has active membership, return true
+    if (hasMembership) return true;
+    
+    // If no active membership, check if user is a legacy creator
+    // Legacy creators should have the same access as members for homepage content
+    try {
+      const legacyCreatorQuery = adminDb
+        .collection('legacy_creators')
+        .where('ownerUserId', '==', userId)
+        .limit(1);
+      
+      const legacyCreatorSnap = await legacyCreatorQuery.get();
+      if (!legacyCreatorSnap.empty) {
+        // User is a legacy creator - grant them member access
+        return true;
+      }
+    } catch (legacyCheckError) {
+      // If legacy check fails, continue with membership check result
+      console.warn('[hasGlobalMembership] Error checking legacy creator status:', legacyCheckError);
+    }
+    
+    return false;
   } catch {
     return false;
   }
