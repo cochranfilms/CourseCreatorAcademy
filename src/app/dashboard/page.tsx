@@ -59,7 +59,7 @@ type Opportunity = {
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'projects' | 'social' | 'email' | 'privacy' | 'orders' | 'onboarding' | 'legacy' | 'jobs'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'social' | 'email' | 'privacy' | 'orders' | 'onboarding' | 'legacy' | 'jobs' | 'edit'>('projects');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -527,6 +527,10 @@ export default function DashboardPage() {
       await setDoc(doc(db, 'users', user.uid), profileData, { merge: true });
       setProfile(profileData);
       setShowEditModal(false);
+      // If we're on the edit tab, stay on it; otherwise switch to projects
+      if (activeTab !== 'edit') {
+        setActiveTab('projects');
+      }
     } catch (error) {
       console.error('Error saving profile:', error);
       alert('Failed to save profile. Please try again.');
@@ -932,16 +936,6 @@ export default function DashboardPage() {
           </div>
             {/* Right Side - Action Buttons */}
             <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 w-full md:w-auto">
-              <button
-                onClick={() => setShowEditModal(true)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition text-sm whitespace-nowrap"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                <span className="hidden sm:inline">Edit Profile</span>
-                <span className="sm:hidden">Edit</span>
-              </button>
               <button 
                 onClick={() => setShowShareModal(true)}
                 className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-neutral-900 border border-neutral-800 text-white hover:bg-neutral-800 transition text-sm whitespace-nowrap"
@@ -975,7 +969,7 @@ export default function DashboardPage() {
 
         {/* Sub-Navigation Tabs */}
         <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-hide w-full -mx-3 sm:mx-0 px-3 sm:px-0">
-          {(['projects', 'social', 'email', 'privacy', 'orders', 'onboarding', 'legacy', 'jobs'] as const).map((tab) => (
+          {(['projects', 'social', 'email', 'privacy', 'orders', 'onboarding', 'legacy', 'jobs', 'edit'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -985,7 +979,7 @@ export default function DashboardPage() {
                   : 'bg-neutral-900/60 backdrop-blur-sm text-neutral-400 hover:text-white border border-neutral-800/50'
               }`}
             >
-              {tab === 'legacy' ? 'Subscriptions' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'legacy' ? 'Subscriptions' : tab === 'edit' ? 'Edit Profile' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
@@ -1418,6 +1412,126 @@ export default function DashboardPage() {
               <p className="text-neutral-400 text-sm">Manage your job applications and opportunities</p>
             </div>
             <JobsTab userId={user.uid} isOwnProfile={true} />
+          </div>
+        )}
+
+        {activeTab === 'edit' && (
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-6">Edit Profile</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-neutral-300">Display Name *</label>
+                <input
+                  value={editDisplayName}
+                  onChange={(e) => setEditDisplayName(e.target.value)}
+                  className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-neutral-300">Handle</label>
+                <input
+                  value={editHandle}
+                  onChange={(e) => setEditHandle(e.target.value.replace('@', ''))}
+                  placeholder="johndoe"
+                  className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-neutral-300">Title</label>
+                <input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="e.g., Videographer, Editor"
+                  className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-neutral-300">Specialties</label>
+                <input
+                  value={editSpecialties}
+                  onChange={(e) => setEditSpecialties(e.target.value)}
+                  placeholder="e.g., Real Estate, Ads, And Commercials"
+                  className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-neutral-300">Location</label>
+                <input
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  placeholder="e.g., Atlanta, Ga"
+                  className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-neutral-300">Bio</label>
+                <textarea
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  placeholder="Tell us about yourself..."
+                  rows={3}
+                  className="w-full bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-neutral-300">Skills</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {editSkills.map((skill, idx) => (
+                    <span
+                      key={idx}
+                      className="flex items-center gap-2 px-3 py-1  bg-neutral-800 text-neutral-300 text-sm border border-neutral-700"
+                    >
+                      {skill}
+                      <button
+                        onClick={() => removeSkill(skill)}
+                        className="hover:text-white"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={newSkill}
+                    onChange={(e) => setNewSkill(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addSkill()}
+                    placeholder="Add a skill"
+                    className="flex-1 bg-neutral-900 border border-neutral-800  px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue"
+                  />
+                  <button
+                    onClick={addSkill}
+                    className="px-4 py-2  bg-neutral-800 border border-neutral-700 text-white hover:bg-neutral-700 transition"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="mt-4">
+                  <ProfileImageUpload onUploadComplete={(url) => setEditPhotoURL(url)} />
+                </div>
+                <div className="mt-4">
+                  <BannerImageUpload />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleSaveProfile}
+                  className="px-6 py-2  bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all"
+                >
+                  Save Profile
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
