@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 type EnrollmentCertificateModalProps = {
   isOpen: boolean;
@@ -10,13 +12,113 @@ type EnrollmentCertificateModalProps = {
   userName: string;
 };
 
+// Create signature SVG as a data URL - Cody Cochran signature
+const createSignatureSVG = (): string => {
+  const svg = `
+    <svg width="220" height="70" xmlns="http://www.w3.org/2000/svg">
+      <!-- C -->
+      <path d="M 15 35 Q 10 25, 15 20 Q 20 15, 25 18" 
+            stroke="#1f2937" 
+            stroke-width="2.8" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- o -->
+      <path d="M 30 28 Q 35 25, 40 28 Q 35 32, 30 28" 
+            stroke="#1f2937" 
+            stroke-width="2.5" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- d -->
+      <path d="M 45 20 L 45 38 Q 50 40, 55 38" 
+            stroke="#1f2937" 
+            stroke-width="2.5" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- y -->
+      <path d="M 60 25 Q 65 30, 70 35 L 68 42" 
+            stroke="#1f2937" 
+            stroke-width="2.5" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- C -->
+      <path d="M 85 35 Q 80 25, 85 20 Q 90 15, 95 18" 
+            stroke="#1f2937" 
+            stroke-width="2.8" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- o -->
+      <path d="M 100 28 Q 105 25, 110 28 Q 105 32, 100 28" 
+            stroke="#1f2937" 
+            stroke-width="2.5" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- c -->
+      <path d="M 115 28 Q 120 25, 125 28" 
+            stroke="#1f2937" 
+            stroke-width="2.5" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- h -->
+      <path d="M 130 20 L 130 38 M 130 30 Q 135 28, 140 30 L 140 38" 
+            stroke="#1f2937" 
+            stroke-width="2.5" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- r -->
+      <path d="M 145 30 L 145 38 M 145 30 Q 148 28, 152 30" 
+            stroke="#1f2937" 
+            stroke-width="2.5" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- a -->
+      <path d="M 157 32 Q 162 30, 167 32 Q 162 35, 157 32 M 162 32 L 162 38" 
+            stroke="#1f2937" 
+            stroke-width="2.5" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- n -->
+      <path d="M 172 30 L 172 38 M 172 30 Q 177 28, 182 30 L 182 38" 
+            stroke="#1f2937" 
+            stroke-width="2.5" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"/>
+      <!-- Underline flourish -->
+      <path d="M 15 45 Q 50 48, 100 46 Q 150 44, 190 45" 
+            stroke="#1f2937" 
+            stroke-width="2" 
+            fill="none" 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            opacity="0.6"/>
+    </svg>
+  `;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+};
+
 export function EnrollmentCertificateModal({ isOpen, onClose, userName }: EnrollmentCertificateModalProps) {
   const certificateRef = useRef<HTMLDivElement>(null);
+  const signatureRef = useRef<HTMLImageElement>(null);
+  const logoRef = useRef<HTMLImageElement>(null);
   const { user } = useAuth();
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      // Generate signature on mount
+      setSignatureDataUrl(createSignatureSVG());
     } else {
       document.body.style.overflow = 'unset';
     }
@@ -76,19 +178,12 @@ export function EnrollmentCertificateModal({ isOpen, onClose, userName }: Enroll
                 .certificate-logo {
                   display: flex;
                   align-items: center;
-                  gap: 12px;
+                  gap: 16px;
                 }
-                .logo-icon {
-                  width: 60px;
+                .certificate-logo img {
                   height: 60px;
-                  background: linear-gradient(135deg, #dc2626, #991b1b);
-                  border-radius: 8px;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  color: white;
-                  font-size: 24px;
-                  font-weight: bold;
+                  width: auto;
+                  object-fit: contain;
                 }
                 .logo-text {
                   font-size: 32px;
@@ -147,11 +242,10 @@ export function EnrollmentCertificateModal({ isOpen, onClose, userName }: Enroll
                 .certificate-signature {
                   margin-top: 60px;
                 }
-                .signature-line {
-                  margin-top: 50px;
-                  border-top: 2px solid #1f2937;
-                  width: 300px;
+                .signature-image {
+                  margin-top: 30px;
                   margin-bottom: 8px;
+                  height: 50px;
                 }
                 .signature-name {
                   font-size: 16px;
@@ -189,8 +283,78 @@ export function EnrollmentCertificateModal({ isOpen, onClose, userName }: Enroll
     }
   };
 
-  const handleDownload = () => {
-    handlePrint();
+  const handleDownload = async () => {
+    if (!certificateRef.current || isGeneratingPDF) return;
+    
+    setIsGeneratingPDF(true);
+    try {
+      // Wait for images to load before generating PDF
+      const imagePromises: Promise<void>[] = [];
+      
+      if (signatureRef.current && !signatureRef.current.complete) {
+        imagePromises.push(new Promise((resolve) => {
+          if (signatureRef.current) {
+            signatureRef.current.onload = () => resolve();
+            signatureRef.current.onerror = () => resolve();
+          } else {
+            resolve();
+          }
+        }));
+      }
+      
+      if (logoRef.current && !logoRef.current.complete) {
+        imagePromises.push(new Promise((resolve) => {
+          if (logoRef.current) {
+            logoRef.current.onload = () => resolve();
+            logoRef.current.onerror = () => resolve();
+          } else {
+            resolve();
+          }
+        }));
+      }
+      
+      await Promise.all(imagePromises);
+      
+      // Additional small delay to ensure all images are rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Create a clone of the certificate element for PDF generation
+      const element = certificateRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: element.offsetWidth,
+        height: element.offsetHeight,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'in',
+        format: [8.5, 11],
+      });
+
+      // Calculate dimensions to fit the page
+      const pdfWidth = 8.5;
+      const pdfHeight = 11;
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / (imgWidth / 96), pdfHeight / (imgHeight / 96)); // 96 DPI
+      const scaledWidth = (imgWidth / 96) * ratio;
+      const scaledHeight = (imgHeight / 96) * ratio;
+      const xOffset = (pdfWidth - scaledWidth) / 2;
+      const yOffset = (pdfHeight - scaledHeight) / 2;
+
+      pdf.addImage(imgData, 'PNG', xOffset, yOffset, scaledWidth, scaledHeight);
+      pdf.save(`Creator_Collective_Enrollment_Certificate_${userName.replace(/\s+/g, '_')}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -235,13 +399,20 @@ export function EnrollmentCertificateModal({ isOpen, onClose, userName }: Enroll
               <div className="flex items-center gap-1 sm:gap-2">
                 <button
                   onClick={handleDownload}
-                  className="p-2 text-white hover:bg-white/20 rounded transition"
+                  disabled={isGeneratingPDF}
+                  className="p-2 text-white hover:bg-white/20 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Download"
                   title="Download PDF"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
+                  {isGeneratingPDF ? (
+                    <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  )}
                 </button>
                 <button
                   onClick={handlePrint}
@@ -298,24 +469,19 @@ export function EnrollmentCertificateModal({ isOpen, onClose, userName }: Enroll
 
               {/* Header */}
               <div className="certificate-header flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 sm:gap-0 mb-8 sm:mb-10">
-                <div className="certificate-logo flex items-center gap-2 sm:gap-3">
-                  <div 
-                    className="logo-icon flex-shrink-0"
+                <div className="certificate-logo flex items-center gap-3 sm:gap-4">
+                  <img 
+                    ref={logoRef}
+                    src="/CC-Logo-Black.png"
+                    alt="Course Creator Academy Logo"
+                    className="flex-shrink-0"
                     style={{
-                      width: '50px',
-                      height: '50px',
-                      background: 'linear-gradient(135deg, #dc2626, #991b1b)',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontSize: '20px',
-                      fontWeight: 'bold',
+                      height: '60px',
+                      width: 'auto',
+                      objectFit: 'contain',
                     }}
-                  >
-                    CCA
-                  </div>
+                    crossOrigin="anonymous"
+                  />
                   <div 
                     className="logo-text"
                     style={{
@@ -449,15 +615,20 @@ export function EnrollmentCertificateModal({ isOpen, onClose, userName }: Enroll
                 >
                   Sincerely,
                 </div>
-                <div 
-                  className="signature-line"
-                  style={{
-                    marginTop: '50px',
-                    borderTop: '2px solid #1f2937',
-                    width: '300px',
-                    marginBottom: '8px',
-                  }}
-                />
+                {signatureDataUrl && (
+                  <img
+                    ref={signatureRef}
+                    src={signatureDataUrl}
+                    alt="Cody Cochran Signature"
+                    className="signature-image"
+                    style={{
+                      marginTop: '30px',
+                      marginBottom: '8px',
+                      height: '50px',
+                      maxWidth: '200px',
+                    }}
+                  />
+                )}
                 <div 
                   className="signature-name"
                   style={{
@@ -488,4 +659,3 @@ export function EnrollmentCertificateModal({ isOpen, onClose, userName }: Enroll
     document.body
   );
 }
-
