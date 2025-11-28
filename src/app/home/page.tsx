@@ -1069,15 +1069,15 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
-              <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0">
-                <div className="text-[9px] sm:text-[10px] md:text-xs text-neutral-400 mb-1 sm:mb-1.5 md:mb-2">ASSETS</div>
-                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-1 sm:mb-1.5 md:mb-2 leading-tight break-words">{featuredAsset.title}</h3>
+              <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0 min-h-0">
+                <div className="text-[9px] sm:text-[10px] md:text-xs text-neutral-400 mb-1 sm:mb-1.5 md:mb-2 flex-shrink-0">ASSETS</div>
+                <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold mb-1 sm:mb-1.5 md:mb-2 leading-tight break-words flex-shrink-0">{featuredAsset.title}</h3>
                 {featuredAsset.description ? (
-                  <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1 line-clamp-2 break-words">{featuredAsset.description}</p>
+                  <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed line-clamp-2 break-words overflow-hidden">{featuredAsset.description}</p>
                 ) : featuredAsset.category ? (
-                  <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed flex-1 line-clamp-2 break-words">{featuredAsset.category}</p>
+                  <p className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-neutral-400 mb-2 sm:mb-3 md:mb-4 leading-relaxed line-clamp-2 break-words overflow-hidden">{featuredAsset.category}</p>
                 ) : null}
-                <Link href="/assets" className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center">
+                <Link href="/assets" className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-medium text-white active:text-ccaBlue hover:text-ccaBlue transition touch-manipulation mt-auto min-h-[44px] items-center flex-shrink-0">
                   CHECK IT OUT
                   <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
