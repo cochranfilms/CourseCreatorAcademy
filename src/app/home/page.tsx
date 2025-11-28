@@ -396,7 +396,7 @@ export default function HomePage() {
         // Process discounts (progressive rendering)
         if (discountsData.status === 'fulfilled' && discountsData.value) {
           const discountList = discountsData.value.discounts || [];
-          console.log('[HomePage] Loaded discounts:', discountList.length);
+          console.log('[HomePage] Loaded discounts:', discountList.length, discountList.map((d: any) => d.title || d.id));
           startTransition(() => {
             setDiscounts(discountList.slice(0, 3));
           });
@@ -404,6 +404,8 @@ export default function HomePage() {
           console.error('[HomePage] Failed to fetch discounts:', discountsData.reason);
         } else if (discountsData.status === 'fulfilled' && !discountsData.value) {
           console.warn('[HomePage] Discounts API returned null/undefined');
+        } else {
+          console.warn('[HomePage] Discounts data status:', discountsData.status, discountsData);
         }
 
         // Process Garrett King (progressive rendering)
@@ -419,18 +421,25 @@ export default function HomePage() {
         }
 
         // Process featured asset (progressive rendering)
-        if (assetsSnap.status === 'fulfilled' && assetsSnap.value && !assetsSnap.value.empty) {
-          const firstAsset = assetsSnap.value.docs[0];
-          const assetData = firstAsset.data() as any;
-          startTransition(() => {
-            setFeaturedAsset({
-              id: firstAsset.id,
-              title: assetData.title || 'Untitled Asset',
-              category: assetData.category || '',
-              thumbnailUrl: assetData.thumbnailUrl || '',
-              description: assetData.description || '',
+        if (assetsSnap.status === 'fulfilled' && assetsSnap.value) {
+          if (!assetsSnap.value.empty) {
+            const firstAsset = assetsSnap.value.docs[0];
+            const assetData = firstAsset.data() as any;
+            console.log('[HomePage] Loaded featured asset:', firstAsset.id, assetData.title);
+            startTransition(() => {
+              setFeaturedAsset({
+                id: firstAsset.id,
+                title: assetData.title || 'Untitled Asset',
+                category: assetData.category || '',
+                thumbnailUrl: assetData.thumbnailUrl || '',
+                description: assetData.description || '',
+              });
             });
-          });
+          } else {
+            console.warn('[HomePage] Assets query returned empty - no assets found');
+          }
+        } else if (assetsSnap.status === 'rejected') {
+          console.error('[HomePage] Failed to fetch assets:', assetsSnap.reason);
         }
 
         // Process show episode
