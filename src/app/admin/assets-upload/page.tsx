@@ -6,6 +6,7 @@ import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage, firebaseReady } from '@/lib/firebaseClient';
 import { AssetUploadZone } from '@/components/admin/AssetUploadZone';
 import { ProcessingStatus } from '@/components/admin/ProcessingStatus';
+import { AssetCategoryManager } from '@/components/admin/AssetCategoryManager';
 
 type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets';
 type SubCategory = 'Overlays' | 'Transitions' | null;
@@ -34,6 +35,7 @@ export default function AdminAssetsUploadPage() {
     status: 'idle',
     progress: 0,
   });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const handleFileSelect = useCallback(async (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory) => {
     if (!user || !firebaseReady || !storage) {
@@ -284,6 +286,11 @@ export default function AdminAssetsUploadPage() {
         />
 
         <ProcessingStatus state={processingState} />
+
+        <AssetCategoryManager 
+          key={refreshKey}
+          onCategoryChange={() => setRefreshKey(prev => prev + 1)} 
+        />
       </div>
     </div>
   );

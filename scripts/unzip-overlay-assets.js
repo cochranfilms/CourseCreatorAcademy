@@ -190,8 +190,8 @@ function getContentType(extension) {
 async function processOverlayAsset(asset) {
   console.log(`\nProcessing: ${asset.title} (${asset.id})`);
   
-  if (!asset.storagePath || !asset.storagePath.toLowerCase().includes('/overlays/')) {
-    console.log('  Skipping: Not an Overlay asset');
+  if (!asset.storagePath || (!asset.storagePath.toLowerCase().includes('/overlays/') && !asset.storagePath.toLowerCase().includes('/transitions/'))) {
+    console.log('  Skipping: Not an Overlay or Transition asset');
     return;
   }
   
@@ -329,11 +329,12 @@ async function main() {
         const fileName = file.name.split('/').pop();
         const pathParts = file.name.split('/');
         
-        // Check if it's a ZIP file in an Overlay folder
-        // Pattern: assets/overlays/{filename}.zip or assets/Overlays/{filename}.zip
+        // Check if it's a ZIP file in an Overlay or Transition folder
+        // Pattern: assets/overlays/{filename}.zip or assets/transitions/{filename}.zip
         if (fileName.endsWith('.zip') && pathParts.length === 3 && pathParts[0] === 'assets') {
           const categoryFolder = pathParts[1].toLowerCase();
-          if (categoryFolder === 'overlays' || categoryFolder.includes('overlay')) {
+          if (categoryFolder === 'overlays' || categoryFolder.includes('overlay') || 
+              categoryFolder === 'transitions' || categoryFolder.includes('transition')) {
             storageOverlayZips.push({
               storagePath: file.name,
               fileName: fileName,
@@ -359,12 +360,12 @@ async function main() {
         }
       }
       
-      // Process Overlay assets from both sources
+      // Process Overlay and Transition assets from both sources
       const overlayAssets = [];
       
-      // First, add assets from Firestore that match Overlay
+      // First, add assets from Firestore that match Overlay or Transition
       for (const [storagePath, asset] of assetMap.entries()) {
-        if (storagePath.toLowerCase().includes('/overlays/')) {
+        if (storagePath.toLowerCase().includes('/overlays/') || storagePath.toLowerCase().includes('/transitions/')) {
           overlayAssets.push(asset);
         }
       }

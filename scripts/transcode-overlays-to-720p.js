@@ -283,22 +283,62 @@ async function main() {
 
   try {
     if (assetId) {
+      // First, verify the asset exists
+      const assetDoc = await db.collection('assets').doc(assetId).get();
+      if (!assetDoc.exists) {
+        console.error(`\n❌ Error: Asset ${assetId} does not exist in Firestore`);
+        console.error('Please verify the asset ID is correct.');
+        process.exit(1);
+      }
+      
+      const assetData = assetDoc.data();
+      console.log(`\nAsset found: ${assetData?.title || 'Untitled'}`);
+      console.log(`Category: ${assetData?.category || 'N/A'}`);
+      console.log(`Storage path: ${assetData?.storagePath || 'N/A'}\n`);
+
       // Transcode all overlays for a specific asset
+      console.log('Checking subcollection: assets/' + assetId + '/overlays/');
       const overlayDocs = await db
         .collection('assets')
         .doc(assetId)
         .collection('overlays')
         .get();
 
+      console.log(`  Found ${overlayDocs.size} overlay(s) in subcollection`);
+
       if (overlayDocs.empty) {
         // Try flat overlays collection
+        console.log('\nChecking flat collection: overlays (where assetId == ' + assetId + ')');
         const flatOverlays = await db
           .collection('overlays')
           .where('assetId', '==', assetId)
           .get();
         
+        console.log(`  Found ${flatOverlays.size} overlay(s) in flat collection`);
+        
+        // If still empty, check if there are any overlays with similar assetId or check storage
+        if (flatOverlays.empty) {
+          console.log('\n⚠️  No overlays found in Firestore for this asset.');
+          console.log('Checking if there are overlays in Storage...');
+          
+          // Check if asset has a storagePath that suggests overlays exist
+          const storagePath = assetData?.storagePath;
+          if (storagePath && (storagePath.includes('/overlays/') || storagePath.includes('/transitions/'))) {
+            const folderPath = storagePath.replace('.zip', '');
+            console.log(`\nAsset storage path: ${storagePath}`);
+            console.log(`Expected overlay folder: ${folderPath}`);
+            console.log('\nPossible reasons:');
+            console.log('  1. Overlays may not have been extracted from the ZIP yet');
+            console.log('  2. Overlay documents may not have been created in Firestore');
+            console.log('  3. The assetId in overlay documents may be different');
+            console.log('\nTry running:');
+            console.log(`  node scripts/unzip-overlay-assets.js --assetId=${assetId}`);
+            console.log(`  node scripts/create-overlay-docs-from-storage.js --assetId=${assetId}`);
+          }
+        }
+        
         results.total = flatOverlays.size;
-        console.log(`Found ${results.total} overlay(s) for asset ${assetId}\n`);
+        console.log(`\nFound ${results.total} overlay(s) for asset ${assetId}\n`);
 
         for (const overlayDoc of flatOverlays.docs) {
           const result = await transcodeOverlay(overlayDoc, assetId, updateFirestore);
@@ -317,7 +357,7 @@ async function main() {
         }
       } else {
         results.total = overlayDocs.size;
-        console.log(`Found ${results.total} overlay(s) for asset ${assetId}\n`);
+        console.log(`\nFound ${results.total} overlay(s) for asset ${assetId}\n`);
 
         for (const overlayDoc of overlayDocs.docs) {
           const result = await transcodeOverlay(overlayDoc, assetId, updateFirestore);
