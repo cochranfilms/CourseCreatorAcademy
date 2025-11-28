@@ -893,6 +893,44 @@ export default function HomePage() {
             )}
           </div>
 
+          {/* Discounts Section */}
+          {discounts.length > 0 && (
+            <div className="mt-3 sm:mt-4 md:mt-5 lg:mt-6 xl:mt-8 min-w-0">
+              <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight break-words">Member Discounts</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
+                {discounts.map((discount) => (
+                  <Link key={discount.id} href="/discounts" className="rounded-lg sm:rounded-xl md:rounded-2xl border border-neutral-800 bg-neutral-950 p-2 sm:p-3 md:p-4 lg:p-5 hover:border-ccaBlue/50 transition-colors flex flex-col h-full min-w-0">
+                    {discount.partnerLogoUrl && (
+                      <div className="mb-2 sm:mb-3 md:mb-4 flex items-center justify-center h-10 sm:h-12 md:h-14 lg:h-16">
+                        <img
+                          src={discount.partnerLogoUrl}
+                          alt={discount.partnerName}
+                          className="max-h-full max-w-full object-contain"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold mb-1 leading-tight break-words">{discount.title}</div>
+                    {discount.discountAmount && (
+                      <div className="mb-1.5 sm:mb-2">
+                        <span className="inline-block bg-white text-ccaBlue font-medium text-[10px] sm:text-xs md:text-sm px-1.5 sm:px-2 py-0.5 sm:py-1 rounded break-words">
+                          {discount.discountAmount}
+                        </span>
+                      </div>
+                    )}
+                    <div className="text-neutral-400 text-[10px] sm:text-xs md:text-sm mb-2 sm:mb-3 md:mb-4 line-clamp-2 flex-grow leading-relaxed break-words">{discount.description}</div>
+                    <div className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 rounded-lg bg-ccaBlue hover:opacity-90 transition text-white font-medium mt-auto text-center text-[10px] sm:text-xs md:text-sm min-h-[44px] flex items-center justify-center">
+                      View Discount
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Garrett King Legacy Creator Widget */}
           {garrettKing && (
             <div className="mt-3 sm:mt-4 md:mt-5 lg:mt-6 xl:mt-8 min-w-0">
@@ -1143,44 +1181,6 @@ export default function HomePage() {
           <div className="text-neutral-400 text-xs sm:text-sm break-words">No marketplace listings available.</div>
         )}
       </div>
-
-      {/* Discounts Section */}
-      {discounts.length > 0 && (
-        <div className="mt-3 sm:mt-4 md:mt-5 lg:mt-6 xl:mt-8 min-w-0">
-          <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight break-words">Member Discounts</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
-            {discounts.map((discount) => (
-              <Link key={discount.id} href="/discounts" className="rounded-lg sm:rounded-xl md:rounded-2xl border border-neutral-800 bg-neutral-950 p-2 sm:p-3 md:p-4 lg:p-5 hover:border-ccaBlue/50 transition-colors flex flex-col h-full min-w-0">
-                {discount.partnerLogoUrl && (
-                  <div className="mb-2 sm:mb-3 md:mb-4 flex items-center justify-center h-10 sm:h-12 md:h-14 lg:h-16">
-                    <img
-                      src={discount.partnerLogoUrl}
-                      alt={discount.partnerName}
-                      className="max-h-full max-w-full object-contain"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
-                <div className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold mb-1 leading-tight break-words">{discount.title}</div>
-                {discount.discountAmount && (
-                  <div className="mb-1.5 sm:mb-2">
-                    <span className="inline-block bg-white text-ccaBlue font-medium text-[10px] sm:text-xs md:text-sm px-1.5 sm:px-2 py-0.5 sm:py-1 rounded break-words">
-                      {discount.discountAmount}
-                    </span>
-                  </div>
-                )}
-                <div className="text-neutral-400 text-[10px] sm:text-xs md:text-sm mb-2 sm:mb-3 md:mb-4 line-clamp-2 flex-grow leading-relaxed break-words">{discount.description}</div>
-                <div className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 rounded-lg bg-ccaBlue hover:opacity-90 transition text-white font-medium mt-auto text-center text-[10px] sm:text-xs md:text-sm min-h-[44px] flex items-center justify-center">
-                  View Discount
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Walkthrough Video Modal */}
       {showWalkthroughVideo && walkthrough?.playbackId && (

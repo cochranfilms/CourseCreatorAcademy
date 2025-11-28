@@ -1,5 +1,7 @@
 # Firestore Index Setup
 
+> **📋 For a complete list of ALL indexes, see [FIRESTORE-INDEXES-COMPLETE.md](./FIRESTORE-INDEXES-COMPLETE.md)**
+
 ## Required Composite Indexes
 
 Your application requires composite indexes for optimal performance. The code includes fallbacks if indexes don't exist, but creating them will improve performance.
@@ -77,18 +79,24 @@ https://console.firebase.google.com/v1/r/project/course-creator-academy-866d6/fi
 
 ## How to Create Indexes
 
-### Method 1: Via Error Links (Easiest)
+### Method 1: Via Error Links (Easiest - Recommended!)
 
-1. When you see an index error in the browser console, click the link provided
-2. Firebase Console will open with the index pre-configured
-3. Click "Create Index"
-4. Wait for the index to build (usually takes 1-2 minutes)
+**This is the easiest way!** When a query fails due to missing index, Firebase shows an error with a clickable link:
 
-### Method 2: Via Firebase Console
+1. Open your browser console (F12 or Cmd+Option+I)
+2. Navigate to a page that uses the query (e.g., Dashboard, Opportunities page)
+3. Look for an error like: `The query requires an index. You can create it here: [LINK]`
+4. **Click the link** - Firebase Console opens with the index pre-configured!
+5. Click "Create Index"
+6. Wait 1-2 minutes for the index to build
 
-1. Go to Firebase Console → Firestore Database → Indexes
+**Pro Tip:** You can intentionally trigger these errors by visiting pages that use the queries. The error message will always include the creation link.
+
+### Method 2: Via Firebase Console (Manual)
+
+1. Go to [Firebase Console → Firestore → Indexes](https://console.firebase.google.com/project/course-creator-academy-866d6/firestore/indexes)
 2. Click "Create Index"
-3. Follow the instructions above for each index
+3. Follow the instructions in [FIRESTORE-INDEXES-COMPLETE.md](./FIRESTORE-INDEXES-COMPLETE.md) for each index
 4. Click "Create"
 
 ## Fallback Behavior

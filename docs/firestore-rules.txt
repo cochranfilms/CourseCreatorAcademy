@@ -347,6 +347,15 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     
+    // Config collection - app configuration (show episodes, walkthrough videos, etc.)
+    match /config/{configId} {
+      // Allow authenticated users to read config documents
+      allow read: if isAuthenticated();
+      
+      // Only admins can write config (via Admin SDK or API)
+      allow write: if false;
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;
