@@ -89,7 +89,7 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
 
   // Log headers for debugging
   if (method === 'POST') {
-    console.log('TUS proxy POST headers:', Object.fromEntries(headers.entries()));
+    console.log('TUS proxy POST headers:', Object.fromEntries(Array.from(headers.entries())));
     console.log('TUS proxy target URL:', target);
   }
 
@@ -121,12 +121,12 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   };
 
   console.log(`TUS proxy ${method} forwarding to:`, target);
-  console.log(`TUS proxy ${method} forwarded headers:`, Object.fromEntries(headers.entries()));
+  console.log(`TUS proxy ${method} forwarded headers:`, Object.fromEntries(Array.from(headers.entries())));
   
   const upstream = await fetch(target, init);
   
   console.log(`TUS proxy ${method} upstream response status:`, upstream.status);
-  console.log(`TUS proxy ${method} upstream response headers:`, Object.fromEntries(upstream.headers.entries()));
+  console.log(`TUS proxy ${method} upstream response headers:`, Object.fromEntries(Array.from(upstream.headers.entries())));
   
   const resHeaders = new Headers(corsHeaders(allowedOrigin));
 
@@ -195,4 +195,6 @@ export async function HEAD(req: NextRequest) {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Explicitly allow all TUS methods
+export const maxDuration = 300; // 5 minutes for large uploads
 
