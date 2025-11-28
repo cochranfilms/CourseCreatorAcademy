@@ -408,7 +408,15 @@ export default function HomePage() {
         // Process discounts (progressive rendering)
         if (discountsData.status === 'fulfilled' && discountsData.value) {
           const discountList = discountsData.value.discounts || [];
-          console.log('[HomePage] Loaded discounts:', discountList.length, discountList.map((d: any) => d.title || d.id));
+          console.log('[HomePage] Loaded discounts:', discountList.length, discountList.map((d: any) => ({
+            id: d.id,
+            title: d.title,
+            expirationDate: d.expirationDate,
+            isActive: d.isActive
+          })));
+          if (discountList.length === 0) {
+            console.warn('[HomePage] No discounts returned - check server logs for filtering reasons');
+          }
           startTransition(() => {
             setDiscounts(discountList.slice(0, 3));
           });
