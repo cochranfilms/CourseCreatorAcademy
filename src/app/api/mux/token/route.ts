@@ -87,68 +87,104 @@ export async function GET(req: NextRequest) {
       logWarn('mux.token.not_found_by_playbackId', { playbackId: playbackIdStr });
     }
     
-    // Fallback 1: Try to find by assetId if we can get it from MUX
+    // Fallback 1: Try to find by assetId from MUX API
     if ((!lessonSnap || lessonSnap.empty) && adminDb) {
       try {
         const { mux } = await import('@/lib/mux');
-        // Try to get asset from MUX to find assetId
-        // Then search for lessons with that assetId
-        try {
-          // List recent assets from MUX to find the one with this playbackId
-          // Note: MUX doesn't have a direct "get asset by playback ID" endpoint
-          // So we'll search through lessons with muxAssetId instead
-          logInfo('mux.token.fallback_search_by_asset', { playbackId: playbackIdStr });
-          
-          // Search for lessons with muxUploadId (recent uploads)
-          const lessonsWithUpload = await adminDb.collectionGroup('lessons')
-            .where('muxUploadId', '!=', null)
-            .limit(100) // Increased limit for better coverage
-            .get()
-            .catch(() => null as any);
-          
-          if (lessonsWithUpload && !lessonsWithUpload.empty) {
-            logInfo('mux.token.checking_uploads', { count: lessonsWithUpload.docs.length });
-            // Check each lesson's upload to see if the asset matches this playbackId
-            for (const lessonDoc of lessonsWithUpload.docs) {
-              const data = lessonDoc.data() as any;
-              const uploadId = data.muxUploadId;
-              const existingPlaybackId = data.muxPlaybackId;
-              
-              // Skip if already has a different playbackId
-              if (existingPlaybackId && existingPlaybackId !== playbackIdStr) continue;
-              
-              if (!uploadId) continue;
-              
-              try {
-                // Get upload from MUX to find assetId
-                const upload = await mux.video.uploads.retrieve(uploadId).catch(() => null);
-                if (upload?.asset_id) {
-                  // Get asset to check playbackId
-                  const asset = await mux.video.assets.retrieve(upload.asset_id).catch(() => null);
+        logInfo('mux.token.fallback_search_by_mux', { playbackId: playbackIdStr });
+        
+        // Try to find asset by playbackId via MUX API
+        // Since MUX doesn't have direct lookup, we'll search through lessons with muxAssetId
+        // First, try to find lessons with muxUploadId and check their assets
+        const lessonsWithUpload = await adminDb.collectionGroup('lessons')
+          .where('muxUploadId', '!=', null)
+          .limit(100)
+          .get()
+          .catch(() => null as any);
+        
+        if (lessonsWithUpload && !lessonsWithUpload.empty) {
+          logInfo('mux.token.checking_uploads', { count: lessonsWithUpload.docs.length });
+          for (const lessonDoc of lessonsWithUpload.docs) {
+            const data = lessonDoc.data() as any;
+            const uploadId = data.muxUploadId;
+            const existingPlaybackId = data.muxPlaybackId;
+            
+            // Skip if already has a different playbackId
+            if (existingPlaybackId && existingPlaybackId !== playbackIdStr) continue;
+            
+            if (!uploadId) continue;
+            
+            try {
+              const upload = await mux.video.uploads.retrieve(uploadId).catch(() => null);
+              if (upload?.asset_id) {
+                const asset = await mux.video.assets.retrieve(upload.asset_id).catch(() => null);
+                if (asset?.playback_ids?.[0]?.id === playbackIdStr) {
+                  await lessonDoc.ref.set({
+                    muxAssetId: asset.id,
+                    muxPlaybackId: playbackIdStr,
+                    updatedAt: adminDb.FieldValue.serverTimestamp(),
+                  }, { merge: true }).catch(() => {});
+                  lessonSnap = { docs: [lessonDoc], empty: false };
+                  logInfo('mux.token.playbackId_updated_via_fallback', { uploadId, assetId: asset.id, playbackId: playbackIdStr });
+                  break;
+                }
+              }
+            } catch (err: any) {
+              logWarn('mux.token.upload_check_error', { uploadId, error: err.message });
+              continue;
+            }
+          }
+        }
+        
+        // Fallback 2: Search by muxAssetId if we can get assetId from MUX
+        if ((!lessonSnap || lessonSnap.empty)) {
+          try {
+            // Try to get asset from MUX using the playbackId
+            // We'll list recent assets and check their playback IDs
+            // This is a last resort - it's expensive but might work
+            logInfo('mux.token.fallback_search_by_asset_list', { playbackId: playbackIdStr });
+            
+            // Search for lessons with muxAssetId and check them via MUX API
+            const lessonsWithAsset = await adminDb.collectionGroup('lessons')
+              .where('muxAssetId', '!=', null)
+              .limit(50) // Limit to avoid too many API calls
+              .get()
+              .catch(() => null as any);
+            
+            if (lessonsWithAsset && !lessonsWithAsset.empty) {
+              logInfo('mux.token.checking_assets', { count: lessonsWithAsset.docs.length });
+              for (const lessonDoc of lessonsWithAsset.docs) {
+                const data = lessonDoc.data() as any;
+                const assetId = data.muxAssetId;
+                const existingPlaybackId = data.muxPlaybackId;
+                
+                // Skip if already has a different playbackId
+                if (existingPlaybackId && existingPlaybackId !== playbackIdStr) continue;
+                
+                if (!assetId) continue;
+                
+                try {
+                  const asset = await mux.video.assets.retrieve(assetId).catch(() => null);
                   if (asset?.playback_ids?.[0]?.id === playbackIdStr) {
-                    // Found it! Update lesson with playbackId
                     await lessonDoc.ref.set({
-                      muxAssetId: asset.id,
                       muxPlaybackId: playbackIdStr,
                       updatedAt: adminDb.FieldValue.serverTimestamp(),
                     }, { merge: true }).catch(() => {});
                     lessonSnap = { docs: [lessonDoc], empty: false };
-                    logInfo('mux.token.playbackId_updated_via_fallback', { uploadId, assetId: asset.id, playbackId: playbackIdStr });
+                    logInfo('mux.token.playbackId_updated_via_asset_fallback', { assetId, playbackId: playbackIdStr });
                     break;
                   }
+                } catch (err: any) {
+                  logWarn('mux.token.asset_check_error', { assetId, error: err.message });
+                  continue;
                 }
-              } catch (err: any) {
-                // Continue checking other lessons
-                logWarn('mux.token.upload_check_error', { uploadId, error: err.message });
-                continue;
               }
             }
+          } catch (err: any) {
+            logWarn('mux.token.asset_fallback_error', { error: err.message });
           }
-        } catch (err: any) {
-          logWarn('mux.token.fallback_error', { error: err.message });
         }
       } catch (err: any) {
-        // Ignore errors in fallback lookup
         logWarn('mux.token.fallback_lookup_error', { error: err.message });
       }
     }
