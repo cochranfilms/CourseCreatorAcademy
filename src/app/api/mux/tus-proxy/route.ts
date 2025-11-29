@@ -79,42 +79,38 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   }
 
   const headers = new Headers();
-  // Only forward TUS-specific headers and essential request headers
-  // Filter out browser security headers, Vercel internal headers, and other non-TUS headers
-  const allowedHeaders = [
-    'tus-resumable', 'Tus-Resumable',
-    'upload-length', 'Upload-Length',
-    'upload-offset', 'Upload-Offset',
-    'upload-metadata', 'Upload-Metadata',
-    'content-type', 'Content-Type',
-    'authorization', 'Authorization',
-    'user-agent', 'User-Agent',
-    'accept', 'Accept',
+  
+  // Only forward TUS-specific headers - be very selective
+  // MUX is strict about what headers it accepts
+  const lowerKeyMap = new Map<string, string>();
+  req.headers.forEach((value, key) => {
+    lowerKeyMap.set(key.toLowerCase(), key); // Preserve original case
+  });
+  
+  // Forward only TUS protocol headers (case-insensitive check, preserve original case)
+  const tusHeaders = [
+    'tus-resumable',
+    'upload-length',
+    'upload-offset',
+    'upload-metadata',
   ];
   
-  req.headers.forEach((value, key) => {
-    // Skip browser security headers, Vercel headers, and other non-essential headers
-    if (/^(host|origin|referer|connection|date|forwarded|cookie|content-security-policy|cross-origin|referrer-policy|strict-transport-security|x-content-type-options|x-frame-options|x-xss-protection|sec-|x-vercel-|x-matched-path|x-ratelimit-|x-real-ip|x-forwarded-|priority)$/i.test(key)) {
-      return;
-    }
-    
-    // Only forward allowed headers or TUS-specific headers
-    const lowerKey = key.toLowerCase();
-    if (allowedHeaders.some(h => h.toLowerCase() === lowerKey) || 
-        /^(tus-|upload-)/i.test(key)) {
-      headers.set(key, value);
+  tusHeaders.forEach(headerName => {
+    const originalKey = lowerKeyMap.get(headerName);
+    if (originalKey && req.headers.has(originalKey)) {
+      headers.set(originalKey, req.headers.get(originalKey)!);
     }
   });
+  
+  // Ensure TUS-Resumable header is set (use standard case)
+  if (!headers.has('Tus-Resumable') && !headers.has('tus-resumable')) {
+    headers.set('Tus-Resumable', '1.0.0');
+  }
 
   // Log headers for debugging
   if (method === 'POST') {
-    console.log('TUS proxy POST headers:', Object.fromEntries(Array.from(headers.entries())));
-    console.log('TUS proxy target URL:', target);
-  }
-
-  // Ensure TUS-Resumable header is set for TUS protocol compliance
-  if (!headers.has('tus-resumable') && !headers.has('Tus-Resumable')) {
-    headers.set('Tus-Resumable', '1.0.0');
+    console.log('[TUS PROXY] POST headers being sent to MUX:', Object.fromEntries(Array.from(headers.entries())));
+    console.log('[TUS PROXY] Target URL:', target);
   }
 
   // Per TUS: POST (create) has empty body; PATCH streams bytes
@@ -122,12 +118,8 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   if (method === 'PATCH') {
     body = req.body;
   } else if (method === 'POST') {
-    // For TUS POST, body must be empty but Content-Length should match actual body length (0)
-    // Don't override if client already set it
-    if (!headers.has('content-length') && !headers.has('Content-Length')) {
-      headers.set('Content-Length', '0');
-    }
-    // Explicitly set empty body for POST
+    // For TUS POST, body must be empty
+    // Do NOT set Content-Length header - let fetch handle it automatically
     body = null;
   }
 
