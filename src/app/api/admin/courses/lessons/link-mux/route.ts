@@ -70,7 +70,9 @@ export async function POST(req: NextRequest) {
     // If only assetId provided, fetch playbackId and duration from MUX
     if (assetId && !playbackId) {
       try {
+        console.log(`[link-mux] Fetching asset ${assetId} from MUX`);
         const asset = await mux.video.assets.retrieve(assetId);
+        console.log(`[link-mux] Asset retrieved:`, { id: asset.id, playbackIds: asset.playback_ids });
         finalAssetId = asset.id;
         finalPlaybackId = asset.playback_ids?.[0]?.id || undefined;
         durationSec = asset.duration ? Math.round(Number(asset.duration)) : 0;
@@ -81,9 +83,11 @@ export async function POST(req: NextRequest) {
           }, { status: 400 });
         }
       } catch (err: any) {
+        console.error(`[link-mux] Error fetching asset ${assetId}:`, err);
         return NextResponse.json({ 
           error: 'Failed to fetch asset from MUX', 
-          details: err.message 
+          details: err.message || String(err),
+          stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
         }, { status: 500 });
       }
     } 
@@ -106,20 +110,24 @@ export async function POST(req: NextRequest) {
               finalAssetId = asset.id;
               durationSec = asset.duration ? Math.round(Number(asset.duration)) : 0;
             }
-          } catch {
+          } catch (uploadErr: any) {
+            console.warn(`[link-mux] Upload lookup failed:`, uploadErr.message);
             // Ignore upload lookup errors
           }
         }
       } catch (err: any) {
+        console.error(`[link-mux] Error in playbackId-only path:`, err);
         return NextResponse.json({ 
           error: 'Failed to fetch asset details from MUX', 
-          details: err.message 
+          details: err.message || String(err),
+          stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
         }, { status: 500 });
       }
     }
     // If both provided, verify they match and get duration
     else if (playbackId && assetId) {
       try {
+        console.log(`[link-mux] Verifying asset ${assetId} matches playbackId ${playbackId}`);
         const asset = await mux.video.assets.retrieve(assetId);
         const assetPlaybackId = asset.playback_ids?.[0]?.id;
         
@@ -135,9 +143,11 @@ export async function POST(req: NextRequest) {
         finalPlaybackId = playbackId;
         durationSec = asset.duration ? Math.round(Number(asset.duration)) : 0;
       } catch (err: any) {
+        console.error(`[link-mux] Error verifying asset:`, err);
         return NextResponse.json({ 
           error: 'Failed to verify asset from MUX', 
-          details: err.message 
+          details: err.message || String(err),
+          stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
         }, { status: 500 });
       }
     }
@@ -152,31 +162,46 @@ export async function POST(req: NextRequest) {
       : null;
 
     // Update lesson document
-    const updates: Record<string, any> = {
-      muxPlaybackId: finalPlaybackId,
-      muxAnimatedGifUrl: animatedGifUrl,
-      updatedAt: FieldValue.serverTimestamp(),
-    };
+    try {
+      const updates: Record<string, any> = {
+        muxPlaybackId: finalPlaybackId,
+        muxAnimatedGifUrl: animatedGifUrl,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
 
-    if (finalAssetId) {
-      updates.muxAssetId = finalAssetId;
+      if (finalAssetId) {
+        updates.muxAssetId = finalAssetId;
+      }
+
+      if (durationSec > 0) {
+        updates.durationSec = durationSec;
+      }
+
+      console.log(`[link-mux] Updating lesson ${lessonId} with:`, updates);
+      await lessonRef.set(updates, { merge: true });
+      console.log(`[link-mux] Successfully updated lesson ${lessonId}`);
+
+      return NextResponse.json({ 
+        success: true,
+        playbackId: finalPlaybackId,
+        assetId: finalAssetId,
+        durationSec,
+      });
+    } catch (firestoreErr: any) {
+      console.error(`[link-mux] Error updating Firestore:`, firestoreErr);
+      return NextResponse.json({ 
+        error: 'Failed to update lesson document', 
+        details: firestoreErr.message || String(firestoreErr),
+        stack: process.env.NODE_ENV === 'development' ? firestoreErr.stack : undefined,
+      }, { status: 500 });
     }
-
-    if (durationSec > 0) {
-      updates.durationSec = durationSec;
-    }
-
-    await lessonRef.set(updates, { merge: true });
-
-    return NextResponse.json({ 
-      success: true,
-      playbackId: finalPlaybackId,
-      assetId: finalAssetId,
-      durationSec,
-    });
   } catch (err: any) {
-    console.error('Error linking MUX playback ID:', err);
-    return NextResponse.json({ error: err.message || 'Failed to link playback ID' }, { status: 500 });
+    console.error('[link-mux] Unexpected error:', err);
+    return NextResponse.json({ 
+      error: err.message || 'Failed to link playback ID',
+      details: String(err),
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    }, { status: 500 });
   }
 }
 
