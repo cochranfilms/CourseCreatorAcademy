@@ -86,14 +86,25 @@ export async function POST(req: NextRequest) {
         console.error(`[link-mux] Error fetching asset ${assetId}:`, err);
         const errorMessage = err?.message || err?.toString() || 'Unknown error';
         const statusCode = err?.status || err?.statusCode || err?.response?.status || 500;
-        const muxErrorData = err?.response?.data || err?.body || err?.data;
+        const muxErrorData = err?.response?.data || err?.body || err?.data || err?.error;
+        
+        // Check if MUX says the ID format is invalid
+        const isInvalidFormat = muxErrorData?.error?.messages?.some((msg: string) => 
+          msg.includes('Failed to parse ID') || msg.includes('invalid')
+        ) || errorMessage.includes('Failed to parse ID');
+        
         return NextResponse.json({ 
-          error: 'Failed to fetch asset from MUX', 
+          error: isInvalidFormat 
+            ? 'Invalid Asset ID format. The ID you provided might be a Playback ID instead, or the Asset ID may be incorrect. Please check the MUX dashboard and use the correct Asset ID from the asset details page.'
+            : 'Failed to fetch asset from MUX', 
           details: errorMessage,
           muxError: muxErrorData,
           assetId: assetId,
+          hint: isInvalidFormat 
+            ? 'Asset IDs are found in the MUX dashboard under "Asset ID" (not "Playback ID"). If you have a Playback ID, use the "Playback ID" field instead. Make sure you\'re copying the full Asset ID from the MUX dashboard.'
+            : undefined,
           stack: process.env.NODE_ENV === 'development' ? err?.stack : undefined,
-        }, { status: statusCode >= 400 && statusCode < 600 ? statusCode : 500 });
+        }, { status: statusCode >= 400 && statusCode < 600 ? statusCode : 400 });
       }
     } 
     // If only playbackId provided, fetch assetId and duration from MUX
