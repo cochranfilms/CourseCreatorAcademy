@@ -163,17 +163,22 @@ export async function OPTIONS(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('TUS proxy POST request received');
-    console.log('TUS proxy POST URL:', req.url);
-    console.log('TUS proxy POST method:', req.method);
+    console.log('[TUS PROXY] POST request received');
+    console.log('[TUS PROXY] URL:', req.url);
+    console.log('[TUS PROXY] Method:', req.method);
+    console.log('[TUS PROXY] Headers:', Object.fromEntries(req.headers.entries()));
+    
     const result = await handle('POST', req);
-    console.log('TUS proxy POST response status:', result.status);
+    console.log('[TUS PROXY] Response status:', result.status);
     return result;
   } catch (err: unknown) {
-    console.error('TUS proxy POST error:', err);
+    console.error('[TUS PROXY] POST error:', err);
     const error = err as Error;
     const origin = req.headers.get('origin');
-    return NextResponse.json({ error: error?.message || 'Proxy error' }, { status: 500, headers: corsHeaders(origin) });
+    return NextResponse.json({ 
+      error: error?.message || 'Proxy error',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500, headers: corsHeaders(origin) });
   }
 }
 
@@ -196,6 +201,7 @@ export async function HEAD(req: NextRequest) {
 }
 
 
+// Route segment config
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for large uploads
