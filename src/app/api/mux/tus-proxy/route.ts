@@ -166,6 +166,20 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
     }
   }
   
+  // For PATCH requests with large bodies, Vercel returns 413 Payload Too Large
+  // Redirect PATCH requests directly to MUX to bypass Vercel's body size limit
+  if (method === 'PATCH') {
+    console.log(`[TUS PROXY] PATCH request detected - redirecting directly to MUX to avoid Vercel 413 error`);
+    const resHeaders = new Headers(corsHeaders(allowedOrigin));
+    resHeaders.set('Location', target);
+    resHeaders.set('Access-Control-Allow-Origin', allowedOrigin || '*');
+    // Return 307 Temporary Redirect - browser will follow and upload directly to MUX
+    return new NextResponse(null, {
+      status: 307,
+      headers: resHeaders,
+    });
+  }
+  
   const upstream = await fetch(target, init);
   
   console.log(`[TUS PROXY] ${method} upstream response status:`, upstream.status);

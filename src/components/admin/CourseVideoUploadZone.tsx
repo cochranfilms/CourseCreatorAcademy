@@ -318,6 +318,10 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
       const { uploadId, uploadUrl } = await uploadResponse.json();
 
       // Step 2: Upload video using TUS
+      // Use MUX URL directly to avoid Vercel's 413 Payload Too Large error for large files
+      // MUX handles CORS when cors_origin is set correctly during upload creation
+      // MUX direct upload URLs are pre-created, so POST returns 405 - we handle this by
+      // manually fetching upload info and resuming the upload
       const upload = new tus.Upload(videoFile, {
         endpoint: uploadUrl,
         retryDelays: [0, 3000, 5000, 10000, 20000],
@@ -325,8 +329,65 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
           filename: videoFile.name,
           filetype: videoFile.type,
         },
-        onError: (error) => {
+        onError: async (error) => {
           console.error('Upload error:', error);
+          const errorMessage = error.message || '';
+          
+          // Handle 405 on POST - MUX direct upload URLs are pre-created, so POST fails
+          // We need to fetch upload info via HEAD and then manually resume with PATCH
+          if (errorMessage.includes('405') || errorMessage.includes('Method Not Allowed')) {
+            console.log('405 error detected - upload already exists, fetching upload info via HEAD');
+            
+            try {
+              // Fetch upload info via HEAD request
+              const headResponse = await fetch(uploadUrl, {
+                method: 'HEAD',
+                headers: {
+                  'Tus-Resumable': '1.0.0',
+                },
+              });
+              
+              if (headResponse.ok) {
+                const uploadOffset = headResponse.headers.get('Upload-Offset') || '0';
+                const uploadLength = headResponse.headers.get('Upload-Length') || String(videoFile.size);
+                const offset = parseInt(uploadOffset);
+                const length = parseInt(uploadLength);
+                
+                console.log(`Upload info - Offset: ${offset}, Length: ${length}`);
+                
+                // If upload is already complete, call success
+                if (offset >= length) {
+                  console.log('Upload already complete');
+                  setUploadStatus('processing');
+                  setUploadProgress(100);
+                  setTimeout(() => {
+                    setUploadStatus('completed');
+                    if (onUploadComplete) {
+                      onUploadComplete({
+                        courseId: selectedCourseId,
+                        moduleId: selectedModuleId,
+                        lessonId: selectedLessonId,
+                        muxAssetId: uploadId,
+                      });
+                    }
+                  }, 2000);
+                  return;
+                }
+                
+                // Resume upload by calling start() again - TUS client should skip POST and go to PATCH
+                console.log(`Resuming upload from offset ${offset}`);
+                if (uploadRef.current) {
+                  uploadRef.current.start();
+                }
+                return;
+              } else {
+                console.error('HEAD request failed:', headResponse.status, headResponse.statusText);
+              }
+            } catch (headError) {
+              console.error('Error fetching upload info:', headError);
+            }
+          }
+          
           setUploadError(error.message || 'Upload failed');
           setUploadStatus('error');
         },
