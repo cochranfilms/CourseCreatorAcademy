@@ -84,11 +84,16 @@ export async function POST(req: NextRequest) {
         }
       } catch (err: any) {
         console.error(`[link-mux] Error fetching asset ${assetId}:`, err);
+        const errorMessage = err?.message || err?.toString() || 'Unknown error';
+        const statusCode = err?.status || err?.statusCode || err?.response?.status || 500;
+        const muxErrorData = err?.response?.data || err?.body || err?.data;
         return NextResponse.json({ 
           error: 'Failed to fetch asset from MUX', 
-          details: err.message || String(err),
-          stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-        }, { status: 500 });
+          details: errorMessage,
+          muxError: muxErrorData,
+          assetId: assetId,
+          stack: process.env.NODE_ENV === 'development' ? err?.stack : undefined,
+        }, { status: statusCode >= 400 && statusCode < 600 ? statusCode : 500 });
       }
     } 
     // If only playbackId provided, fetch assetId and duration from MUX
