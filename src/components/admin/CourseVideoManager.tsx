@@ -597,6 +597,7 @@ function LessonCard({
   onCancelMove,
   onMoveToModule,
   onLinkMux,
+  onConvertToSigned,
   updating,
 }: {
   course: Course;
