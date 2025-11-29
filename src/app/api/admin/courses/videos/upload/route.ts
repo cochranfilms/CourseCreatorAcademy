@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     const upload = await mux.video.uploads.create({
       cors_origin: corsOrigin,
       new_asset_settings: {
-        playback_policy: ['signed'], // Course videos use signed playback
+        playback_policy: ['public'], // Course videos use public playback for public viewing
         passthrough: JSON.stringify({
           courseId,
           moduleId,
@@ -78,17 +78,12 @@ export async function POST(req: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    // Return proxy URL to avoid CORS issues with UpChunk PUT requests
-    // UpChunk uses PUT requests with Content-Range headers, which trigger CORS preflight
-    // The proxy handles CORS and forwards PUT requests to MUX
-    const baseUrl = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || process.env.SITE_URL || '';
-    const proxyUrl = baseUrl
-      ? `${baseUrl.replace(/\/$/, '')}/api/mux/tus-proxy?u=${encodeURIComponent(upload.url)}`
-      : upload.url;
-    
+    // Return direct MUX URL - UpChunk can upload directly to MUX when cors_origin is set correctly
+    // Using proxy causes 413 errors because Vercel has a 4.5MB body size limit for serverless functions
+    // MUX direct uploads support CORS when cors_origin is configured, so we can bypass the proxy
     return NextResponse.json({ 
       uploadId: upload.id, 
-      uploadUrl: proxyUrl // Use proxy to handle CORS for UpChunk PUT requests
+      uploadUrl: upload.url // Direct MUX URL - avoids Vercel 413 errors on large uploads
     });
   } catch (err: any) {
     console.error('Error creating upload:', err);

@@ -112,10 +112,21 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
           const tokenUrl = effectiveLesson.muxAssetId
             ? `/api/mux/token?playbackId=${encodeURIComponent(effectiveLesson.muxPlaybackId!)}&assetId=${encodeURIComponent(effectiveLesson.muxAssetId)}`
             : `/api/mux/token?playbackId=${encodeURIComponent(effectiveLesson.muxPlaybackId!)}`;
+          console.log('[CourseViewerModal] Fetching playback token:', { 
+            playbackId: effectiveLesson.muxPlaybackId, 
+            assetId: effectiveLesson.muxAssetId,
+            tokenUrl 
+          });
           const res = await fetch(tokenUrl, {
             headers: {
               'Authorization': `Bearer ${idToken}`,
             },
+          });
+          
+          console.log('[CourseViewerModal] Token response:', { 
+            ok: res.ok, 
+            status: res.status, 
+            statusText: res.statusText 
           });
           
           if (!res.ok) {
