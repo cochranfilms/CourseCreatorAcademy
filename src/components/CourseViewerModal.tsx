@@ -45,6 +45,50 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
 
   const module = useMemo(() => modules.find(m => m.id === moduleId) || modules[0], [modules, moduleId]);
   const lesson = useMemo(() => module?.lessons.find(l => l.id === lessonId) || module?.lessons[0], [module, lessonId]);
+  
+  // Fallback: fetch lesson data directly from Firestore if muxPlaybackId is missing
+  // This handles cases where the page was loaded before linking the playback ID
+  const [fetchedLessonData, setFetchedLessonData] = useState<{ muxPlaybackId?: string | null } | null>(null);
+  useEffect(() => {
+    const fetchLessonData = async () => {
+      if (!db || !courseSlug || !moduleId || !lessonId) return;
+      // Only fetch if lesson doesn't have muxPlaybackId but we expect it might exist
+      if (lesson?.muxPlaybackId) {
+        setFetchedLessonData(null);
+        return;
+      }
+      try {
+        const coursesRef = collection(db, 'courses');
+        const snap = await getDocs(coursesRef);
+        let courseId: string | null = null;
+        snap.forEach((d) => {
+          const data = d.data() as any;
+          if (data.slug === courseSlug || d.id === courseSlug) {
+            courseId = d.id;
+          }
+        });
+        if (!courseId) return;
+        const lref = doc(db, `courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`);
+        const lsnap = await getDoc(lref);
+        const ldata = lsnap.data() as any;
+        if (ldata?.muxPlaybackId) {
+          setFetchedLessonData({ muxPlaybackId: ldata.muxPlaybackId });
+        }
+      } catch (err) {
+        console.error('Error fetching lesson data:', err);
+      }
+    };
+    fetchLessonData();
+  }, [db, courseSlug, moduleId, lessonId, lesson?.muxPlaybackId]);
+
+  // Use fetched lesson data as fallback
+  const effectiveLesson = useMemo(() => {
+    if (lesson?.muxPlaybackId) return lesson;
+    if (fetchedLessonData?.muxPlaybackId) {
+      return { ...lesson, muxPlaybackId: fetchedLessonData.muxPlaybackId };
+    }
+    return lesson;
+  }, [lesson, fetchedLessonData]);
 
   // Fetch signed playback token for course videos (signed playback policy)
   useEffect(() => {
@@ -55,12 +99,12 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
 
     const fetchToken = async () => {
       setPlaybackToken(null);
-      if (!lesson?.muxPlaybackId || !user) return;
+      if (!effectiveLesson?.muxPlaybackId || !user) return;
       
       const attemptFetch = async (): Promise<void> => {
         try {
           const idToken = await user.getIdToken();
-          const res = await fetch(`/api/mux/token?playbackId=${encodeURIComponent(lesson.muxPlaybackId!)}`, {
+          const res = await fetch(`/api/mux/token?playbackId=${encodeURIComponent(effectiveLesson.muxPlaybackId!)}`, {
             headers: {
               'Authorization': `Bearer ${idToken}`,
             },
@@ -83,7 +127,10 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
             
             // 401/403 means auth/enrollment issue - don't retry
             if (res.status === 401 || res.status === 403) {
-              console.warn('Authentication or enrollment issue - cannot fetch token');
+              console.warn('Authentication or enrollment issue - cannot fetch token', errorData);
+              if (res.status === 403) {
+                console.warn('You may need to enroll in this course to watch videos.');
+              }
             }
             return;
           }
@@ -243,9 +290,9 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
             )}
 
             <div className="mt-2 sm:mt-3 bg-black border border-neutral-800 flex-shrink-0">
-              {lesson.muxPlaybackId ? (
+              {effectiveLesson?.muxPlaybackId ? (
               <MuxPlayer
-                playbackId={lesson.muxPlaybackId || undefined}
+                playbackId={effectiveLesson.muxPlaybackId || undefined}
                 streamType="on-demand"
                 primaryColor="#3B82F6"
                 className="w-full"
