@@ -86,6 +86,8 @@ export async function POST(req: NextRequest) {
     const existingSignedPlaybackId = asset.playback_ids?.find((pid: any) => pid.policy === 'signed');
     if (existingSignedPlaybackId) {
       console.log(`[convert-to-signed] Asset already has signed playback ID: ${existingSignedPlaybackId.id}`);
+      console.log(`[convert-to-signed] All playback IDs:`, asset.playback_ids?.map((pid: any) => ({ id: pid.id, policy: pid.policy })));
+      
       // Always update lesson with the signed playback ID to ensure it's synced
       const durationSec = asset.duration ? Math.round(Number(asset.duration)) : undefined;
       await lessonRef.set({
@@ -96,12 +98,22 @@ export async function POST(req: NextRequest) {
         updatedAt: FieldValue.serverTimestamp(),
       }, { merge: true });
       console.log(`[convert-to-signed] Updated lesson ${lessonId} with existing signed playback ID ${existingSignedPlaybackId.id}`);
+      
+      // Verify the lesson document was updated correctly
+      const updatedLesson = await lessonRef.get();
+      const updatedData = updatedLesson.data();
+      console.log(`[convert-to-signed] Lesson document after update:`, {
+        muxPlaybackId: updatedData?.muxPlaybackId,
+        muxAssetId: updatedData?.muxAssetId,
+      });
+      
       return NextResponse.json({
         success: true,
         message: 'Asset already has a signed playback ID. Lesson document has been updated.',
         playbackId: existingSignedPlaybackId.id,
         assetId,
         durationSec,
+        allPlaybackIds: asset.playback_ids?.map((pid: any) => ({ id: pid.id, policy: pid.policy })),
       });
     }
 
