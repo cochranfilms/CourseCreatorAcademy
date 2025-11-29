@@ -43,8 +43,8 @@ function WalkthroughContent() {
   if (!playbackId) {
     return (
       <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-        <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
-          <div className="aspect-video bg-neutral-800 rounded-xl flex items-center justify-center">
+        <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden border border-neutral-800 bg-transparent p-4">
+          <div className="aspect-video bg-transparent rounded-xl flex items-center justify-center">
             <div className="text-neutral-400 text-center px-4">
               No playback ID provided. Please provide a playbackId query parameter.
             </div>
@@ -63,14 +63,14 @@ function WalkthroughContent() {
         )}
         
         {loading ? (
-          <div className="rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
-            <div className="aspect-video bg-neutral-800 rounded-xl flex items-center justify-center">
+          <div className="rounded-2xl overflow-hidden border border-neutral-800 bg-transparent p-4">
+            <div className="aspect-video bg-transparent rounded-xl flex items-center justify-center">
               <div className="text-neutral-400">Loading video...</div>
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
-            <div className="aspect-video bg-neutral-800 rounded-xl overflow-hidden">
+          <div className="rounded-2xl overflow-hidden border border-neutral-800 bg-transparent p-4">
+            <div className="aspect-video bg-transparent rounded-xl overflow-hidden">
               <MuxPlayer
                 playbackId={playbackId}
                 streamType="on-demand"
@@ -100,8 +100,8 @@ export default function WalkthroughPage() {
   return (
     <Suspense fallback={
       <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-        <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
-          <div className="aspect-video bg-neutral-800 rounded-xl flex items-center justify-center">
+        <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden border border-neutral-800 bg-transparent p-4">
+          <div className="aspect-video bg-transparent rounded-xl flex items-center justify-center">
             <div className="text-neutral-400">Loading...</div>
           </div>
         </div>

@@ -473,15 +473,15 @@ export default function ProfilePage() {
 
       {/* Stats Section (Listings, Opportunities, Member Since) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
+        <div className="bg-transparent backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
           <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{listings.length}</div>
           <div className="text-sm text-neutral-400">{listings.length === 1 ? 'Listing' : 'Listings'}</div>
         </div>
-        <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
+        <div className="bg-transparent backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
           <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{opportunities.length}</div>
           <div className="text-sm text-neutral-400">{opportunities.length === 1 ? 'Opportunity' : 'Opportunities'}</div>
         </div>
-        <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
+        <div className="bg-transparent backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
           <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
             {memberSince ? memberSince.getFullYear() : '—'}
           </div>
@@ -491,7 +491,7 @@ export default function ProfilePage() {
 
       {/* About Section */}
       {(profile?.title || profile?.specialties || profile?.location || profile?.bio || (profile?.skills && profile.skills.length > 0)) && (
-        <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 rounded-lg">
+        <div className="bg-transparent backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 rounded-lg">
           <div className="flex items-center gap-2 mb-5">
             <div className="w-6 h-6 rounded-md bg-ccaBlue/20 border border-ccaBlue/30 text-ccaBlue flex items-center justify-center">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -606,7 +606,7 @@ export default function ProfilePage() {
                 target={p.url ? "_blank" : undefined}
                 rel={p.url ? "noopener noreferrer" : undefined}
                 onClick={(e) => { if (!p.url) e.preventDefault(); }}
-                className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 rounded-lg overflow-hidden hover:border-neutral-700 transition group"
+                className="bg-transparent backdrop-blur-sm border border-neutral-800/50 rounded-lg overflow-hidden hover:border-neutral-700 transition group"
               >
                 <div className="aspect-video bg-neutral-900 relative overflow-hidden">
                   {p.imageUrl ? (
@@ -651,7 +651,7 @@ export default function ProfilePage() {
 
       {/* Social Links Section */}
       {(profile?.linkedin || profile?.instagram || profile?.youtube) && (
-        <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 rounded-lg">
+        <div className="bg-transparent backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 rounded-lg">
           <h2 className="text-xl font-bold text-white mb-4">Connect</h2>
           <div className="flex gap-4">
             {profile.linkedin && (
@@ -708,7 +708,7 @@ export default function ProfilePage() {
               const canApply = currentUser && !isOwnOpportunity && !hasApplied;
               
               return (
-                <div key={o.id} className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 rounded-lg p-4 flex flex-col">
+                <div key={o.id} className="bg-transparent backdrop-blur-sm border border-neutral-800/50 rounded-lg p-4 flex flex-col">
                   <div className="flex-1">
                     <div className="text-sm text-neutral-500 mb-1">{o.company || 'Opportunity'}</div>
                     <div className="font-semibold text-white">{o.title}</div>
@@ -758,7 +758,7 @@ export default function ProfilePage() {
                   // You could open a modal or navigate to marketplace with listing ID
                   router.push(`/marketplace`);
                 }}
-                className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 rounded-lg overflow-hidden hover:border-neutral-700 transition group"
+                className="bg-transparent backdrop-blur-sm border border-neutral-800/50 rounded-lg overflow-hidden hover:border-neutral-700 transition group"
               >
                 <div className="aspect-video bg-neutral-900 relative overflow-hidden">
                   {listing.images && listing.images.length > 0 ? (
@@ -796,7 +796,7 @@ export default function ProfilePage() {
 
       {/* Empty State for Listings */}
       {listings.length === 0 && (
-        <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-8 rounded-lg text-center">
+        <div className="bg-transparent backdrop-blur-sm border border-neutral-800/50 p-8 rounded-lg text-center">
           <svg className="w-16 h-16 text-neutral-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>

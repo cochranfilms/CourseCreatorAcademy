@@ -19,7 +19,7 @@ export default function AdminCourseVideosUploadPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-950">
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
           <p className="text-neutral-400">Loading...</p>
@@ -29,7 +29,7 @@ export default function AdminCourseVideosUploadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white p-8">
+    <div className="min-h-screen bg-transparent text-white p-8">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-2">Course Video Management</h1>
         <p className="text-neutral-400 mb-8">

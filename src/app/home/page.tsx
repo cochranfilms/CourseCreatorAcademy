@@ -582,7 +582,7 @@ export default function HomePage() {
   // Show upgrade CTA for logged-in users without membership
   if (user && hasMembership === false) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-black flex items-center justify-center px-6 py-16 pt-safe">
+      <main className="min-h-screen bg-transparent flex items-center justify-center px-6 py-16 pt-safe">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4 sm:mb-6">
             Welcome to Creator Collective!
@@ -647,7 +647,7 @@ export default function HomePage() {
           {/* Top Section: Profile and Featured Show */}
           <div className="grid md:grid-cols-2 gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6 items-start">
             {/* Profile Section */}
-            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 min-w-0">
+            <div className="bg-transparent border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 min-w-0">
               <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight break-words">{getGreeting()}, {displayName.split(' ')[0]}.</h1>
               <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3 md:mb-4 min-w-0">
                 <div className="relative w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 xl:w-16 xl:h-16 rounded-full overflow-hidden bg-neutral-800 border-2 border-neutral-700 flex-shrink-0">
@@ -684,7 +684,7 @@ export default function HomePage() {
               <div className="mt-2 sm:mt-3 md:mt-4 lg:mt-5 xl:mt-6">
                 <h2 className="text-[10px] sm:text-xs md:text-sm font-semibold text-neutral-400 mb-1.5 sm:mb-2 md:mb-3">Quick Access</h2>
                 <div className="grid grid-cols-2 gap-1 sm:gap-1.5 md:gap-2 lg:gap-3">
-                  <Link href="/opportunities" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-red-500/30 hover:border-red-500/30 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
+                  <Link href="/opportunities" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-transparent border border-neutral-800 active:border-red-500/30 hover:border-red-500/30 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
                     <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 rounded-lg bg-red-500/20 flex items-center justify-center mb-0.5 sm:mb-1 md:mb-1.5 lg:mb-2 group-active:bg-red-500/30 group-hover:bg-red-500/30 transition">
                       <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
@@ -693,7 +693,7 @@ export default function HomePage() {
                     <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-neutral-300 text-center leading-tight px-0.5 break-words">Post an Opportunity</span>
                   </Link>
                   
-                  <Link href="/learn" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-neutral-700 hover:border-neutral-700 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
+                  <Link href="/learn" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-transparent border border-neutral-800 active:border-neutral-700 hover:border-neutral-700 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
                     <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 rounded-lg bg-neutral-800 flex items-center justify-center mb-0.5 sm:mb-1 md:mb-1.5 lg:mb-2 group-active:bg-neutral-700 group-hover:bg-neutral-700 transition">
                       <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -703,7 +703,7 @@ export default function HomePage() {
                     <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-neutral-300 text-center leading-tight px-0.5 break-words">Creator Kits</span>
                   </Link>
                   
-                  <a href="https://www.facebook.com/groups/1164427198416308" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-blue-500/30 hover:border-blue-500/30 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
+                  <a href="https://www.facebook.com/groups/1164427198416308" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-transparent border border-neutral-800 active:border-blue-500/30 hover:border-blue-500/30 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
                     <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 rounded-lg bg-blue-500/20 flex items-center justify-center mb-0.5 sm:mb-1 md:mb-1.5 lg:mb-2 group-active:bg-blue-500/30 group-hover:bg-blue-500/30 transition">
                       <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -712,7 +712,7 @@ export default function HomePage() {
                     <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-neutral-300 text-center leading-tight px-0.5 break-words">Facebook Group</span>
                   </a>
                   
-                  <Link href="/discounts" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-neutral-900 border border-neutral-800 active:border-orange-500/30 hover:border-orange-500/30 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
+                  <Link href="/discounts" className="flex flex-col items-center p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg sm:rounded-xl bg-transparent border border-neutral-800 active:border-orange-500/30 hover:border-orange-500/30 transition-all group touch-manipulation min-h-[70px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] justify-center">
                     <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 rounded-lg bg-gradient-to-br from-orange-500/20 to-pink-500/20 flex items-center justify-center mb-0.5 sm:mb-1 md:mb-1.5 lg:mb-2 group-active:from-orange-500/30 group-active:to-pink-500/30 group-hover:from-orange-500/30 group-hover:to-pink-500/30 transition">
                       <Image 
                         src="/Adobe-Logo.png" 
@@ -730,8 +730,8 @@ export default function HomePage() {
 
             {/* Featured Show */}
             {dataLoading || !featuredShow ? (
-              <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col h-full min-w-0">
-                <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
+              <div className="bg-transparent border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col h-full min-w-0">
+                <div className="relative aspect-video bg-transparent animate-pulse"></div>
                 <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0">
                   <div className="h-2.5 sm:h-3 bg-neutral-800 rounded w-24 sm:w-32 mb-2 animate-pulse"></div>
                   <div className="h-4 sm:h-5 md:h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
@@ -740,8 +740,8 @@ export default function HomePage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col h-full min-w-0">
-                <div className="relative aspect-video bg-neutral-900">
+              <div className="bg-transparent border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col h-full min-w-0">
+                <div className="relative aspect-video bg-transparent">
                   {featuredShow.thumbnail ? (
                     <img 
                       src={featuredShow.thumbnail} 
@@ -793,7 +793,7 @@ export default function HomePage() {
               <div className="flex gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 overflow-x-auto pb-2 sm:pb-3 md:pb-4 scrollbar-hide -mx-2 sm:-mx-3 md:mx-0 px-2 sm:px-3 md:px-0">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex-shrink-0 w-[120px] sm:w-[140px] md:w-48 lg:w-56 xl:w-64">
-                    <div className="relative aspect-video bg-neutral-900 rounded-lg sm:rounded-xl animate-pulse"></div>
+                    <div className="relative aspect-video bg-transparent rounded-lg sm:rounded-xl animate-pulse"></div>
                     <div className="mt-1 sm:mt-1.5 md:mt-2 h-2.5 sm:h-3 md:h-4 bg-neutral-800 rounded animate-pulse"></div>
                   </div>
                 ))}
@@ -809,7 +809,7 @@ export default function HomePage() {
                   
                   const videoContent = (
                     <>
-                      <div className="relative aspect-video bg-neutral-900 rounded-lg sm:rounded-xl overflow-hidden group cursor-pointer">
+                      <div className="relative aspect-video bg-transparent rounded-lg sm:rounded-xl overflow-hidden group cursor-pointer">
                         {thumbnailUrl ? (
                           <img 
                             src={thumbnailUrl} 
@@ -871,7 +871,7 @@ export default function HomePage() {
               <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight break-words">Member Discounts</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
                 {discounts.map((discount) => (
-                  <Link key={discount.id} href="/discounts" className="rounded-lg sm:rounded-xl md:rounded-2xl border border-neutral-800 bg-neutral-950 p-2 sm:p-3 md:p-4 lg:p-5 hover:border-ccaBlue/50 transition-colors flex flex-col h-full min-w-0">
+                  <Link key={discount.id} href="/discounts" className="rounded-lg sm:rounded-xl md:rounded-2xl border border-neutral-800 bg-transparent p-2 sm:p-3 md:p-4 lg:p-5 hover:border-ccaBlue/50 transition-colors flex flex-col h-full min-w-0">
                     {discount.partnerLogoUrl && (
                       <div className="mb-2 sm:mb-3 md:mb-4 flex items-center justify-center h-10 sm:h-12 md:h-14 lg:h-16">
                         <img
@@ -908,8 +908,8 @@ export default function HomePage() {
             <div className="mt-3 sm:mt-4 md:mt-5 lg:mt-6 xl:mt-8 min-w-0">
               <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight break-words">Featured Creator</h2>
               <Link href={`/creator-kits/${garrettKing.kitSlug}`}>
-                <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden group cursor-pointer hover:border-ccaBlue/50 transition-all min-w-0">
-                  <div className="relative aspect-video bg-neutral-900">
+                <div className="bg-transparent border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden group cursor-pointer hover:border-ccaBlue/50 transition-all min-w-0">
+                  <div className="relative aspect-video bg-transparent">
                     {garrettKing.bannerUrl ? (
                       <img 
                         src={garrettKing.bannerUrl} 
@@ -974,8 +974,8 @@ export default function HomePage() {
         <div className="flex flex-col gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6 h-full min-w-0">
           {/* Platform Walkthrough */}
           {dataLoading || !walkthrough ? (
-            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
-              <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
+            <div className="bg-transparent border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
+              <div className="relative aspect-video bg-transparent animate-pulse"></div>
               <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0">
                 <div className="h-2.5 sm:h-3 bg-neutral-800 rounded w-16 sm:w-20 md:w-24 mb-2 animate-pulse"></div>
                 <div className="h-3 sm:h-4 md:h-5 lg:h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
@@ -989,9 +989,9 @@ export default function HomePage() {
                 ? `/walkthrough?playbackId=${walkthrough.playbackId}` 
                 : '/learn';
               return (
-                <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
+                <div className="bg-transparent border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
                   <div 
-                    className="relative aspect-video bg-neutral-900 cursor-pointer group"
+                    className="relative aspect-video bg-transparent cursor-pointer group"
                     onClick={() => walkthrough.playbackId && setShowWalkthroughVideo(true)}
                   >
                     {walkthrough.thumbnailUrl ? (
@@ -1045,8 +1045,8 @@ export default function HomePage() {
 
           {/* Featured Asset */}
           {dataLoading || !featuredAsset ? (
-            <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
-              <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
+            <div className="bg-transparent border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
+              <div className="relative aspect-video bg-transparent animate-pulse"></div>
               <div className="p-2.5 sm:p-3 md:p-4 lg:p-5 xl:p-6 flex-1 flex flex-col min-w-0">
                 <div className="h-2.5 sm:h-3 bg-neutral-800 rounded w-16 sm:w-20 md:w-24 mb-2 animate-pulse"></div>
                 <div className="h-3 sm:h-4 md:h-5 lg:h-6 bg-neutral-800 rounded w-full mb-2 animate-pulse"></div>
@@ -1056,7 +1056,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div 
-              className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0 cursor-pointer group hover:border-ccaBlue/50 transition-all"
+              className="bg-transparent border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0 cursor-pointer group hover:border-ccaBlue/50 transition-all"
               onClick={async () => {
                 try {
                   if (!user || !auth.currentUser) {
@@ -1090,7 +1090,7 @@ export default function HomePage() {
                 }
               }}
             >
-              <div className="relative aspect-video bg-neutral-900">
+              <div className="relative aspect-video bg-transparent">
                 {featuredAsset.thumbnailUrl && 
                  featuredAsset.thumbnailUrl.startsWith('https://') && 
                  (featuredAsset.thumbnailUrl.includes('firebasestorage.googleapis.com') || 
@@ -1144,8 +1144,8 @@ export default function HomePage() {
         {dataLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden">
-                <div className="relative aspect-video bg-neutral-900 animate-pulse"></div>
+              <div key={i} className="bg-transparent border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden">
+                <div className="relative aspect-video bg-transparent animate-pulse"></div>
                 <div className="p-2 sm:p-3 md:p-4">
                   <div className="h-3 sm:h-4 bg-neutral-800 rounded animate-pulse"></div>
                 </div>
@@ -1155,8 +1155,8 @@ export default function HomePage() {
         ) : products.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
             {products.map((product) => (
-              <Link key={product.id} href={`/marketplace`} className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden group cursor-pointer active:border-neutral-700 hover:border-neutral-700 transition touch-manipulation min-w-0">
-                <div className="relative aspect-video bg-neutral-900">
+              <Link key={product.id} href={`/marketplace`} className="bg-transparent border border-neutral-800 rounded-lg sm:rounded-xl overflow-hidden group cursor-pointer active:border-neutral-700 hover:border-neutral-700 transition touch-manipulation min-w-0">
+                <div className="relative aspect-video bg-transparent">
                   {product.image ? (
                     <img 
                       src={product.image} 
@@ -1200,7 +1200,7 @@ export default function HomePage() {
           onClick={() => setShowWalkthroughVideo(false)}
         >
           <div 
-            className="relative w-full max-w-6xl bg-neutral-900 rounded-lg sm:rounded-xl overflow-hidden"
+            className="relative w-full max-w-6xl bg-transparent rounded-lg sm:rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <button
