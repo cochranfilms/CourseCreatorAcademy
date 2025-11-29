@@ -78,18 +78,12 @@ export async function POST(req: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    // Return proxy URL for POST/OPTIONS/HEAD (small requests, handles CORS)
-    // PATCH requests will be redirected to MUX directly to avoid Vercel's 413 error
-    // The proxy intercepts POST and returns 201, then PATCH requests go directly to MUX
-    const baseUrl = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || process.env.SITE_URL || '';
-    const proxyUrl = baseUrl
-      ? `${baseUrl.replace(/\/$/, '')}/api/mux/tus-proxy?u=${encodeURIComponent(upload.url)}`
-      : upload.url;
-    
+    // Return MUX direct upload URL directly
+    // MUX uploader component handles CORS automatically and works directly with MUX
+    // No proxy needed - MUX uploader is designed for this use case
     return NextResponse.json({ 
       uploadId: upload.id, 
-      uploadUrl: proxyUrl, // Use proxy for POST/OPTIONS/HEAD (handles CORS)
-      directUploadUrl: upload.url // Direct MUX URL for PATCH (to avoid 413)
+      uploadUrl: upload.url // Direct MUX URL - MUX uploader handles CORS
     });
   } catch (err: any) {
     console.error('Error creating upload:', err);

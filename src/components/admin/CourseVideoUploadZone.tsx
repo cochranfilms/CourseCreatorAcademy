@@ -2,7 +2,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
-import * as tus from 'tus-js-client';
+import MuxUploader from '@mux/mux-uploader-react';
 
 type Course = {
   id: string;
@@ -58,9 +58,10 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'error'>('idle');
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [muxUploadEndpoint, setMuxUploadEndpoint] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadRef = useRef<tus.Upload | null>(null);
+  const uploaderRef = useRef<any>(null);
 
   // Load courses on mount
   useEffect(() => {
@@ -316,68 +317,67 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
       }
 
       const { uploadId, uploadUrl } = await uploadResponse.json();
-
-      // Step 2: Upload video using TUS
-      // Use proxy URL for POST/OPTIONS (handles CORS)
-      // Proxy returns MUX URL in Location header, so PATCH requests go directly to MUX
-      // This avoids Vercel's 413 Payload Too Large error for large files
-      // HEAD requests will also use MUX URL - if they fail with CORS, TUS client will handle retries
-      const upload = new tus.Upload(videoFile, {
-        endpoint: uploadUrl, // Proxy URL - handles POST CORS, returns MUX URL in Location
-        retryDelays: [0, 3000, 5000, 10000, 20000],
-        metadata: {
-          filename: videoFile.name,
-          filetype: videoFile.type,
-        },
-        onError: (error) => {
-          console.error('Upload error:', error);
-          const errorMessage = error.message || '';
-          // If HEAD request fails with CORS, try to handle it by using proxy for HEAD
-          if (errorMessage.includes('failed to resume') || errorMessage.includes('HEAD')) {
-            console.log('HEAD request may have failed - TUS client will retry or handle it');
-          }
-          setUploadError(error.message || 'Upload failed');
-          setUploadStatus('error');
-        },
-        onProgress: (bytesUploaded, bytesTotal) => {
-          const progress = (bytesUploaded / bytesTotal) * 100;
-          setUploadProgress(progress);
-        },
-        onSuccess: async () => {
-          setUploadStatus('processing');
-          setUploadProgress(100);
-          // The MUX webhook will handle updating the lesson document
-          // We'll poll for the asset ID or wait for webhook
-          // For now, just show success - webhook will update lesson
-          setTimeout(() => {
-            setUploadStatus('completed');
-            if (onUploadComplete) {
-              onUploadComplete({
-                courseId: selectedCourseId,
-                moduleId: selectedModuleId,
-                lessonId: selectedLessonId,
-                muxAssetId: uploadId, // This is the upload ID, asset ID comes from webhook
-              });
-            }
-          }, 2000);
-        },
-      });
-
-      uploadRef.current = upload;
-      upload.start();
+      
+      // Step 2: Use MUX uploader component - it handles CORS and large file uploads automatically
+      // Use direct MUX URL - MUX uploader is designed to work directly with MUX
+      setMuxUploadEndpoint(uploadUrl);
+      
+      // Programmatically set the file on the uploader component and start upload
+      // Wait for next render to ensure component is mounted
+      setTimeout(() => {
+        if (uploaderRef.current && videoFile) {
+          // Set the file programmatically on the uploader element
+          (uploaderRef.current as any).file = videoFile;
+        }
+      }, 100);
     } catch (error: unknown) {
       console.error('Upload error:', error);
       const err = error as Error;
       setUploadError(err.message || 'Upload failed');
       setUploadStatus('error');
     }
-  }, [videoFile, selectedCourseId, selectedModuleId, selectedLessonId, lessons, newLessonTitle, newLessonDescription, onUploadComplete]);
+  }, [videoFile, selectedCourseId, selectedModuleId, selectedLessonId, lessons, newLessonTitle, newLessonDescription]);
+
+  const handleUploadProgress = useCallback((event: any) => {
+    // MUX uploader progress event
+    const progress = event.detail?.value || 0;
+    setUploadProgress(progress);
+  }, []);
+
+  const handleUploadSuccess = useCallback(() => {
+    setUploadStatus('processing');
+    setUploadProgress(100);
+    // The MUX webhook will handle updating the lesson document
+    setTimeout(() => {
+      setUploadStatus('completed');
+      if (onUploadComplete) {
+        // Get upload ID from the endpoint URL
+        const uploadIdMatch = muxUploadEndpoint?.match(/\/upload\/([^/?]+)/);
+        const uploadId = uploadIdMatch ? uploadIdMatch[1] : '';
+        onUploadComplete({
+          courseId: selectedCourseId,
+          moduleId: selectedModuleId,
+          lessonId: selectedLessonId,
+          muxAssetId: uploadId,
+        });
+      }
+      setMuxUploadEndpoint(null);
+      setVideoFile(null);
+    }, 2000);
+  }, [selectedCourseId, selectedModuleId, selectedLessonId, muxUploadEndpoint, onUploadComplete]);
+
+  const handleUploadError = useCallback((event: any) => {
+    console.error('Upload error:', event.detail);
+    setUploadError(event.detail?.message || 'Upload failed');
+    setUploadStatus('error');
+    setMuxUploadEndpoint(null);
+  }, []);
 
   const handleCancelUpload = useCallback(() => {
-    if (uploadRef.current) {
-      uploadRef.current.abort();
-      uploadRef.current = null;
+    if (uploaderRef.current) {
+      uploaderRef.current.abort();
     }
+    setMuxUploadEndpoint(null);
     setUploadStatus('idle');
     setUploadProgress(0);
   }, []);
@@ -594,43 +594,82 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
         <label className="block text-sm font-medium text-neutral-300 mb-2">
           Video File *
         </label>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="video/*"
-          onChange={handleFileSelect}
-          disabled={disabled || uploadStatus === 'uploading' || uploadStatus === 'processing'}
-          className="w-full px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-ccaBlue file:text-white hover:file:bg-ccaBlue/80 disabled:opacity-50"
-        />
-        {videoFile && (
-          <p className="mt-2 text-sm text-neutral-400">
-            Selected: {videoFile.name} ({(videoFile.size / 1024 / 1024).toFixed(2)} MB)
-          </p>
+        {!muxUploadEndpoint ? (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              onChange={handleFileSelect}
+              disabled={disabled || uploadStatus === 'uploading' || uploadStatus === 'processing'}
+              className="w-full px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-ccaBlue file:text-white hover:file:bg-ccaBlue/80 disabled:opacity-50"
+            />
+            {videoFile && (
+              <p className="mt-2 text-sm text-neutral-400">
+                Selected: {videoFile.name} ({(videoFile.size / 1024 / 1024).toFixed(2)} MB)
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={
+                disabled ||
+                !videoFile ||
+                !selectedCourseId ||
+                !selectedModuleId ||
+                !selectedLessonId ||
+                uploadStatus === 'uploading' ||
+                uploadStatus === 'processing'
+              }
+              className="mt-4 w-full px-6 py-3 bg-ccaBlue hover:bg-ccaBlue/80 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Start Upload
+            </button>
+          </>
+        ) : (
+          <div className="space-y-4">
+            <MuxUploader
+              ref={uploaderRef}
+              endpoint={muxUploadEndpoint || ''}
+              onUploadStart={() => {
+                setUploadStatus('uploading');
+                setUploadProgress(0);
+              }}
+              onProgress={handleUploadProgress}
+              onSuccess={handleUploadSuccess}
+              onUploadError={handleUploadError}
+              noDrop={true}
+              noProgress={true}
+              noStatus={true}
+              style={{
+                '--uploader-font-family': 'system-ui, sans-serif',
+                '--uploader-primary': '#3B82F6',
+              } as React.CSSProperties}
+            />
+            {uploadStatus === 'uploading' && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-neutral-300">Uploading...</span>
+                  <span className="text-neutral-400">{Math.round(uploadProgress)}%</span>
+                </div>
+                <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-ccaBlue transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCancelUpload}
+                  className="text-sm text-red-400 hover:text-red-300"
+                >
+                  Cancel Upload
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
-
-      {/* Upload Progress */}
-      {uploadStatus === 'uploading' && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-neutral-300">Uploading...</span>
-            <span className="text-neutral-400">{Math.round(uploadProgress)}%</span>
-          </div>
-          <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-ccaBlue transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={handleCancelUpload}
-            className="text-sm text-red-400 hover:text-red-300"
-          >
-            Cancel Upload
-          </button>
-        </div>
-      )}
 
       {uploadStatus === 'processing' && (
         <div className="p-4 bg-ccaBlue/10 border border-ccaBlue/30 rounded-lg">
@@ -655,24 +694,6 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
           <p className="text-red-400">Error: {uploadError}</p>
         </div>
       )}
-
-      {/* Upload Button */}
-      <button
-        type="button"
-        onClick={handleUpload}
-        disabled={
-          disabled ||
-          !videoFile ||
-          !selectedCourseId ||
-          !selectedModuleId ||
-          !selectedLessonId ||
-          uploadStatus === 'uploading' ||
-          uploadStatus === 'processing'
-        }
-        className="w-full px-6 py-3 bg-ccaBlue hover:bg-ccaBlue/80 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {uploadStatus === 'uploading' ? 'Uploading...' : uploadStatus === 'processing' ? 'Processing...' : 'Upload Video'}
-      </button>
     </div>
   );
 }
