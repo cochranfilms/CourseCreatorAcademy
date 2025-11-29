@@ -144,11 +144,14 @@ export async function POST(req: NextRequest) {
         durationSec = asset.duration ? Math.round(Number(asset.duration)) : 0;
       } catch (err: any) {
         console.error(`[link-mux] Error verifying asset:`, err);
+        const errorMessage = err.message || err.toString() || 'Unknown error';
+        const statusCode = err.status || err.statusCode || 500;
         return NextResponse.json({ 
           error: 'Failed to verify asset from MUX', 
-          details: err.message || String(err),
+          details: errorMessage,
+          muxError: err.response?.data || err.body || undefined,
           stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-        }, { status: 500 });
+        }, { status: statusCode >= 400 && statusCode < 600 ? statusCode : 500 });
       }
     }
 
