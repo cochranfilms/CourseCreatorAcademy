@@ -784,7 +784,7 @@ export default function DashboardPage() {
           </div>
         )}
         {/* Profile Section */}
-        <div className="bg-transparent border border-neutral-800/50 p-4 sm:p-6 mb-6 w-full overflow-x-hidden">
+        <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 w-full overflow-x-hidden">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 w-full">
             {/* Left Side - Profile Info */}
             <div className="flex-1 w-full min-w-0">
@@ -839,7 +839,7 @@ export default function DashboardPage() {
             </div>
 
           {/* Email Change + Claim Purchases */}
-          <div className="mt-8 p-4 rounded-xl border border-neutral-800 bg-transparent">
+          <div className="mt-8 p-4 rounded-xl border border-neutral-800 bg-neutral-900/40">
             <div className="mb-4">
               <div className="font-semibold text-white">Email & Purchases</div>
               <div className="text-sm text-neutral-400">Update your sign-in email and claim purchases tied to your email.</div>
@@ -974,7 +974,7 @@ export default function DashboardPage() {
 
         {/* Admin Links Section - Only visible for info@cochranfilms.com */}
         {user?.email === 'info@cochranfilms.com' && (
-          <div className="bg-transparent border border-purple-800/50 p-4 sm:p-6 mb-6 w-full overflow-x-hidden">
+          <div className="bg-gradient-to-r from-purple-950/60 to-blue-950/60 backdrop-blur-sm border border-purple-800/50 p-4 sm:p-6 mb-6 w-full overflow-x-hidden">
             <div className="flex items-center gap-2 mb-4">
               <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -984,7 +984,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Link
                 href="/admin/assets-upload"
-                className="flex items-center gap-3 p-4 bg-transparent border border-neutral-800 hover:border-purple-600 transition rounded-lg group"
+                className="flex items-center gap-3 p-4 bg-neutral-900/60 border border-neutral-800 hover:border-purple-600 transition rounded-lg group"
               >
                 <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center group-hover:bg-purple-600/30 transition">
                   <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1001,7 +1001,7 @@ export default function DashboardPage() {
               </Link>
               <Link
                 href="/admin/course-videos-upload"
-                className="flex items-center gap-3 p-4 bg-transparent border border-neutral-800 hover:border-purple-600 transition rounded-lg group"
+                className="flex items-center gap-3 p-4 bg-neutral-900/60 border border-neutral-800 hover:border-purple-600 transition rounded-lg group"
               >
                 <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center group-hover:bg-purple-600/30 transition">
                   <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1029,7 +1029,7 @@ export default function DashboardPage() {
               className={`px-3 sm:px-4 md:px-6 py-2 text-xs sm:text-sm font-medium transition whitespace-nowrap flex-shrink-0 rounded-lg ${
                 activeTab === tab
                   ? 'bg-neutral-800/60 backdrop-blur-sm text-white border border-neutral-700/50'
-                  : 'bg-transparent text-neutral-400 hover:text-white border border-neutral-800/50'
+                  : 'bg-neutral-900/60 backdrop-blur-sm text-neutral-400 hover:text-white border border-neutral-800/50'
               }`}
             >
               {tab === 'legacy' ? 'Subscriptions' : tab === 'edit' ? 'Edit Profile' : tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -1039,7 +1039,7 @@ export default function DashboardPage() {
 
         {/* Tab Content */}
         {activeTab === 'projects' && (
-          <div className="bg-transparent border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-xl sm:text-2xl font-semibold">Projects</h2>
               <button 
@@ -1068,7 +1068,7 @@ export default function DashboardPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {projects.map((project) => (
-                  <div key={project.id} className="border border-neutral-800 bg-transparent p-4 hover:border-neutral-700 transition">
+                  <div key={project.id} className="border border-neutral-800 bg-neutral-900 p-4 hover:border-neutral-700 transition">
                     {project.imageUrl && (
                       <img src={project.imageUrl} alt={project.title} className="w-full h-48 object-cover mb-4" loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" />
                     )}
@@ -1108,7 +1108,7 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'social' && (
-          <div className="bg-transparent border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <h2 className="text-2xl font-semibold mb-6">Social Profiles</h2>
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               <div>
@@ -1195,7 +1195,7 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'email' && (
-          <div className="bg-transparent border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <div className="flex items-center gap-2 mb-2">
               <svg className="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -1205,7 +1205,7 @@ export default function DashboardPage() {
             <p className="text-neutral-400 mb-6">Stay updated with the latest opportunities and content from our platform</p>
             
             <div className="space-y-4 mb-6">
-              <div className="flex items-center justify-between p-4 bg-transparent border border-neutral-800">
+              <div className="flex items-center justify-between p-4 bg-neutral-900 border border-neutral-800">
                 <div className="flex-1">
                   <h3 className="font-semibold mb-1">Job Opportunities</h3>
                   <p className="text-sm text-neutral-400">Receive weekly emails with the newest job listings matching your specialty</p>
@@ -1221,7 +1221,7 @@ export default function DashboardPage() {
                 </label>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-transparent border border-neutral-800">
+              <div className="flex items-center justify-between p-4 bg-neutral-900 border border-neutral-800">
                 <div className="flex-1">
                   <h3 className="font-semibold mb-1">Marketplace Updates</h3>
                   <p className="text-sm text-neutral-400">Get notified about new marketplace listings and exclusive deals from creators</p>
@@ -1250,11 +1250,11 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'privacy' && (
-          <div className="bg-transparent border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <h2 className="text-2xl font-semibold mb-2">Privacy Settings</h2>
             <p className="text-neutral-400 mb-6">Control who can see your profile and information</p>
             {/* Account Security: Set/Change password in-app */}
-            <div className="mt-8 p-4 rounded-xl border border-neutral-800 bg-transparent">
+            <div className="mt-8 p-4 rounded-xl border border-neutral-800 bg-neutral-900/40">
               <div className="mb-4">
                 <div className="font-semibold text-white">Account Security</div>
                 <div className="text-sm text-neutral-400">
@@ -1362,7 +1362,7 @@ export default function DashboardPage() {
             <div className="space-y-6 mb-6">
               <div>
                 <h3 className="font-semibold mb-2">Profile Visibility</h3>
-                <div className="flex items-center justify-between p-4 bg-transparent border border-neutral-800">
+                <div className="flex items-center justify-between p-4 bg-neutral-900 border border-neutral-800">
                   <div className="flex-1">
                     <p className="font-medium mb-1">Make profile public</p>
                     <p className="text-sm text-neutral-400">When enabled, your profile will appear in public directories and search results.</p>
@@ -1403,23 +1403,23 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'orders' && (
-          <div className="bg-transparent border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             {/* Seller Analytics Card */}
             <div className="mb-4 grid grid-cols-1 lg:grid-cols-4 gap-3">
-              <div className="border border-neutral-800 bg-transparent p-4">
+              <div className="border border-neutral-800 bg-neutral-950 p-4">
                 <div className="text-sm text-neutral-400 mb-1">Orders</div>
                 <div className="text-2xl font-semibold text-white">{ordersCount}</div>
                 {lastOrderAt && <div className="text-xs text-neutral-500 mt-1">Last order {lastOrderAt.toLocaleString()}</div>}
               </div>
-              <div className="border border-neutral-800 bg-transparent p-4">
+              <div className="border border-neutral-800 bg-neutral-950 p-4">
                 <div className="text-sm text-neutral-400 mb-1">Gross</div>
                 <div className="text-2xl font-semibold text-white">{formatMoney(grossCents)}</div>
               </div>
-              <div className="border border-neutral-800 bg-transparent p-4">
+              <div className="border border-neutral-800 bg-neutral-950 p-4">
                 <div className="text-sm text-neutral-400 mb-1">Platform Fees</div>
                 <div className="text-2xl font-semibold text-white">{formatMoney(platformFeeCents)}</div>
               </div>
-              <div className="border border-neutral-800 bg-transparent p-4">
+              <div className="border border-neutral-800 bg-neutral-950 p-4">
                 <div className="text-sm text-neutral-400 mb-1">Net to You</div>
                 <div className="text-2xl font-semibold text-white">
                   {formatMoney(netAfterStripeCents != null ? netAfterStripeCents : Math.max(grossCents - platformFeeCents, 0))}
@@ -1430,7 +1430,7 @@ export default function DashboardPage() {
               </div>
             </div>
             {lastLegacyPayout && (
-              <div className="mb-4 border border-neutral-800 bg-transparent p-4">
+              <div className="mb-4 border border-neutral-800 bg-neutral-950 p-4">
                 <div className="text-sm text-neutral-400 mb-1">Last Legacy+ payout</div>
                 <div className="text-lg font-semibold text-white">
                   {formatMoney(lastLegacyPayout.amount, lastLegacyPayout.currency)}
@@ -1447,19 +1447,19 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'onboarding' && (
-          <div className="bg-transparent border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <OnboardingTab />
           </div>
         )}
 
         {activeTab === 'legacy' && (
-          <div className="bg-transparent border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <LegacySubscriptions />
           </div>
         )}
 
         {activeTab === 'jobs' && user && (
-          <div className="bg-transparent border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <div className="mb-6">
               <h2 className="text-xl sm:text-2xl font-semibold mb-2">Jobs</h2>
               <p className="text-neutral-400 text-sm">Manage your job applications and opportunities</p>
@@ -1469,7 +1469,7 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'edit' && (
-          <div className="bg-transparent border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
+          <div className="bg-neutral-950/60 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 w-full overflow-x-hidden">
             <h2 className="text-xl sm:text-2xl font-semibold mb-6">Edit Profile</h2>
 
             <div className="space-y-4">
