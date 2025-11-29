@@ -612,6 +612,7 @@ function LessonCard({
   onCancelMove: () => void;
   onMoveToModule: (targetModuleId: string, newIndex?: number) => void;
   onLinkMux: (data: { playbackId?: string; assetId?: string }) => Promise<void>;
+  onConvertToSigned?: () => Promise<void>;
   updating: boolean;
 }) {
   const [title, setTitle] = useState(lesson.title);
