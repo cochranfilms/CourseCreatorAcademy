@@ -123,21 +123,28 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   if (method === 'PATCH') {
     body = req.body;
   } else if (method === 'POST') {
-    // For TUS POST, body must be empty and Content-Length must be 0
-    headers.set('Content-Length', '0');
+    // For TUS POST, body must be empty
     body = null;
   }
 
+  // Convert Headers to plain object to preserve exact Title-Case
+  // Headers object may normalize case, but MUX requires exact Title-Case
+  const headerObj: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    // Preserve the exact case we set (Title-Case)
+    headerObj[key] = value;
+  });
+
   const init: RequestInit = {
     method,
-    headers,
+    headers: headerObj, // Use plain object to preserve exact case
     body: body || undefined, // Use undefined instead of null for empty body
     // @ts-ignore - duplex needed for streaming
     duplex: method === 'PATCH' ? 'half' : undefined,
   };
 
-  console.log(`TUS proxy ${method} forwarding to:`, target);
-  console.log(`TUS proxy ${method} forwarded headers:`, Object.fromEntries(Array.from(headers.entries())));
+  console.log(`[TUS PROXY] ${method} forwarding to:`, target);
+  console.log(`[TUS PROXY] ${method} forwarded headers (exact case):`, headerObj);
   
   const upstream = await fetch(target, init);
   
