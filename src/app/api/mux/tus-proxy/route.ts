@@ -149,14 +149,16 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   
   // MUX direct upload URLs already have the upload ID in the path, meaning the upload is already "created"
   // For POST requests, MUX returns 405 because the upload already exists
-  // We need to intercept POST and return 201 Created with Location header pointing to the same URL
+  // We need to intercept POST and return 201 Created with Location header pointing to MUX directly
+  // This allows PATCH requests to go directly to MUX (bypassing Vercel's 413 error)
   if (method === 'POST') {
     // Check if this is a MUX direct upload URL (has upload ID in path)
     const uploadIdMatch = target.match(/\/upload\/([^/?]+)/);
     if (uploadIdMatch) {
-      console.log(`[TUS PROXY] POST to MUX direct upload - upload already exists, returning 201 Created`);
+      console.log(`[TUS PROXY] POST to MUX direct upload - upload already exists, returning 201 Created with direct MUX URL`);
       const resHeaders = new Headers(corsHeaders(allowedOrigin));
-      resHeaders.set('Location', `${req.nextUrl.origin}${req.nextUrl.pathname}?u=${encodeURIComponent(target)}`);
+      // Return MUX URL directly in Location header so PATCH requests bypass proxy
+      resHeaders.set('Location', target);
       resHeaders.set('Tus-Resumable', '1.0.0');
       resHeaders.set('Upload-Length', headerObj['Upload-Length'] || '0');
       return new NextResponse(null, {
@@ -164,20 +166,6 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
         headers: resHeaders,
       });
     }
-  }
-  
-  // For PATCH requests with large bodies, Vercel returns 413 Payload Too Large
-  // Redirect PATCH requests directly to MUX to bypass Vercel's body size limit
-  if (method === 'PATCH') {
-    console.log(`[TUS PROXY] PATCH request detected - redirecting directly to MUX to avoid Vercel 413 error`);
-    const resHeaders = new Headers(corsHeaders(allowedOrigin));
-    resHeaders.set('Location', target);
-    resHeaders.set('Access-Control-Allow-Origin', allowedOrigin || '*');
-    // Return 307 Temporary Redirect - browser will follow and upload directly to MUX
-    return new NextResponse(null, {
-      status: 307,
-      headers: resHeaders,
-    });
   }
   
   const upstream = await fetch(target, init);

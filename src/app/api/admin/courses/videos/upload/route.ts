@@ -78,10 +78,19 @@ export async function POST(req: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    // Return MUX direct upload URL directly - MUX handles CORS when cors_origin is set correctly
-    // Proxying through Vercel causes 413 Payload Too Large errors for large files
-    // MUX direct uploads are designed to work directly from the browser
-    return NextResponse.json({ uploadId: upload.id, uploadUrl: upload.url });
+    // Return proxy URL for POST/OPTIONS/HEAD (small requests, handles CORS)
+    // PATCH requests will be redirected to MUX directly to avoid Vercel's 413 error
+    // The proxy intercepts POST and returns 201, then PATCH requests go directly to MUX
+    const baseUrl = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || process.env.SITE_URL || '';
+    const proxyUrl = baseUrl
+      ? `${baseUrl.replace(/\/$/, '')}/api/mux/tus-proxy?u=${encodeURIComponent(upload.url)}`
+      : upload.url;
+    
+    return NextResponse.json({ 
+      uploadId: upload.id, 
+      uploadUrl: proxyUrl, // Use proxy for POST/OPTIONS/HEAD (handles CORS)
+      directUploadUrl: upload.url // Direct MUX URL for PATCH (to avoid 413)
+    });
   } catch (err: any) {
     console.error('Error creating upload:', err);
     return NextResponse.json({ error: err.message || 'Failed to create upload' }, { status: 500 });
