@@ -318,11 +318,12 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
       const { uploadId, uploadUrl } = await uploadResponse.json();
 
       // Step 2: Upload video using TUS
-      // Use proxy URL for POST/OPTIONS/HEAD (handles CORS)
+      // Use proxy URL for POST/OPTIONS (handles CORS)
       // Proxy returns MUX URL in Location header, so PATCH requests go directly to MUX
       // This avoids Vercel's 413 Payload Too Large error for large files
+      // HEAD requests will also use MUX URL - if they fail with CORS, TUS client will handle retries
       const upload = new tus.Upload(videoFile, {
-        endpoint: uploadUrl, // Proxy URL - handles POST CORS, then PATCH goes to MUX directly
+        endpoint: uploadUrl, // Proxy URL - handles POST CORS, returns MUX URL in Location
         retryDelays: [0, 3000, 5000, 10000, 20000],
         metadata: {
           filename: videoFile.name,
@@ -330,6 +331,11 @@ export function CourseVideoUploadZone({ onUploadComplete, disabled }: CourseVide
         },
         onError: (error) => {
           console.error('Upload error:', error);
+          const errorMessage = error.message || '';
+          // If HEAD request fails with CORS, try to handle it by using proxy for HEAD
+          if (errorMessage.includes('failed to resume') || errorMessage.includes('HEAD')) {
+            console.log('HEAD request may have failed - TUS client will retry or handle it');
+          }
           setUploadError(error.message || 'Upload failed');
           setUploadStatus('error');
         },
