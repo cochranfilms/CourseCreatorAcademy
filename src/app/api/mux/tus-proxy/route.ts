@@ -79,12 +79,31 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   }
 
   const headers = new Headers();
-  // Forward relevant headers (keep case-insensitive)
+  // Only forward TUS-specific headers and essential request headers
+  // Filter out browser security headers, Vercel internal headers, and other non-TUS headers
+  const allowedHeaders = [
+    'tus-resumable', 'Tus-Resumable',
+    'upload-length', 'Upload-Length',
+    'upload-offset', 'Upload-Offset',
+    'upload-metadata', 'Upload-Metadata',
+    'content-type', 'Content-Type',
+    'authorization', 'Authorization',
+    'user-agent', 'User-Agent',
+    'accept', 'Accept',
+  ];
+  
   req.headers.forEach((value, key) => {
-    // Do not forward Host/Origin/Referer to remote
-    if (/^(host|origin|referer)$/i.test(key)) return;
-    // Forward all TUS-related headers (preserve original case for TUS headers)
-    headers.set(key, value);
+    // Skip browser security headers, Vercel headers, and other non-essential headers
+    if (/^(host|origin|referer|connection|date|forwarded|cookie|content-security-policy|cross-origin|referrer-policy|strict-transport-security|x-content-type-options|x-frame-options|x-xss-protection|sec-|x-vercel-|x-matched-path|x-ratelimit-|x-real-ip|x-forwarded-|priority)$/i.test(key)) {
+      return;
+    }
+    
+    // Only forward allowed headers or TUS-specific headers
+    const lowerKey = key.toLowerCase();
+    if (allowedHeaders.some(h => h.toLowerCase() === lowerKey) || 
+        /^(tus-|upload-)/i.test(key)) {
+      headers.set(key, value);
+    }
   });
 
   // Log headers for debugging
