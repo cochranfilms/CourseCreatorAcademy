@@ -231,15 +231,27 @@ export async function GET(req: NextRequest) {
     
     if (lessonSnap && !lessonSnap.empty) {
       const d = lessonSnap.docs[0];
-      const courseId = getAncestorIdFromPath(d.ref.path, 'courses');
+      const lessonData = d.data() as any;
+      const lessonPath = d.ref.path;
+      const courseId = getAncestorIdFromPath(lessonPath, 'courses');
       if (!courseId) {
-        logWarn('mux.token.invalid_path', { playbackId, path: d.ref.path });
+        logWarn('mux.token.invalid_path', { playbackId, path: lessonPath });
         return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
       }
+      
+      // Log lesson data for debugging
+      logInfo('mux.token.lesson_found', { 
+        playbackId: playbackIdStr, 
+        courseId, 
+        lessonPath,
+        lessonMuxPlaybackId: lessonData?.muxPlaybackId,
+        lessonMuxAssetId: lessonData?.muxAssetId,
+      });
+      
       // Require enrollment
       const uid = await getUserFromAuthHeader(req);
       if (!uid) {
-        logWarn('mux.token.unauthorized', { playbackId, courseId });
+        logWarn('mux.token.unauthorized', { playbackId: playbackIdStr, courseId });
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
       const enr = await adminDb
@@ -251,12 +263,12 @@ export async function GET(req: NextRequest) {
         .get()
         .catch(() => null as any);
       if (!enr || enr.empty) {
-        logWarn('mux.token.not_enrolled', { playbackId, courseId, uid });
+        logWarn('mux.token.not_enrolled', { playbackId: playbackIdStr, courseId, uid });
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
-      const token = generateMuxPlaybackToken(playbackId, { audience: 'v', expiresInSeconds: 15 * 60 });
-      logInfo('mux.token.issued', { type: 'lesson', courseId });
-      recordAudit('mux_token_issued', { playbackId, scope: 'course', courseId }).catch(()=>{});
+      const token = generateMuxPlaybackToken(playbackIdStr, { audience: 'v', expiresInSeconds: 15 * 60 });
+      logInfo('mux.token.issued', { type: 'lesson', courseId, playbackId: playbackIdStr });
+      recordAudit('mux_token_issued', { playbackId: playbackIdStr, scope: 'course', courseId }).catch(()=>{});
       return NextResponse.json({ token });
     }
 
