@@ -156,7 +156,7 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
     
     fetchToken();
     return () => { cancelled = true; };
-  }, [lesson?.muxPlaybackId, user]);
+  }, [effectiveLesson?.muxPlaybackId, user]);
 
   useEffect(() => {
     const loadSaved = async () => {
