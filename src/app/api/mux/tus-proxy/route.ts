@@ -136,8 +136,18 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   
   const upstream = await fetch(target, init);
   
-  console.log(`TUS proxy ${method} upstream response status:`, upstream.status);
-  console.log(`TUS proxy ${method} upstream response headers:`, Object.fromEntries(Array.from(upstream.headers.entries())));
+  console.log(`[TUS PROXY] ${method} upstream response status:`, upstream.status);
+  console.log(`[TUS PROXY] ${method} upstream response headers:`, Object.fromEntries(Array.from(upstream.headers.entries())));
+  
+  // Log response body for debugging 405 errors
+  if (upstream.status === 405) {
+    try {
+      const responseText = await upstream.clone().text();
+      console.log(`[TUS PROXY] ${method} 405 error response body:`, responseText);
+    } catch (e) {
+      console.log(`[TUS PROXY] Could not read 405 response body:`, e);
+    }
+  }
   
   const resHeaders = new Headers(corsHeaders(allowedOrigin));
 
