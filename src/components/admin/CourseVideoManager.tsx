@@ -541,6 +541,7 @@ function LessonCard({
   onMove,
   onCancelMove,
   onMoveToModule,
+  onLinkMux,
   updating,
 }: {
   course: Course;
@@ -555,6 +556,7 @@ function LessonCard({
   onMove: () => void;
   onCancelMove: () => void;
   onMoveToModule: (targetModuleId: string, newIndex?: number) => void;
+  onLinkMux: (data: { playbackId?: string; assetId?: string }) => Promise<void>;
   updating: boolean;
 }) {
   const [title, setTitle] = useState(lesson.title);
@@ -563,6 +565,9 @@ function LessonCard({
   const [freePreview, setFreePreview] = useState(lesson.freePreview);
   const [targetModuleId, setTargetModuleId] = useState(module.id);
   const [newIndex, setNewIndex] = useState<number | undefined>(undefined);
+  const [linkingPlaybackId, setLinkingPlaybackId] = useState(false);
+  const [playbackIdInput, setPlaybackIdInput] = useState('');
+  const [assetIdInput, setAssetIdInput] = useState('');
 
   if (editing) {
     return (
