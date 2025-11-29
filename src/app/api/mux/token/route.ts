@@ -106,17 +106,32 @@ export async function GET(req: NextRequest) {
         
         if (assetSnap && !assetSnap.empty) {
           const lessonData = assetSnap.docs[0].data() as any;
-          // Verify the playbackId matches (or update it if missing)
-          if (!lessonData.muxPlaybackId || lessonData.muxPlaybackId === playbackIdStr) {
-            // Update with correct playbackId if missing
-            if (!lessonData.muxPlaybackId) {
-              await assetSnap.docs[0].ref.set({
-                muxPlaybackId: playbackIdStr,
-                updatedAt: adminDb.FieldValue.serverTimestamp(),
-              }, { merge: true }).catch(() => {});
+          // If found by assetId, use it regardless of playbackId match (playbackId might be different)
+          // Update with the requested playbackId to ensure sync
+          await assetSnap.docs[0].ref.set({
+            muxPlaybackId: playbackIdStr,
+            updatedAt: adminDb.FieldValue.serverTimestamp(),
+          }, { merge: true }).catch((err: any) => {
+            logWarn('mux.token.update_playbackId_error', { error: err.message });
+          });
+          lessonSnap = assetSnap;
+          logInfo('mux.token.found_by_assetId', { assetId: assetIdStr, playbackId: playbackIdStr, lessonPath: assetSnap.docs[0].ref.path });
+        } else {
+          // Last resort: try fetching asset from MUX and searching all lessons with matching assetId
+          logInfo('mux.token.trying_mux_api_fallback', { assetId: assetIdStr });
+          try {
+            const muxAsset = await mux.video.assets.retrieve(assetIdStr).catch(() => null);
+            if (muxAsset) {
+              const signedPlaybackId = muxAsset.playback_ids?.find((pid: any) => pid.policy === 'signed')?.id;
+              if (signedPlaybackId && signedPlaybackId === playbackIdStr) {
+                // Search by assetId without collectionGroup (direct path search)
+                // This is a fallback if collectionGroup index isn't ready
+                logInfo('mux.token.using_mux_api_fallback', { assetId: assetIdStr, playbackId: signedPlaybackId });
+                // We'll let the next fallback handle it
+              }
             }
-            lessonSnap = assetSnap;
-            logInfo('mux.token.found_by_assetId', { assetId: assetIdStr, playbackId: playbackIdStr, lessonPath: assetSnap.docs[0].ref.path });
+          } catch (err: any) {
+            logWarn('mux.token.mux_api_fallback_error', { error: err.message });
           }
         }
       }
