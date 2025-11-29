@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { z } from 'zod';
 
 /**
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       .orderBy('index', 'asc')
       .get();
     
-    const targetLessons = targetLessonsSnapshot.docs.map(doc => doc.data().index || 0);
+    const targetLessons = targetLessonsSnapshot.docs.map((doc: QueryDocumentSnapshot) => doc.data().index || 0);
     const maxIndex = targetLessons.length > 0 ? Math.max(...targetLessons) : -1;
     const finalIndex = newIndex !== undefined ? newIndex : maxIndex + 1;
 
