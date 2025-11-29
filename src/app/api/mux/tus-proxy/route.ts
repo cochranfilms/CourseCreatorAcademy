@@ -158,6 +158,8 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
       const clonedResponse = upstream.clone();
       const responseText = await clonedResponse.text();
       console.log(`[TUS PROXY] ${method} 405 error response body:`, responseText);
+      const allowHeader = upstream.headers.get('Allow');
+      console.log(`[TUS PROXY] ${method} Allow header (methods MUX accepts):`, allowHeader || 'Not provided');
       console.log(`[TUS PROXY] ${method} Request that failed:`, {
         method,
         url: target,
