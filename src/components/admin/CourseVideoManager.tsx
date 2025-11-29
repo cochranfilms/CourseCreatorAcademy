@@ -292,6 +292,53 @@ export function CourseVideoManager({ onUpdate }: CourseVideoManagerProps) {
     }
   };
 
+  const handleConvertToSigned = async (
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    assetId: string
+  ) => {
+    if (!user) return;
+
+    if (!confirm('This will create a new signed playback ID for this video. Continue?')) {
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/admin/courses/lessons/convert-to-signed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          courseId,
+          moduleId,
+          lessonId,
+          assetId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to convert to signed playback');
+      }
+
+      const result = await response.json();
+      alert(`Successfully converted to signed playback! Playback ID: ${result.playbackId}`);
+      await loadCourses();
+      if (onUpdate) onUpdate();
+    } catch (error: unknown) {
+      console.error('Error converting to signed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to convert to signed playback';
+      alert(`Failed to convert to signed playback: ${errorMessage}`);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -461,6 +508,14 @@ export function CourseVideoManager({ onUpdate }: CourseVideoManagerProps) {
                                           data.assetId
                                         );
                                       }}
+                                      onConvertToSigned={lesson.muxAssetId ? async () => {
+                                        await handleConvertToSigned(
+                                          course.id,
+                                          module.id,
+                                          lesson.id,
+                                          lesson.muxAssetId!
+                                        );
+                                      } : undefined}
                                       updating={updating}
                                     />
                                   ))
@@ -778,6 +833,16 @@ function LessonCard({
           >
             Link Playback ID
           </button>
+          {onConvertToSigned && lesson.muxAssetId && (
+            <button
+              onClick={onConvertToSigned}
+              disabled={updating}
+              className="px-2 py-1 text-xs bg-purple-600 hover:bg-purple-700 rounded text-white disabled:opacity-50"
+              title="Convert this video to use signed playback (required for course videos)"
+            >
+              Convert to Signed
+            </button>
+          )}
         </div>
       </div>
     </div>
