@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       try {
         const asset = await mux.video.assets.retrieve(assetId);
         finalAssetId = asset.id;
-        finalPlaybackId = asset.playback_ids?.[0]?.id || null;
+        finalPlaybackId = asset.playback_ids?.[0]?.id || undefined;
         durationSec = asset.duration ? Math.round(Number(asset.duration)) : 0;
         
         if (!finalPlaybackId) {
