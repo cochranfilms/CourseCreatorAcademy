@@ -80,30 +80,30 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
 
   const headers = new Headers();
   
-  // Only forward TUS-specific headers - be very selective
-  // MUX is strict about what headers it accepts
+  // Only forward TUS-specific headers - use standard TUS header case
+  // MUX is strict about header names and case
   const lowerKeyMap = new Map<string, string>();
   req.headers.forEach((value, key) => {
-    lowerKeyMap.set(key.toLowerCase(), key); // Preserve original case
+    lowerKeyMap.set(key.toLowerCase(), value); // Map lowercase key to value
   });
   
-  // Forward only TUS protocol headers (case-insensitive check, preserve original case)
-  const tusHeaders = [
-    'tus-resumable',
-    'upload-length',
-    'upload-offset',
-    'upload-metadata',
-  ];
+  // Forward only TUS protocol headers using standard TUS case
+  const tusHeaderMapping: Record<string, string> = {
+    'tus-resumable': 'Tus-Resumable',
+    'upload-length': 'Upload-Length',
+    'upload-offset': 'Upload-Offset',
+    'upload-metadata': 'Upload-Metadata',
+  };
   
-  tusHeaders.forEach(headerName => {
-    const originalKey = lowerKeyMap.get(headerName);
-    if (originalKey && req.headers.has(originalKey)) {
-      headers.set(originalKey, req.headers.get(originalKey)!);
+  Object.entries(tusHeaderMapping).forEach(([lowerKey, standardKey]) => {
+    const value = lowerKeyMap.get(lowerKey);
+    if (value) {
+      headers.set(standardKey, value);
     }
   });
   
   // Ensure TUS-Resumable header is set (use standard case)
-  if (!headers.has('Tus-Resumable') && !headers.has('tus-resumable')) {
+  if (!headers.has('Tus-Resumable')) {
     headers.set('Tus-Resumable', '1.0.0');
   }
 
@@ -118,15 +118,15 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   if (method === 'PATCH') {
     body = req.body;
   } else if (method === 'POST') {
-    // For TUS POST, body must be empty
-    // Do NOT set Content-Length header - let fetch handle it automatically
+    // For TUS POST, body must be empty and Content-Length must be 0
+    headers.set('Content-Length', '0');
     body = null;
   }
 
   const init: RequestInit = {
     method,
     headers,
-    body: body || null,
+    body: body || undefined, // Use undefined instead of null for empty body
     // @ts-ignore - duplex needed for streaming
     duplex: method === 'PATCH' ? 'half' : undefined,
   };
