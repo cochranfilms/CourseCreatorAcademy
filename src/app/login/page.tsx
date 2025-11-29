@@ -24,7 +24,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signIn(email, password);
-      router.push('/');
+      router.push('/home');
     } catch (err: any) {
       console.error('Login error:', err);
       
@@ -74,7 +74,7 @@ export default function LoginPage() {
     setSocialLoading('google');
     try {
       await signInWithGoogle();
-      router.push('/');
+      router.push('/home');
     } catch (err: any) {
       console.error('Google sign-in error:', err);
       // Provide more helpful error messages
@@ -98,7 +98,7 @@ export default function LoginPage() {
     setSocialLoading('facebook');
     try {
       await signInWithFacebook();
-      router.push('/');
+      router.push('/home');
     } catch (err: any) {
       setError(err.message || 'Failed to sign in with Facebook. Please try again.');
     } finally {
