@@ -80,14 +80,14 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
 
   const headers = new Headers();
   
-  // Only forward TUS-specific headers - use standard TUS header case
-  // MUX is strict about header names and case
+  // Only forward TUS-specific headers - use standard TUS header case (Title-Case)
+  // MUX is strict about header names and case - must be Title-Case
   const lowerKeyMap = new Map<string, string>();
   req.headers.forEach((value, key) => {
     lowerKeyMap.set(key.toLowerCase(), value); // Map lowercase key to value
   });
   
-  // Forward only TUS protocol headers using standard TUS case
+  // Forward only TUS protocol headers using standard TUS Title-Case
   const tusHeaderMapping: Record<string, string> = {
     'tus-resumable': 'Tus-Resumable',
     'upload-length': 'Upload-Length',
@@ -102,9 +102,14 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
     }
   });
   
-  // Ensure TUS-Resumable header is set (use standard case)
+  // Ensure TUS-Resumable header is set (use standard Title-Case)
   if (!headers.has('Tus-Resumable')) {
     headers.set('Tus-Resumable', '1.0.0');
+  }
+  
+  // Explicitly set Content-Length for POST (TUS protocol requirement)
+  if (method === 'POST') {
+    headers.set('Content-Length', '0');
   }
 
   // Log headers for debugging
