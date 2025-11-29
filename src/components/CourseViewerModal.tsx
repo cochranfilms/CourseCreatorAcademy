@@ -132,19 +132,19 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
   if (!module || !lesson) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4" onClick={onClose}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
-      <div className="relative z-[201] m-4 md:m-8 w-full max-w-[1200px] mx-auto bg-neutral-900 border border-neutral-800 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_360px]">
+      <div className="relative z-[201] w-full max-w-[1200px] max-h-[95vh] sm:max-h-[90vh] bg-neutral-900 border border-neutral-800 shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] flex-1 min-h-0 overflow-hidden">
           {/* Left: Player & header */}
-          <div className="p-4">
-            <div className="text-sm mb-2 text-neutral-400">{courseTitle}</div>
-            <h2 className="text-xl md:text-2xl font-bold text-white">{lesson.title}</h2>
-            <div className="mt-2 flex items-center gap-2">
+          <div className="p-2 sm:p-4 overflow-y-auto min-h-0 flex flex-col">
+            <div className="text-xs sm:text-sm mb-1 sm:mb-2 text-neutral-400 truncate">{courseTitle}</div>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-2 sm:mb-0 line-clamp-2">{lesson.title}</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
               <button
-                className={`px-3 py-1 border ${saved ? 'border-red-500 text-red-400' : 'border-neutral-700 text-neutral-300'} hover:bg-neutral-800`}
+                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm border ${saved ? 'border-red-500 text-red-400' : 'border-neutral-700 text-neutral-300'} hover:bg-neutral-800 transition-colors`}
                 onClick={async () => {
                   if (!user) return;
                   const now = await toggleSaved(user.uid, 'lesson', `${courseSlug}|${moduleId}|${lessonId}`, {
@@ -155,8 +155,14 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
               >
                 {saved ? 'Saved' : 'Save'}
               </button>
-              <button className="px-3 py-1 border border-neutral-700 text-neutral-300 hover:bg-neutral-800" onClick={gotoNext}>Next Lesson →</button>
-              <button className="ml-auto px-3 py-1 border border-neutral-700 text-neutral-300 hover:bg-neutral-800" onClick={onClose}>Close ✕</button>
+              <button className="px-2 sm:px-3 py-1 text-xs sm:text-sm border border-neutral-700 text-neutral-300 hover:bg-neutral-800 transition-colors whitespace-nowrap" onClick={gotoNext}>
+                <span className="hidden sm:inline">Next Lesson →</span>
+                <span className="sm:hidden">Next →</span>
+              </button>
+              <button className="ml-auto px-2 sm:px-3 py-1 text-xs sm:text-sm border border-neutral-700 text-neutral-300 hover:bg-neutral-800 transition-colors" onClick={onClose}>
+                <span className="hidden sm:inline">Close ✕</span>
+                <span className="sm:hidden">✕</span>
+              </button>
             </div>
 
             {progressPct > 0 && progressPct < 100 && (
@@ -170,14 +176,14 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
               </div>
             )}
 
-            <div className="mt-3 bg-black border border-neutral-800">
+            <div className="mt-2 sm:mt-3 bg-black border border-neutral-800 flex-shrink-0">
               {lesson.muxPlaybackId ? (
               <MuxPlayer
                 playbackId={lesson.muxPlaybackId || undefined}
                 streamType="on-demand"
                 primaryColor="#3B82F6"
                 className="w-full"
-                style={{ aspectRatio: '16 / 9' }}
+                style={{ aspectRatio: '16 / 9', maxHeight: 'calc(95vh - 300px)' }}
                 playsInline
                 preload="metadata"
                 // @ts-ignore
@@ -195,37 +201,37 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
                 onEnded={handleEnded}
               />
               ) : (
-                <div className="aspect-video flex items-center justify-center text-neutral-400">Video not available</div>
+                <div className="aspect-video flex items-center justify-center text-neutral-400 text-sm">Video not available</div>
               )}
             </div>
 
           {lesson.description || fetchedDescription ? (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-neutral-300 mb-1">Description</h3>
-              <div className="border border-neutral-800 bg-neutral-950 p-3 rounded max-h-64 overflow-y-auto">
-                <p className="text-neutral-300 whitespace-pre-wrap">{lesson.description || fetchedDescription}</p>
+            <div className="mt-3 sm:mt-4 flex-shrink-0">
+              <h3 className="text-xs sm:text-sm font-semibold text-neutral-300 mb-1">Description</h3>
+              <div className="border border-neutral-800 bg-neutral-950 p-2 sm:p-3 rounded max-h-32 sm:max-h-48 md:max-h-64 overflow-y-auto">
+                <p className="text-xs sm:text-sm text-neutral-300 whitespace-pre-wrap">{lesson.description || fetchedDescription}</p>
               </div>
             </div>
           ) : null}
           </div>
 
           {/* Right: Playlist */}
-          <div className="border-l border-neutral-800 bg-neutral-950 max-h-[85vh] overflow-y-auto p-3">
-            <div className="text-sm text-neutral-400 mb-2">Playlist</div>
+          <div className="border-t lg:border-t-0 lg:border-l border-neutral-800 bg-neutral-950 overflow-y-auto p-2 sm:p-3 flex-shrink-0 lg:max-h-full">
+            <div className="text-xs sm:text-sm text-neutral-400 mb-2 font-medium">Playlist</div>
             {modules.map(m => (
-              <div key={m.id} className="mb-3">
-                <div className="text-neutral-300 font-medium mb-1">{m.title}</div>
-                <div className="space-y-1">
+              <div key={m.id} className="mb-2 sm:mb-3">
+                <div className="text-xs sm:text-sm text-neutral-300 font-medium mb-1 truncate">{m.title}</div>
+                <div className="space-y-0.5 sm:space-y-1">
                   {m.lessons.map(l => (
                     <button
                       key={l.id}
-                      className={`w-full text-left px-2 py-2 border ${m.id === module.id && l.id === lesson.id ? 'border-ccaBlue text-white' : 'border-neutral-800 text-neutral-300 hover:bg-neutral-900'}`}
+                      className={`w-full text-left px-1.5 sm:px-2 py-1.5 sm:py-2 border text-xs sm:text-sm transition-colors ${m.id === module.id && l.id === lesson.id ? 'border-ccaBlue bg-ccaBlue/10 text-white' : 'border-neutral-800 text-neutral-300 hover:bg-neutral-900'}`}
                       onClick={() => { setModuleId(m.id); setLessonId(l.id); }}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="truncate">{l.index}. {l.title}</span>
+                      <div className="flex items-center justify-between gap-1 sm:gap-2">
+                        <span className="truncate flex-1 min-w-0">{l.index}. {l.title}</span>
                         {typeof l.durationSec === 'number' && (
-                          <span className="text-xs text-neutral-500 ml-2">{Math.floor((l.durationSec || 0)/60)}:{String((l.durationSec || 0)%60).padStart(2,'0')}</span>
+                          <span className="text-xs text-neutral-500 whitespace-nowrap flex-shrink-0">{Math.floor((l.durationSec || 0)/60)}:{String((l.durationSec || 0)%60).padStart(2,'0')}</span>
                         )}
                       </div>
                     </button>
