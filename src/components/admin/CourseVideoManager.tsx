@@ -247,6 +247,51 @@ export function CourseVideoManager({ onUpdate }: CourseVideoManagerProps) {
     }
   };
 
+  const handleLinkMuxPlaybackId = async (
+    courseId: string,
+    moduleId: string,
+    lessonId: string,
+    playbackId?: string,
+    assetId?: string
+  ) => {
+    if (!user) return;
+
+    setUpdating(true);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/admin/courses/lessons/link-mux', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          courseId,
+          moduleId,
+          lessonId,
+          playbackId,
+          assetId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to link playback ID');
+      }
+
+      const result = await response.json();
+      alert(`Successfully linked playback ID: ${result.playbackId}`);
+      await loadCourses();
+      if (onUpdate) onUpdate();
+    } catch (error: unknown) {
+      console.error('Error linking playback ID:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to link playback ID';
+      alert(`Failed to link playback ID: ${errorMessage}`);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -407,6 +452,15 @@ export function CourseVideoManager({ onUpdate }: CourseVideoManagerProps) {
                                           newIndex
                                         )
                                       }
+                                      onLinkMux={async (data) => {
+                                        await handleLinkMuxPlaybackId(
+                                          course.id,
+                                          module.id,
+                                          lesson.id,
+                                          data.playbackId,
+                                          data.assetId
+                                        );
+                                      }}
                                       updating={updating}
                                     />
                                   ))
@@ -605,6 +659,60 @@ function LessonCard({
     );
   }
 
+  if (linkingPlaybackId) {
+    return (
+      <div className="p-3 bg-neutral-800 rounded border border-neutral-700 space-y-2">
+        <p className="text-xs text-neutral-300 mb-2">Link MUX Playback ID:</p>
+        <input
+          type="text"
+          value={playbackIdInput}
+          onChange={(e) => setPlaybackIdInput(e.target.value)}
+          className="w-full px-2 py-1 bg-neutral-900 border border-neutral-700 rounded text-white text-sm"
+          placeholder="Playback ID (e.g., NMaAUpG220200QGhOTsm1gWUA7pFZ4goU7E9MT005p30284)"
+        />
+        <p className="text-xs text-neutral-400 text-center">OR</p>
+        <input
+          type="text"
+          value={assetIdInput}
+          onChange={(e) => setAssetIdInput(e.target.value)}
+          className="w-full px-2 py-1 bg-neutral-900 border border-neutral-700 rounded text-white text-sm"
+          placeholder="Asset ID (e.g., kg01Zol2eM02oPW747MeUDjGjRUM01TueF3oMVQm009RDxA)"
+        />
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              if (!playbackIdInput && !assetIdInput) {
+                alert('Please enter either a Playback ID or Asset ID');
+                return;
+              }
+              await onLinkMux({
+                playbackId: playbackIdInput || undefined,
+                assetId: assetIdInput || undefined,
+              });
+              setLinkingPlaybackId(false);
+              setPlaybackIdInput('');
+              setAssetIdInput('');
+            }}
+            disabled={updating}
+            className="px-3 py-1 bg-ccaBlue hover:bg-ccaBlue/80 text-white rounded text-xs disabled:opacity-50"
+          >
+            Link
+          </button>
+          <button
+            onClick={() => {
+              setLinkingPlaybackId(false);
+              setPlaybackIdInput('');
+              setAssetIdInput('');
+            }}
+            className="px-3 py-1 bg-neutral-700 hover:bg-neutral-600 text-white rounded text-xs"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`p-3 rounded border ${
@@ -658,6 +766,12 @@ function LessonCard({
             className="px-2 py-1 text-xs bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300"
           >
             Move
+          </button>
+          <button
+            onClick={() => setLinkingPlaybackId(true)}
+            className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded text-white"
+          >
+            Link Playback ID
           </button>
         </div>
       </div>
