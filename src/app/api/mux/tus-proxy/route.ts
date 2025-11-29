@@ -144,7 +144,7 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   };
 
   console.log(`[TUS PROXY] ${method} forwarding to:`, target);
-  console.log(`[TUS PROXY] ${method} forwarded headers (exact case):`, headerObj);
+  console.log(`[TUS PROXY] ${method} forwarded headers (exact case):`, JSON.stringify(headerObj, null, 2));
   
   const upstream = await fetch(target, init);
   
