@@ -78,16 +78,17 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
     return NextResponse.json({ error: 'Invalid target URL' }, { status: 400, headers: corsHeaders(allowedOrigin) });
   }
 
-  const headers = new Headers();
-  
-  // Only forward TUS-specific headers - use standard TUS header case (Title-Case)
-  // MUX is strict about header names and case - must be Title-Case
+  // Build header object directly with exact Title-Case keys (MUX requires this)
+  // Don't use Headers object as it may normalize case when iterating
   const lowerKeyMap = new Map<string, string>();
   req.headers.forEach((value, key) => {
-    lowerKeyMap.set(key.toLowerCase(), value); // Map lowercase key to value
+    lowerKeyMap.set(key.toLowerCase(), value);
   });
   
-  // Forward only TUS protocol headers using standard TUS Title-Case
+  // Build header object with exact Title-Case keys that MUX expects
+  const headerObj: Record<string, string> = {};
+  
+  // Forward only TUS protocol headers using exact Title-Case
   const tusHeaderMapping: Record<string, string> = {
     'tus-resumable': 'Tus-Resumable',
     'upload-length': 'Upload-Length',
@@ -95,26 +96,26 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
     'upload-metadata': 'Upload-Metadata',
   };
   
-  Object.entries(tusHeaderMapping).forEach(([lowerKey, standardKey]) => {
+  Object.entries(tusHeaderMapping).forEach(([lowerKey, titleCaseKey]) => {
     const value = lowerKeyMap.get(lowerKey);
     if (value) {
-      headers.set(standardKey, value);
+      headerObj[titleCaseKey] = value; // Use exact Title-Case key directly
     }
   });
   
-  // Ensure TUS-Resumable header is set (use standard Title-Case)
-  if (!headers.has('Tus-Resumable')) {
-    headers.set('Tus-Resumable', '1.0.0');
+  // Ensure TUS-Resumable header is set (use exact Title-Case)
+  if (!headerObj['Tus-Resumable']) {
+    headerObj['Tus-Resumable'] = '1.0.0';
   }
   
-  // Explicitly set Content-Length for POST (TUS protocol requirement)
+  // Set Content-Length for POST (TUS protocol requirement)
   if (method === 'POST') {
-    headers.set('Content-Length', '0');
+    headerObj['Content-Length'] = '0';
   }
 
   // Log headers for debugging
   if (method === 'POST') {
-    console.log('[TUS PROXY] POST headers being sent to MUX:', Object.fromEntries(Array.from(headers.entries())));
+    console.log('[TUS PROXY] POST headers being sent to MUX (exact case):', JSON.stringify(headerObj, null, 2));
     console.log('[TUS PROXY] Target URL:', target);
   }
 
@@ -126,14 +127,6 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
     // For TUS POST, body must be empty
     body = null;
   }
-
-  // Convert Headers to plain object to preserve exact Title-Case
-  // Headers object may normalize case, but MUX requires exact Title-Case
-  const headerObj: Record<string, string> = {};
-  headers.forEach((value, key) => {
-    // Preserve the exact case we set (Title-Case)
-    headerObj[key] = value;
-  });
 
   const init: RequestInit = {
     method,
@@ -160,7 +153,7 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
       console.log(`[TUS PROXY] ${method} Request that failed:`, {
         method,
         url: target,
-        headers: Object.fromEntries(Array.from(headers.entries())),
+        headers: headerObj,
       });
     } catch (e) {
       console.log(`[TUS PROXY] Could not read 405 response body:`, e);
