@@ -49,34 +49,64 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
   // Fetch signed playback token for course videos (signed playback policy)
   useEffect(() => {
     let cancelled = false;
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 seconds
+
     const fetchToken = async () => {
       setPlaybackToken(null);
       if (!lesson?.muxPlaybackId || !user) return;
-      try {
-        const idToken = await user.getIdToken();
-        const res = await fetch(`/api/mux/token?playbackId=${encodeURIComponent(lesson.muxPlaybackId)}`, {
-          headers: {
-            'Authorization': `Bearer ${idToken}`,
-          },
-        });
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error('Failed to fetch playback token:', res.status, errorText);
-          // 404 means playbackId not found (webhook might not have processed yet)
-          // 401/403 means auth/enrollment issue
-          if (res.status === 404) {
-            console.warn('Playback ID not found in database - webhook may not have processed yet');
+      
+      const attemptFetch = async (): Promise<void> => {
+        try {
+          const idToken = await user.getIdToken();
+          const res = await fetch(`/api/mux/token?playbackId=${encodeURIComponent(lesson.muxPlaybackId!)}`, {
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+            },
+          });
+          
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('Failed to fetch playback token:', res.status, errorData);
+            
+            // 404 means playbackId not found (webhook might not have processed yet)
+            // Retry a few times if 404, as webhook may still be processing
+            if (res.status === 404 && retryCount < maxRetries && !cancelled) {
+              retryCount++;
+              console.log(`Retrying token fetch (attempt ${retryCount}/${maxRetries})...`);
+              setTimeout(() => {
+                if (!cancelled) attemptFetch();
+              }, retryDelay);
+              return;
+            }
+            
+            // 401/403 means auth/enrollment issue - don't retry
+            if (res.status === 401 || res.status === 403) {
+              console.warn('Authentication or enrollment issue - cannot fetch token');
+            }
+            return;
           }
-          return;
+          
+          const json = await res.json();
+          if (!cancelled && json?.token) {
+            setPlaybackToken(json.token);
+          }
+        } catch (error) {
+          console.error('Error fetching playback token:', error);
+          // Retry on network errors
+          if (retryCount < maxRetries && !cancelled) {
+            retryCount++;
+            setTimeout(() => {
+              if (!cancelled) attemptFetch();
+            }, retryDelay);
+          }
         }
-        const json = await res.json();
-        if (!cancelled && json?.token) {
-          setPlaybackToken(json.token);
-        }
-      } catch (error) {
-        console.error('Error fetching playback token:', error);
-      }
+      };
+      
+      attemptFetch();
     };
+    
     fetchToken();
     return () => { cancelled = true; };
   }, [lesson?.muxPlaybackId, user]);

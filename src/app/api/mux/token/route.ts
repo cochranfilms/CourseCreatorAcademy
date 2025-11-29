@@ -69,12 +69,43 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ token });
     }
 
-    // Try to locate a course lesson
-    const lessonSnap = await adminDb.collectionGroup('lessons')
+    // Try to locate a course lesson by playbackId
+    let lessonSnap = await adminDb.collectionGroup('lessons')
       .where('muxPlaybackId', '==', String(playbackId))
       .limit(1)
       .get()
       .catch(() => null as any);
+    
+    // Fallback: if not found by playbackId, try to find by assetId
+    // This handles cases where webhook hasn't updated playbackId yet
+    if ((!lessonSnap || lessonSnap.empty) && adminDb) {
+      try {
+        // Get asset ID from MUX API to find lesson by muxAssetId
+        const { mux } = await import('@/lib/mux');
+        const asset = await mux.video.assets.retrieve(playbackId).catch(() => null);
+        if (asset?.id) {
+          lessonSnap = await adminDb.collectionGroup('lessons')
+            .where('muxAssetId', '==', String(asset.id))
+            .limit(1)
+            .get()
+            .catch(() => null as any);
+          
+          // If found by assetId, update it with playbackId for future lookups
+          if (lessonSnap && !lessonSnap.empty) {
+            const d = lessonSnap.docs[0];
+            await d.ref.set({
+              muxPlaybackId: playbackId,
+              updatedAt: adminDb.FieldValue.serverTimestamp(),
+            }, { merge: true }).catch(() => {});
+            logInfo('mux.token.playbackId_updated', { assetId: asset.id, playbackId });
+          }
+        }
+      } catch (err) {
+        // Ignore errors in fallback lookup
+        console.error('Fallback lookup error:', err);
+      }
+    }
+    
     if (lessonSnap && !lessonSnap.empty) {
       const d = lessonSnap.docs[0];
       const courseId = getAncestorIdFromPath(d.ref.path, 'courses');
