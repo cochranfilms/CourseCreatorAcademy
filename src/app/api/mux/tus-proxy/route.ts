@@ -147,6 +147,25 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   console.log(`[TUS PROXY] ${method} forwarding to:`, target);
   console.log(`[TUS PROXY] ${method} forwarded headers (exact case):`, JSON.stringify(headerObj, null, 2));
   
+  // MUX direct upload URLs already have the upload ID in the path, meaning the upload is already "created"
+  // For POST requests, MUX returns 405 because the upload already exists
+  // We need to intercept POST and return 201 Created with Location header pointing to the same URL
+  if (method === 'POST') {
+    // Check if this is a MUX direct upload URL (has upload ID in path)
+    const uploadIdMatch = target.match(/\/upload\/([^/?]+)/);
+    if (uploadIdMatch) {
+      console.log(`[TUS PROXY] POST to MUX direct upload - upload already exists, returning 201 Created`);
+      const resHeaders = new Headers(corsHeaders(allowedOrigin));
+      resHeaders.set('Location', `${req.nextUrl.origin}${req.nextUrl.pathname}?u=${encodeURIComponent(target)}`);
+      resHeaders.set('Tus-Resumable', '1.0.0');
+      resHeaders.set('Upload-Length', headerObj['Upload-Length'] || '0');
+      return new NextResponse(null, {
+        status: 201,
+        headers: resHeaders,
+      });
+    }
+  }
+  
   const upstream = await fetch(target, init);
   
   console.log(`[TUS PROXY] ${method} upstream response status:`, upstream.status);
