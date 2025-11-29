@@ -116,23 +116,6 @@ export async function GET(req: NextRequest) {
           });
           lessonSnap = assetSnap;
           logInfo('mux.token.found_by_assetId', { assetId: assetIdStr, playbackId: playbackIdStr, lessonPath: assetSnap.docs[0].ref.path });
-        } else {
-          // Last resort: try fetching asset from MUX and searching all lessons with matching assetId
-          logInfo('mux.token.trying_mux_api_fallback', { assetId: assetIdStr });
-          try {
-            const muxAsset = await mux.video.assets.retrieve(assetIdStr).catch(() => null);
-            if (muxAsset) {
-              const signedPlaybackId = muxAsset.playback_ids?.find((pid: any) => pid.policy === 'signed')?.id;
-              if (signedPlaybackId && signedPlaybackId === playbackIdStr) {
-                // Search by assetId without collectionGroup (direct path search)
-                // This is a fallback if collectionGroup index isn't ready
-                logInfo('mux.token.using_mux_api_fallback', { assetId: assetIdStr, playbackId: signedPlaybackId });
-                // We'll let the next fallback handle it
-              }
-            }
-          } catch (err: any) {
-            logWarn('mux.token.mux_api_fallback_error', { error: err.message });
-          }
         }
       }
     }
