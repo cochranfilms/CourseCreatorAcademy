@@ -13,6 +13,7 @@ export type CVLesson = {
   index: number;
   durationSec?: number;
   muxPlaybackId?: string | null;
+  muxAssetId?: string | null;
   description?: string;
 };
 
@@ -48,15 +49,11 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
   
   // Fallback: fetch lesson data directly from Firestore if muxPlaybackId is missing
   // This handles cases where the page was loaded before linking the playback ID
-  const [fetchedLessonData, setFetchedLessonData] = useState<{ muxPlaybackId?: string | null } | null>(null);
+  const [fetchedLessonData, setFetchedLessonData] = useState<{ muxPlaybackId?: string | null; muxAssetId?: string | null } | null>(null);
   useEffect(() => {
     const fetchLessonData = async () => {
       if (!db || !courseSlug || !moduleId || !lessonId) return;
-      // Only fetch if lesson doesn't have muxPlaybackId but we expect it might exist
-      if (lesson?.muxPlaybackId) {
-        setFetchedLessonData(null);
-        return;
-      }
+      // Fetch lesson data to get latest muxPlaybackId and muxAssetId
       try {
         const coursesRef = collection(db, 'courses');
         const snap = await getDocs(coursesRef);
@@ -71,23 +68,30 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
         const lref = doc(db, `courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`);
         const lsnap = await getDoc(lref);
         const ldata = lsnap.data() as any;
-        if (ldata?.muxPlaybackId) {
-          setFetchedLessonData({ muxPlaybackId: ldata.muxPlaybackId });
+        if (ldata?.muxPlaybackId || ldata?.muxAssetId) {
+          setFetchedLessonData({ 
+            muxPlaybackId: ldata.muxPlaybackId || null,
+            muxAssetId: ldata.muxAssetId || null,
+          });
         }
       } catch (err) {
         console.error('Error fetching lesson data:', err);
       }
     };
     fetchLessonData();
-  }, [db, courseSlug, moduleId, lessonId, lesson?.muxPlaybackId]);
+  }, [db, courseSlug, moduleId, lessonId]);
 
   // Use fetched lesson data as fallback
   const effectiveLesson = useMemo(() => {
-    if (lesson?.muxPlaybackId) return lesson;
-    if (fetchedLessonData?.muxPlaybackId) {
-      return { ...lesson, muxPlaybackId: fetchedLessonData.muxPlaybackId };
+    const baseLesson = lesson || {};
+    if (fetchedLessonData) {
+      return { 
+        ...baseLesson, 
+        muxPlaybackId: fetchedLessonData.muxPlaybackId || baseLesson.muxPlaybackId,
+        muxAssetId: fetchedLessonData.muxAssetId || baseLesson.muxAssetId,
+      };
     }
-    return lesson;
+    return baseLesson;
   }, [lesson, fetchedLessonData]);
 
   // Fetch signed playback token for course videos (signed playback policy)
@@ -104,7 +108,11 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
       const attemptFetch = async (): Promise<void> => {
         try {
           const idToken = await user.getIdToken();
-          const res = await fetch(`/api/mux/token?playbackId=${encodeURIComponent(effectiveLesson.muxPlaybackId!)}`, {
+          // Include assetId in query if available to help token endpoint find the lesson
+          const tokenUrl = effectiveLesson.muxAssetId
+            ? `/api/mux/token?playbackId=${encodeURIComponent(effectiveLesson.muxPlaybackId!)}&assetId=${encodeURIComponent(effectiveLesson.muxAssetId)}`
+            : `/api/mux/token?playbackId=${encodeURIComponent(effectiveLesson.muxPlaybackId!)}`;
+          const res = await fetch(tokenUrl, {
             headers: {
               'Authorization': `Bearer ${idToken}`,
             },

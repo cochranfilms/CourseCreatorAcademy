@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
     }
     const { searchParams } = new URL(req.url);
     const playbackId = String(searchParams.get('playbackId') || '');
+    const assetId = String(searchParams.get('assetId') || ''); // Optional: allow searching by assetId too
     const qsSchema = z.object({ playbackId: z.string().min(1) });
     const qsParsed = qsSchema.safeParse({ playbackId });
     if (!qsParsed.success) return NextResponse.json({ error: 'Missing playbackId' }, { status: 400 });
@@ -71,8 +72,13 @@ export async function GET(req: NextRequest) {
 
     // Try to locate a course lesson by playbackId
     const playbackIdStr = String(playbackId).trim();
-    logInfo('mux.token.searching', { playbackId: playbackIdStr });
-    let lessonSnap = await adminDb.collectionGroup('lessons')
+    const assetIdStr = assetId ? String(assetId).trim() : null;
+    logInfo('mux.token.searching', { playbackId: playbackIdStr, assetId: assetIdStr });
+    
+    let lessonSnap: any = null;
+    
+    // First, try searching by playbackId
+    lessonSnap = await adminDb.collectionGroup('lessons')
       .where('muxPlaybackId', '==', playbackIdStr)
       .limit(1)
       .get()
@@ -85,6 +91,35 @@ export async function GET(req: NextRequest) {
       logInfo('mux.token.found_by_playbackId', { playbackId: playbackIdStr, lessonPath: lessonSnap.docs[0].ref.path });
     } else {
       logWarn('mux.token.not_found_by_playbackId', { playbackId: playbackIdStr });
+      
+      // If assetId provided, try searching by assetId and verify playbackId matches
+      if (assetIdStr) {
+        logInfo('mux.token.trying_assetId', { assetId: assetIdStr });
+        const assetSnap = await adminDb.collectionGroup('lessons')
+          .where('muxAssetId', '==', assetIdStr)
+          .limit(1)
+          .get()
+          .catch((err: any) => {
+            logWarn('mux.token.assetId_search_error', { assetId: assetIdStr, error: err.message });
+            return null as any;
+          });
+        
+        if (assetSnap && !assetSnap.empty) {
+          const lessonData = assetSnap.docs[0].data() as any;
+          // Verify the playbackId matches (or update it if missing)
+          if (!lessonData.muxPlaybackId || lessonData.muxPlaybackId === playbackIdStr) {
+            // Update with correct playbackId if missing
+            if (!lessonData.muxPlaybackId) {
+              await assetSnap.docs[0].ref.set({
+                muxPlaybackId: playbackIdStr,
+                updatedAt: adminDb.FieldValue.serverTimestamp(),
+              }, { merge: true }).catch(() => {});
+            }
+            lessonSnap = assetSnap;
+            logInfo('mux.token.found_by_assetId', { assetId: assetIdStr, playbackId: playbackIdStr, lessonPath: assetSnap.docs[0].ref.path });
+          }
+        }
+      }
     }
     
     // Fallback 1: Try to find by assetId from MUX API
