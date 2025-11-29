@@ -21,11 +21,7 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #1B00FF 0%, #000000 100%);
-  background-attachment: fixed;
-  background-size: 100% 200vh;
-  background-repeat: no-repeat;
-  background-position: top center;
+  /* Background removed - handled by html element to prevent double background */
 }
 
 #__next {
@@ -38,25 +34,18 @@ body {
 .cta-button { @apply bg-ccaBlue text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition; }
 
 /* Brand gradient background - two-tone blue to black */
+/* Background is applied to html element, not here, to prevent double backgrounds */
 .cca-gradient {
-  background: linear-gradient(180deg, #1B00FF 0%, #000000 100%) !important;
   min-height: 100vh;
   position: relative;
-  background-attachment: fixed;
-  background-size: 100% 200vh;
-  background-repeat: no-repeat;
-  background-position: top center;
+  /* Background removed - handled by html element */
 }
 
 /* Fallback for mobile devices where fixed backgrounds can be problematic */
 @media (max-width: 768px) {
-  html, body {
+  html {
     background-attachment: scroll;
     background-size: 100% 100%;
-  }
-  
-  .cca-gradient {
-    background-attachment: scroll !important;
   }
 }
 
