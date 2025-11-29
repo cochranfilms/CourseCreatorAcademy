@@ -19,7 +19,7 @@ function corsHeaders(origin?: string | null) {
   const allowOrigin = origin || '';
   const headers: Record<string, string> = {
     ...(allowOrigin ? { 'Access-Control-Allow-Origin': allowOrigin } : {}),
-    'Access-Control-Allow-Methods': 'OPTIONS, POST, PATCH, HEAD',
+      'Access-Control-Allow-Methods': 'OPTIONS, POST, PATCH, HEAD, PUT',
     'Access-Control-Allow-Headers': [
       'authorization',
       'content-type',
@@ -53,7 +53,7 @@ function isAllowedMuxUploadUrl(url: string): boolean {
   }
 }
 
-async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest) {
+async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD'|'PUT', req: NextRequest) {
   const requestOrigin = req.headers.get('origin');
   const allowedOrigin = getAllowedOrigin(requestOrigin);
   // In production, block disallowed origins for CORS handshake
@@ -140,8 +140,8 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
     method,
     headers: headerObj, // Use plain object to preserve exact case
     body: body || undefined, // Use undefined instead of null for empty body
-    // @ts-ignore - duplex needed for streaming
-    duplex: method === 'PATCH' ? 'half' : undefined,
+        // @ts-ignore - duplex needed for streaming
+        duplex: (method === 'PATCH' || method === 'PUT') ? 'half' : undefined,
   };
 
   console.log(`[TUS PROXY] ${method} forwarding to:`, target);
@@ -265,6 +265,15 @@ export async function HEAD(req: NextRequest) {
     return await handle('HEAD', req);
   } catch (err: any) {
     console.error('TUS proxy HEAD error:', err);
+    return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500, headers: corsHeaders(req.headers.get('origin')) });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    return await handle('PUT', req);
+  } catch (err: any) {
+    console.error('TUS proxy PUT error:', err);
     return NextResponse.json({ error: err?.message || 'Proxy error' }, { status: 500, headers: corsHeaders(req.headers.get('origin')) });
   }
 }

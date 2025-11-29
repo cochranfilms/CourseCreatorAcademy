@@ -41,6 +41,7 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
   const [resumePos, setResumePos] = useState<number | null>(null);
   const progressDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [fetchedDescription, setFetchedDescription] = useState<string | null>(null);
+  const [playbackToken, setPlaybackToken] = useState<string | null>(null);
 
   const module = useMemo(() => modules.find(m => m.id === moduleId) || modules[0], [modules, moduleId]);
   const lesson = useMemo(() => module?.lessons.find(l => l.id === lessonId) || module?.lessons[0], [module, lessonId]);
@@ -199,6 +200,7 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
                 startTime={resumePos || undefined}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={handleEnded}
+                {...(playbackToken ? { tokens: { playback: playbackToken } as any } : {})}
               />
               ) : (
                 <div className="aspect-video flex items-center justify-center text-neutral-400 text-sm">Video not available</div>

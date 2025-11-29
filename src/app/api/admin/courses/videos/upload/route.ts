@@ -78,12 +78,17 @@ export async function POST(req: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    // Return MUX direct upload URL directly
-    // MUX uploader component handles CORS automatically and works directly with MUX
-    // No proxy needed - MUX uploader is designed for this use case
+    // Return proxy URL to avoid CORS issues with UpChunk PUT requests
+    // UpChunk uses PUT requests with Content-Range headers, which trigger CORS preflight
+    // The proxy handles CORS and forwards PUT requests to MUX
+    const baseUrl = req.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || process.env.SITE_URL || '';
+    const proxyUrl = baseUrl
+      ? `${baseUrl.replace(/\/$/, '')}/api/mux/tus-proxy?u=${encodeURIComponent(upload.url)}`
+      : upload.url;
+    
     return NextResponse.json({ 
       uploadId: upload.id, 
-      uploadUrl: upload.url // Direct MUX URL - MUX uploader handles CORS
+      uploadUrl: proxyUrl // Use proxy to handle CORS for UpChunk PUT requests
     });
   } catch (err: any) {
     console.error('Error creating upload:', err);
