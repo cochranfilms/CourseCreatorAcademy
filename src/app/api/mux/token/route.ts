@@ -76,28 +76,49 @@ export async function GET(req: NextRequest) {
       .get()
       .catch(() => null as any);
     
-    // Fallback: if not found by playbackId, try to find by assetId
+    // Fallback: if not found by playbackId, try to find lessons with muxUploadId
+    // and verify the upload's asset has this playbackId
     // This handles cases where webhook hasn't updated playbackId yet
     if ((!lessonSnap || lessonSnap.empty) && adminDb) {
       try {
-        // Get asset ID from MUX API to find lesson by muxAssetId
         const { mux } = await import('@/lib/mux');
-        const asset = await mux.video.assets.retrieve(playbackId).catch(() => null);
-        if (asset?.id) {
-          lessonSnap = await adminDb.collectionGroup('lessons')
-            .where('muxAssetId', '==', String(asset.id))
-            .limit(1)
-            .get()
-            .catch(() => null as any);
-          
-          // If found by assetId, update it with playbackId for future lookups
-          if (lessonSnap && !lessonSnap.empty) {
-            const d = lessonSnap.docs[0];
-            await d.ref.set({
-              muxPlaybackId: playbackId,
-              updatedAt: adminDb.FieldValue.serverTimestamp(),
-            }, { merge: true }).catch(() => {});
-            logInfo('mux.token.playbackId_updated', { assetId: asset.id, playbackId });
+        // List all lessons with muxUploadId set (recent uploads)
+        // Then check each upload's asset to see if it matches this playbackId
+        const lessonsWithUpload = await adminDb.collectionGroup('lessons')
+          .where('muxUploadId', '!=', null)
+          .limit(50) // Limit to recent uploads
+          .get()
+          .catch(() => null as any);
+        
+        if (lessonsWithUpload && !lessonsWithUpload.empty) {
+          // Check each lesson's upload to see if the asset matches
+          for (const lessonDoc of lessonsWithUpload.docs) {
+            const data = lessonDoc.data() as any;
+            const uploadId = data.muxUploadId;
+            if (!uploadId) continue;
+            
+            try {
+              // Get upload from MUX to find assetId
+              const upload = await mux.video.uploads.retrieve(uploadId).catch(() => null);
+              if (upload?.asset_id) {
+                // Get asset to check playbackId
+                const asset = await mux.video.assets.retrieve(upload.asset_id).catch(() => null);
+                if (asset?.playback_ids?.[0]?.id === playbackId) {
+                  // Found it! Update lesson with playbackId
+                  await lessonDoc.ref.set({
+                    muxAssetId: asset.id,
+                    muxPlaybackId: playbackId,
+                    updatedAt: adminDb.FieldValue.serverTimestamp(),
+                  }, { merge: true }).catch(() => {});
+                  lessonSnap = { docs: [lessonDoc], empty: false };
+                  logInfo('mux.token.playbackId_updated_via_fallback', { uploadId, assetId: asset.id, playbackId });
+                  break;
+                }
+              }
+            } catch (err) {
+              // Continue checking other lessons
+              continue;
+            }
           }
         }
       } catch (err) {
