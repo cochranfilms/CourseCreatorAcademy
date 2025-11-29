@@ -87,7 +87,7 @@ function AdminDiscountsManager() {
 
   if (isAdmin === null) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="text-neutral-400">Verifying admin access...</div>
       </main>
     );
@@ -95,7 +95,7 @@ function AdminDiscountsManager() {
 
   if (!isAdmin) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <h1 className="text-2xl font-bold text-white mb-2">Admin Discounts</h1>
         <p className="text-neutral-400">You do not have access to this page.</p>
       </main>
@@ -103,7 +103,7 @@ function AdminDiscountsManager() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 pt-24 pb-8">
+    <main className="min-h-screen max-w-7xl mx-auto px-6 pt-24 pb-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Admin Discounts</h1>

@@ -763,7 +763,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 w-full overflow-x-hidden">
+      <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 w-full overflow-x-hidden">
         {/* Plan Change Success Message */}
         {planChangeMessage && (
           <div className="mb-6 p-4 rounded-lg border bg-green-500/10 border-green-500/30 text-green-300">

@@ -402,7 +402,7 @@ export default function MarketplacePage() {
   const displayListings = filteredListings.length > 0 ? filteredListings : listings;
 
   return (
-    <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 pt-safe">
+    <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 pt-safe">
         <div className="mb-4 sm:mb-6 md:mb-8 px-2">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 leading-tight">Marketplace</h1>
           <p className="text-sm sm:text-base text-neutral-400 leading-relaxed mt-2">Buy and sell gear, assets, and digital products with creators in the community.</p>

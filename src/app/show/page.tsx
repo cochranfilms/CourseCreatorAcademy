@@ -80,7 +80,7 @@ export default function ShowPage() {
   }, []);
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
       <h1 className="text-3xl md:text-4xl font-bold">CCA Show</h1>
       <p className="text-neutral-400 mt-2">Insights, interviews and inspiration for creators.</p>
 

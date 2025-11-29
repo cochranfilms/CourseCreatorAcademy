@@ -187,7 +187,7 @@ export default function LegacyProfileEditorPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-neutral-950 to-neutral-900">
+      <main className="min-h-screen">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="inline-block animate-spin h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
@@ -200,7 +200,7 @@ export default function LegacyProfileEditorPage() {
 
   if (!user) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-neutral-950 to-neutral-900">
+      <main className="min-h-screen">
         <div className="max-w-4xl mx-auto px-4 py-12">
           <div className="border border-neutral-800 p-8 bg-neutral-950 rounded-lg text-center">
             <p className="text-neutral-300 mb-4">Please sign in to edit your profile.</p>
@@ -213,7 +213,7 @@ export default function LegacyProfileEditorPage() {
 
   if (isLegacyCreator === false && !hasCreatorMapping) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-neutral-950 to-neutral-900">
+      <main className="min-h-screen">
         <div className="max-w-4xl mx-auto px-4 py-12">
           <div className="border border-neutral-800 p-8 bg-neutral-950 rounded-lg">
             <p className="text-neutral-300 mb-2">Your account is not enabled as a Legacy Creator yet.</p>

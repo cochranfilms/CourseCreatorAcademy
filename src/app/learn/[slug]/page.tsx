@@ -218,7 +218,7 @@ function CourseDetailPageInner() {
 
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="animate-pulse">
           <div className="h-8 bg-neutral-800 rounded w-1/3 mb-4"></div>
           <div className="h-4 bg-neutral-800 rounded w-2/3 mb-8"></div>
@@ -241,7 +241,7 @@ function CourseDetailPageInner() {
 
   if (!course) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="text-center">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">Course Not Found</h1>
           <p className="text-neutral-400 mb-8">The course you're looking for doesn't exist.</p>
@@ -268,7 +268,7 @@ function CourseDetailPageInner() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
       <Link href="/learn" className="text-ccaBlue hover:underline mb-4 inline-block">
         ← Back to All Courses
       </Link>
@@ -505,7 +505,7 @@ function CourseDetailPageInner() {
 
 export default function CourseDetailPage() {
   return (
-    <Suspense fallback={<main className="max-w-7xl mx-auto px-6 py-8"><div className="text-neutral-400">Loading…</div></main>}>
+    <Suspense fallback={<main className="min-h-screen max-w-7xl mx-auto px-6 py-8"><div className="text-neutral-400">Loading…</div></main>}>
       <CourseDetailPageInner />
     </Suspense>
   );

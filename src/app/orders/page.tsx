@@ -180,7 +180,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <main className="max-w-5xl mx-auto px-4 py-8">
+    <main className="min-h-screen max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Orders</h1>
 
       {!user && <p className="text-neutral-400">Sign in to view orders.</p>}

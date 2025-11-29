@@ -42,7 +42,7 @@ function WalkthroughContent() {
 
   if (!playbackId) {
     return (
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
         <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden border border-neutral-800 bg-transparent p-4">
           <div className="aspect-video bg-transparent rounded-xl flex items-center justify-center">
             <div className="text-neutral-400 text-center px-4">
@@ -99,7 +99,7 @@ function WalkthroughContent() {
 export default function WalkthroughPage() {
   return (
     <Suspense fallback={
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
         <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden border border-neutral-800 bg-transparent p-4">
           <div className="aspect-video bg-transparent rounded-xl flex items-center justify-center">
             <div className="text-neutral-400">Loading...</div>

@@ -83,7 +83,7 @@ export default function CreatorOnboardingPage() {
   };
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
+    <main className="min-h-screen max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-4">Creator Onboarding</h1>
 
       {!user && (

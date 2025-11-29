@@ -150,7 +150,7 @@ export default function CreatorKitPage() {
 
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+      <main className="min-h-screen max-w-7xl mx-auto px-4 sm:px-6 py-12">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="inline-block animate-spin h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
@@ -163,7 +163,7 @@ export default function CreatorKitPage() {
 
   if (!creator) {
     return (
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+      <main className="min-h-screen max-w-7xl mx-auto px-4 sm:px-6 py-12">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-2">Creator Kit Not Found</h1>
           <p className="text-neutral-400 mb-6">This creator kit doesn't exist.</p>
@@ -207,7 +207,7 @@ export default function CreatorKitPage() {
       ] as const;
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+    <main className="min-h-screen max-w-7xl mx-auto px-4 sm:px-6 py-12">
       {/* Creator Header */}
       <div className="mb-12">
         <div className="relative h-64 rounded-xl overflow-hidden bg-neutral-900 mb-6">

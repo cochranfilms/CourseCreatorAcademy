@@ -192,7 +192,7 @@ export default function LessonPage() {
 
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="animate-pulse">
           <div className="h-6 bg-neutral-800 rounded w-1/3 mb-4"></div>
           <div className="h-96 bg-neutral-900 rounded border border-neutral-800"></div>
@@ -203,7 +203,7 @@ export default function LessonPage() {
 
   if (!lesson) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <Link href={`/learn/${slug}`} className="text-ccaBlue hover:underline mb-4 inline-block">
           ← Back to {courseTitle || 'Course'}
         </Link>
@@ -214,7 +214,7 @@ export default function LessonPage() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
       <div className="mb-4 text-sm">
         <Link href={`/learn/${slug}`} className="text-ccaBlue hover:underline">
           ← Back to {courseTitle || 'Course'}

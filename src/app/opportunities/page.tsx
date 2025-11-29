@@ -190,7 +190,7 @@ export default function OpportunitiesPage() {
   const displayJobs = filteredJobs;
 
   return (
-    <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 pt-safe">
+    <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 pt-safe">
       <div className="mb-6 sm:mb-8 px-2">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">Find Your Next Creative Opportunity</h1>
         <p className="mt-2 text-sm sm:text-base text-neutral-400 leading-relaxed">Browse job listings and connect with talented creators in the community.</p>

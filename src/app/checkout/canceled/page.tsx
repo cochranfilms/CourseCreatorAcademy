@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function CheckoutCanceledPage() {
   return (
-    <main className="max-w-xl mx-auto px-4 py-16 text-center">
+    <main className="min-h-screen max-w-xl mx-auto px-4 py-16 text-center">
       <h1 className="text-3xl font-bold mb-2">Payment canceled</h1>
       <p className="text-neutral-400 mb-8">Your card was not charged.</p>
       <div className="flex items-center justify-center gap-3">

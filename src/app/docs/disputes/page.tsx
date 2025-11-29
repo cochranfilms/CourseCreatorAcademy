@@ -2,7 +2,7 @@
 
 export default function DisputesPage() {
   return (
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+    <main className="min-h-screen max-w-3xl mx-auto px-4 sm:px-6 py-10">
       <h1 className="text-3xl sm:text-4xl font-bold mb-6">Disputes</h1>
 
       <section className="space-y-4 text-neutral-300">

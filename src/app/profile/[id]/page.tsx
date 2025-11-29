@@ -336,7 +336,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="inline-block animate-spin h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
@@ -349,7 +349,7 @@ export default function ProfilePage() {
 
   if (notFound) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-white mb-2">Profile Not Found</h1>
@@ -363,7 +363,7 @@ export default function ProfilePage() {
 
   if (profile?.profilePublic === false && currentUser?.uid !== userId) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="w-20 h-20 rounded-full bg-neutral-800 flex items-center justify-center mx-auto mb-4">
@@ -388,7 +388,7 @@ export default function ProfilePage() {
     .filter(Boolean);
 
   return (
-    <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+    <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
       {/* Profile Banner */}
       <div className="mb-6 rounded-lg overflow-hidden border border-neutral-800/50">
         <div

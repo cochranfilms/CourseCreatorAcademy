@@ -185,7 +185,7 @@ export default function LearnPage() {
 
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <h1 className="text-3xl md:text-4xl font-bold">All Courses</h1>
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
@@ -212,7 +212,7 @@ export default function LearnPage() {
         <CreatorKitsScroller />
       </section>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="mb-6">
           <div className="mb-2">
             <Image 

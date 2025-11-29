@@ -14,7 +14,7 @@ function SuccessContent() {
   }, [router]);
 
   return (
-    <main className="max-w-xl mx-auto px-4 py-16 text-center">
+    <main className="min-h-screen max-w-xl mx-auto px-4 py-16 text-center">
       <h1 className="text-3xl font-bold mb-2">Payment successful</h1>
       <p className="text-neutral-400 mb-6">Thanks for your purchase.</p>
       {listingId ? (
@@ -30,7 +30,7 @@ function SuccessContent() {
 
 export default function CheckoutSuccessPage() {
   return (
-    <Suspense fallback={<main className="max-w-xl mx-auto px-4 py-16 text-center"><p className="text-neutral-400">Loading…</p></main>}>
+    <Suspense fallback={<main className="min-h-screen max-w-xl mx-auto px-4 py-16 text-center"><p className="text-neutral-400">Loading…</p></main>}>
       <SuccessContent />
     </Suspense>
   );

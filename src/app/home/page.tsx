@@ -610,7 +610,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-2 sm:px-3 md:px-4 lg:px-6 py-2 sm:py-3 md:py-4 lg:py-6 xl:py-8 pt-safe overflow-x-hidden">
+    <main className="min-h-screen max-w-7xl mx-auto px-2 sm:px-3 md:px-4 lg:px-6 py-2 sm:py-3 md:py-4 lg:py-6 xl:py-8 pt-safe overflow-x-hidden">
       <Suspense fallback={null}><ClaimFromSessionId /></Suspense>
       {/* Prompt to set a password for email login, if needed */}
       {user && needsPassword && !user?.providerData?.some((p) => p?.providerId === 'password') && (

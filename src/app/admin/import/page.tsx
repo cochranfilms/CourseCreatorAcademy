@@ -36,7 +36,7 @@ function Importer() {
   if (isAdmin === null) {
     checkAdmin();
     return (
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="min-h-screen max-w-3xl mx-auto px-4 py-8">
         <div className="text-neutral-400">Verifying admin access...</div>
       </main>
     );
@@ -44,7 +44,7 @@ function Importer() {
 
   if (!isAdmin) {
     return (
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="min-h-screen max-w-3xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-white mb-2">Admin Importer</h1>
         <p className="text-neutral-400">You do not have access to this page.</p>
       </main>
@@ -74,7 +74,7 @@ function Importer() {
   };
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-8">
+    <main className="min-h-screen max-w-3xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-white mb-4">Admin CSV Importer</h1>
       <div className="space-y-4 bg-neutral-950 border border-neutral-800 p-4">
         <div>
