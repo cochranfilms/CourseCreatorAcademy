@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 /**
  * Verify user is authorized (info@cochranfilms.com)
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
       .get();
 
     const courses = await Promise.all(
-      coursesSnapshot.docs.map(async (courseDoc) => {
+      coursesSnapshot.docs.map(async (courseDoc: QueryDocumentSnapshot) => {
         const courseData = courseDoc.data();
         const modulesSnapshot = await courseDoc.ref
           .collection('modules')
@@ -46,14 +47,14 @@ export async function GET(req: NextRequest) {
           .get();
 
         const modules = await Promise.all(
-          modulesSnapshot.docs.map(async (moduleDoc) => {
+          modulesSnapshot.docs.map(async (moduleDoc: QueryDocumentSnapshot) => {
             const moduleData = moduleDoc.data();
             const lessonsSnapshot = await moduleDoc.ref
               .collection('lessons')
               .orderBy('index', 'asc')
               .get();
 
-            const lessons = lessonsSnapshot.docs.map((lessonDoc) => {
+            const lessons = lessonsSnapshot.docs.map((lessonDoc: QueryDocumentSnapshot) => {
               const lessonData = lessonDoc.data();
               return {
                 id: lessonDoc.id,
