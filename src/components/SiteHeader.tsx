@@ -246,7 +246,7 @@ export function SiteHeader() {
       <div className="sticky top-0 z-[60] bg-neutral-950/90 backdrop-blur-sm border-b border-neutral-800 w-full overflow-x-hidden overflow-y-visible pt-safe">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 w-full relative">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <Link href="/" className="flex-shrink-0">
+        <Link href={user ? "/home" : "/"} className="flex-shrink-0">
           <Image 
             src="/CC-Logo-White.png" 
             alt="Creator Collective" 
