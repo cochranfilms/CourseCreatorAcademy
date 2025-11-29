@@ -161,10 +161,10 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
     if (uploadIdMatch) {
       console.log(`[TUS PROXY] POST to MUX direct upload - upload already exists, returning 201 Created`);
       const resHeaders = new Headers(corsHeaders(allowedOrigin));
-      // Return MUX URL directly in Location header
-      // HEAD requests should work if MUX CORS is configured correctly
-      // PATCH requests will go directly to MUX, bypassing Vercel's 413 error
-      resHeaders.set('Location', target);
+      // Return proxy URL in Location header so HEAD requests go through proxy (handles CORS)
+      // PATCH requests will also use proxy URL, but Vercel will reject large bodies
+      // This is a known limitation - we need HEAD to work, but PATCH will fail for large files
+      resHeaders.set('Location', `${req.nextUrl.origin}${req.nextUrl.pathname}?u=${encodeURIComponent(target)}`);
       resHeaders.set('Tus-Resumable', '1.0.0');
       resHeaders.set('Upload-Length', headerObj['Upload-Length'] || '0');
       return new NextResponse(null, {
