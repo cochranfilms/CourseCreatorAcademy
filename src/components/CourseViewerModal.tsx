@@ -46,6 +46,35 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
   const module = useMemo(() => modules.find(m => m.id === moduleId) || modules[0], [modules, moduleId]);
   const lesson = useMemo(() => module?.lessons.find(l => l.id === lessonId) || module?.lessons[0], [module, lessonId]);
 
+  // Fetch signed playback token for course videos (signed playback policy)
+  useEffect(() => {
+    let cancelled = false;
+    const fetchToken = async () => {
+      setPlaybackToken(null);
+      if (!lesson?.muxPlaybackId || !user) return;
+      try {
+        const idToken = await user.getIdToken();
+        const res = await fetch(`/api/mux/token?playbackId=${encodeURIComponent(lesson.muxPlaybackId)}`, {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
+        if (!res.ok) {
+          console.error('Failed to fetch playback token:', res.status);
+          return;
+        }
+        const json = await res.json();
+        if (!cancelled && json?.token) {
+          setPlaybackToken(json.token);
+        }
+      } catch (error) {
+        console.error('Error fetching playback token:', error);
+      }
+    };
+    fetchToken();
+    return () => { cancelled = true; };
+  }, [lesson?.muxPlaybackId, user]);
+
   useEffect(() => {
     const loadSaved = async () => {
       if (!user || !lesson) return;
