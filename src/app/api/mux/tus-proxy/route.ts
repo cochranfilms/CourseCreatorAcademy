@@ -112,11 +112,19 @@ async function handle(method: 'OPTIONS'|'POST'|'PATCH'|'HEAD', req: NextRequest)
   if (method === 'POST') {
     headerObj['Content-Length'] = '0';
   }
+  
+  // MUX may require Origin header to match the CORS origin used when creating the upload
+  // Try to preserve the original origin from the request
+  const originalOrigin = req.headers.get('origin');
+  if (originalOrigin && method === 'POST') {
+    headerObj['Origin'] = originalOrigin;
+  }
 
   // Log headers for debugging
   if (method === 'POST') {
     console.log('[TUS PROXY] POST headers being sent to MUX (exact case):', JSON.stringify(headerObj, null, 2));
     console.log('[TUS PROXY] Target URL:', target);
+    console.log('[TUS PROXY] Original Origin:', originalOrigin);
   }
 
   // Per TUS: POST (create) has empty body; PATCH streams bytes
