@@ -215,14 +215,21 @@ export async function GET(req: NextRequest) {
                 
                 try {
                   const asset = await mux.video.assets.retrieve(assetId).catch(() => null);
-                  if (asset?.playback_ids?.[0]?.id === playbackIdStr) {
-                    await lessonDoc.ref.set({
-                      muxPlaybackId: playbackIdStr,
-                      updatedAt: adminDb.FieldValue.serverTimestamp(),
-                    }, { merge: true }).catch(() => {});
-                    lessonSnap = { docs: [lessonDoc], empty: false };
-                    logInfo('mux.token.playbackId_updated_via_asset_fallback', { assetId, playbackId: playbackIdStr });
-                    break;
+                  if (asset) {
+                    // Check all playback IDs (not just first one) - assets can have multiple playback IDs
+                    const matchingPlaybackId = asset.playback_ids?.find((pid: any) => pid.id === playbackIdStr);
+                    if (matchingPlaybackId) {
+                      await lessonDoc.ref.set({
+                        muxAssetId: asset.id,
+                        muxPlaybackId: playbackIdStr,
+                        muxAnimatedGifUrl: `https://image.mux.com/${playbackIdStr}/animated.gif?width=320`,
+                        durationSec: asset.duration ? Math.round(Number(asset.duration)) : undefined,
+                        updatedAt: adminDb.FieldValue.serverTimestamp(),
+                      }, { merge: true }).catch(() => {});
+                      lessonSnap = { docs: [lessonDoc], empty: false };
+                      logInfo('mux.token.found_via_asset_fallback', { assetId, playbackId: playbackIdStr, lessonPath: lessonDoc.ref.path });
+                      break;
+                    }
                   }
                 } catch (err: any) {
                   logWarn('mux.token.asset_check_error', { assetId, error: err.message });
