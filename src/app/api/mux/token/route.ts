@@ -78,10 +78,16 @@ export async function GET(req: NextRequest) {
     if (lessonSnap && !lessonSnap.empty) {
       const d = lessonSnap.docs[0];
       const courseId = getAncestorIdFromPath(d.ref.path, 'courses');
-      if (!courseId) return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+      if (!courseId) {
+        logWarn('mux.token.invalid_path', { playbackId, path: d.ref.path });
+        return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+      }
       // Require enrollment
       const uid = await getUserFromAuthHeader(req);
-      if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      if (!uid) {
+        logWarn('mux.token.unauthorized', { playbackId, courseId });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
       const enr = await adminDb
         .collection('enrollments')
         .where('userId', '==', String(uid))
@@ -91,6 +97,7 @@ export async function GET(req: NextRequest) {
         .get()
         .catch(() => null as any);
       if (!enr || enr.empty) {
+        logWarn('mux.token.not_enrolled', { playbackId, courseId, uid });
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
       const token = generateMuxPlaybackToken(playbackId, { audience: 'v', expiresInSeconds: 15 * 60 });
@@ -100,7 +107,7 @@ export async function GET(req: NextRequest) {
     }
 
     logWarn('mux.token.not_found', { playbackId });
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Not found', message: 'Playback ID not found in any lesson. The video may still be processing.' }, { status: 404 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'Failed to mint token' }, { status: 500 });
   }

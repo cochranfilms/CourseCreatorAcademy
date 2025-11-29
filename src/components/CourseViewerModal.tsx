@@ -60,7 +60,13 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
           },
         });
         if (!res.ok) {
-          console.error('Failed to fetch playback token:', res.status);
+          const errorText = await res.text();
+          console.error('Failed to fetch playback token:', res.status, errorText);
+          // 404 means playbackId not found (webhook might not have processed yet)
+          // 401/403 means auth/enrollment issue
+          if (res.status === 404) {
+            console.warn('Playback ID not found in database - webhook may not have processed yet');
+          }
           return;
         }
         const json = await res.json();
