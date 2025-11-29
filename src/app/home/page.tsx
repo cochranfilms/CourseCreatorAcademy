@@ -991,7 +991,7 @@ export default function HomePage() {
               return (
                 <div className="bg-neutral-950 border border-neutral-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden flex flex-col flex-1 min-w-0">
                   <div 
-                    className="relative aspect-video bg-transparent cursor-pointer group"
+                    className="relative aspect-video bg-neutral-900 cursor-pointer group"
                     onClick={() => walkthrough.playbackId && setShowWalkthroughVideo(true)}
                   >
                     {walkthrough.thumbnailUrl ? (
