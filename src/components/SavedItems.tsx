@@ -99,12 +99,14 @@ function SavedItemCard({
   }, [item, isVideo, videoUrl]);
   
   // Determine aspect ratio based on item type
-  // Templates, Overlays, and Marketplace items use aspect-video (16:9)
+  // Templates, Overlays, Plugins, Courses, and Marketplace items use aspect-video (16:9)
   // Regular assets use aspect-square
   const isTemplate = item.type === 'asset' && item.category === 'Templates';
   const isOverlay = item.type === 'asset' && (item.subCategory === 'Overlays' || item.subCategory === 'Transitions' || item.previewStoragePath);
+  const isPlugin = item.type === 'asset' && item.subCategory === 'Plugins';
+  const isCourse = item.type === 'course';
   const isMarketplace = item.type === 'market';
-  const aspectClass = (isTemplate || isOverlay || isMarketplace) ? 'aspect-video' : 'aspect-square';
+  const aspectClass = (isTemplate || isOverlay || isPlugin || isCourse || isMarketplace) ? 'aspect-video' : 'aspect-square';
 
   // Intersection Observer for video playback
   useEffect(() => {
@@ -202,7 +204,7 @@ function SavedItemCard({
               <img
                 src={getItemImage(item)!}
                 alt={getItemTitle(item)}
-                className={`absolute inset-0 ${isTemplate ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover group-hover:scale-105'} transition-transform duration-300`}
+                className={`absolute inset-0 ${(isTemplate || isCourse || isPlugin) ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover group-hover:scale-105'} transition-transform duration-300`}
                 loading="lazy"
                 decoding="async"
                 onError={(e) => {
@@ -310,6 +312,30 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
               }
             } catch (err) {
               console.warn('Failed to fetch lesson thumbnail data:', err);
+            }
+          }
+          
+          // If it's a course, fetch coverImage from course document
+          if (item.type === 'course') {
+            try {
+              const courseRef = doc(currentDb, `courses/${item.targetId}`);
+              const courseSnap = await getDoc(courseRef);
+              if (courseSnap.exists()) {
+                const courseData = courseSnap.data();
+                // Fill in missing coverImage
+                if (!item.image && courseData.coverImage) {
+                  item.image = courseData.coverImage;
+                }
+                // Fill in missing title and slug if not already set
+                if (!item.title && courseData.title) {
+                  item.title = courseData.title;
+                }
+                if (!item.slug && courseData.slug) {
+                  item.slug = courseData.slug;
+                }
+              }
+            } catch (err) {
+              console.warn('Failed to fetch course data:', err);
             }
           }
           
@@ -522,6 +548,9 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
       // Fallback to single image field
       if (item.image) return item.image;
     }
+    
+    // For courses, use coverImage (image field)
+    if (item.type === 'course' && item.image) return item.image;
     
     // For assets, use thumbnailUrl (photo or video thumbnail)
     if (item.type === 'asset' && item.thumbnailUrl) return item.thumbnailUrl;
