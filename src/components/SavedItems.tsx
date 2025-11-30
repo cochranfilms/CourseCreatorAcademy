@@ -29,6 +29,8 @@ type SavedItem = {
   afterVideoPath?: string;
   storagePath?: string;
   previewStoragePath?: string;
+  previewVideoPath?: string; // Path to preview video in Firebase Storage (for Plugins)
+  previewVideoUrl?: string; // Signed URL for preview video (for Plugins)
   fileType?: string;
   category?: string;
   subCategory?: string;
@@ -80,11 +82,12 @@ function SavedItemCard({
   const isVideo = isVideoAsset(item) && videoUrl;
   
   // Determine aspect ratio based on item type
-  // Overlays use aspect-video (16:9), regular assets use aspect-square
-  // Marketplace items also use aspect-video to match marketplace page
+  // Templates, Overlays, and Marketplace items use aspect-video (16:9)
+  // Regular assets use aspect-square
+  const isTemplate = item.type === 'asset' && item.category === 'Templates';
   const isOverlay = item.type === 'asset' && (item.subCategory === 'Overlays' || item.subCategory === 'Transitions' || item.previewStoragePath);
   const isMarketplace = item.type === 'market';
-  const aspectClass = (isOverlay || isMarketplace) ? 'aspect-video' : 'aspect-square';
+  const aspectClass = (isTemplate || isOverlay || isMarketplace) ? 'aspect-video' : 'aspect-square';
 
   // Intersection Observer for video playback
   useEffect(() => {
@@ -188,7 +191,7 @@ function SavedItemCard({
               <img
                 src={getItemImage(item)!}
                 alt={getItemTitle(item)}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                className={`${isTemplate ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover group-hover:scale-105'} transition-transform duration-300`}
                 loading="lazy"
                 decoding="async"
                 onError={(e) => {
@@ -342,6 +345,20 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
                   }
                   if (!item.afterVideoPath && assetData.afterVideoPath) {
                     item.afterVideoPath = assetData.afterVideoPath;
+                  }
+                  // Fill in missing previewVideoPath/previewVideoUrl for Plugins
+                  if (!item.previewVideoPath && assetData.previewVideoPath) {
+                    item.previewVideoPath = assetData.previewVideoPath;
+                  }
+                  if (!item.previewVideoUrl && assetData.previewVideoUrl) {
+                    item.previewVideoUrl = assetData.previewVideoUrl;
+                  }
+                  // Fill in missing storagePath/fileType
+                  if (!item.storagePath && assetData.storagePath) {
+                    item.storagePath = assetData.storagePath;
+                  }
+                  if (!item.fileType && assetData.fileType) {
+                    item.fileType = assetData.fileType;
                   }
                   // Fill in missing category/subcategory
                   if (!item.category && assetData.category) {
@@ -510,7 +527,11 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
   const isVideoAsset = (item: SavedItem): boolean => {
     if (item.type !== 'asset') return false;
     // Check if it has video paths or video file type
+    // Plugins with preview videos
+    if (item.previewVideoPath || item.previewVideoUrl) return true;
+    // LUT previews
     if (item.beforeVideoPath || item.afterVideoPath) return true;
+    // Overlays/transitions with video files
     if (item.previewStoragePath || item.storagePath) {
       const path = (item.previewStoragePath || item.storagePath || '').toLowerCase();
       const fileType = (item.fileType || '').toLowerCase();
@@ -522,13 +543,22 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
 
   const getVideoUrl = (item: SavedItem): string | null => {
     if (item.type !== 'asset') return null;
-    // Prefer previewStoragePath (720p version) for overlays, or beforeVideoPath for LUTs
+    // Plugins: prefer previewVideoUrl (signed URL) or generate from previewVideoPath
+    if (item.previewVideoUrl) {
+      return item.previewVideoUrl;
+    }
+    if (item.previewVideoPath) {
+      return getPublicStorageUrl(item.previewVideoPath);
+    }
+    // Overlays: prefer previewStoragePath (720p version)
     if (item.previewStoragePath) {
       return getPublicStorageUrl(item.previewStoragePath);
     }
+    // LUTs: use beforeVideoPath
     if (item.beforeVideoPath) {
       return getPublicStorageUrl(item.beforeVideoPath);
     }
+    // Fallback: check storagePath for video files
     if (item.storagePath) {
       const fileType = (item.fileType || '').toLowerCase();
       const videoExtensions = ['mov', 'mp4', 'avi', 'mkv', 'webm', 'm4v'];

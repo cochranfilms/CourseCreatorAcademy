@@ -2070,6 +2070,12 @@ export default function AssetsPage() {
                             category: asset.category,
                             thumbnailUrl: asset.thumbnailUrl || undefined,
                             subCategory: assetSubCategory || undefined,
+                            previewVideoPath: asset.previewVideoPath || undefined,
+                            previewVideoUrl: asset.previewVideoUrl || undefined,
+                            beforeVideoPath: asset.beforeVideoPath || undefined,
+                            afterVideoPath: asset.afterVideoPath || undefined,
+                            storagePath: asset.storagePath || undefined,
+                            fileType: asset.fileType || undefined,
                           });
                           setFavoritedAssets(prev => {
                             const newSet = new Set(prev);
