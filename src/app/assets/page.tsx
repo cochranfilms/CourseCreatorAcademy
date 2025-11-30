@@ -775,9 +775,10 @@ function SideBySideImageSlider({ preset, asset }: { preset: PresetFile; asset: A
   return (
     <div
       ref={containerRef}
-      className="group rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-600 transition-colors"
+      className="group rounded-lg overflow-hidden border border-neutral-700 bg-neutral-900 hover:border-neutral-600 transition-colors cursor-pointer"
+      onClick={handleDownload}
     >
-      <div className="relative aspect-square bg-neutral-900">
+      <div className="relative aspect-[3/2] bg-neutral-900">
         {isVisible && beforeImageUrl && afterImageUrl ? (
           <>
             <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}>
@@ -796,7 +797,7 @@ function SideBySideImageSlider({ preset, asset }: { preset: PresetFile; asset: A
                 alt="After"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded">
+              <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded">
                 After
               </div>
             </div>
@@ -819,22 +820,23 @@ function SideBySideImageSlider({ preset, asset }: { preset: PresetFile; asset: A
             <div className="text-neutral-500">Loading preview...</div>
           </div>
         )}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none">
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="px-4 py-2 bg-white text-black rounded-lg font-semibold hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto"
-            >
-              {downloading ? 'Downloading...' : 'Download'}
-            </button>
-          </div>
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center pointer-events-none">
+          {downloading ? (
+            <div className="opacity-100 text-white text-sm font-medium">Downloading...</div>
+          ) : (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium">
+              Click to Download
+            </div>
+          )}
         </div>
-        <div className="absolute top-2 right-2 z-20">
+        <div className="absolute bottom-2 right-2 z-20">
           <button
-            onClick={handleFavorite}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleFavorite();
+            }}
             className={`p-2 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-colors ${
-              isFavorited ? 'text-red-500' : ''
+              isFavorited ? 'text-pink-500' : ''
             }`}
             title={isFavorited ? 'Unfavorite' : 'Favorite'}
           >
@@ -849,7 +851,7 @@ function SideBySideImageSlider({ preset, asset }: { preset: PresetFile; asset: A
           </button>
         </div>
       </div>
-      <div className="p-3">
+      <div className="p-3 bg-neutral-900">
         <h3 className="text-white font-semibold mb-1 truncate">{preset.fileName}</h3>
         <p className="text-neutral-400 text-sm truncate">{preset.assetTitle}</p>
       </div>

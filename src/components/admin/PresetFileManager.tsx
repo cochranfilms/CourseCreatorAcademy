@@ -26,6 +26,8 @@ export function PresetFileManager({ onCategoryChange }: PresetFileManagerProps) 
   const [loading, setLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
   const [expandedAsset, setExpandedAsset] = useState<string | null>(null);
+  const [editingFileName, setEditingFileName] = useState<{ [key: string]: string }>({});
+  const [updatingFileName, setUpdatingFileName] = useState<string | null>(null);
   
   const beforeImageInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const afterImageInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -148,6 +150,61 @@ export function PresetFileManager({ onCategoryChange }: PresetFileManagerProps) 
     e.target.value = '';
   }, [handleImageUpload]);
 
+  const handleFileNameUpdate = useCallback(async (preset: PresetFile, newFileName: string) => {
+    if (!user || !newFileName.trim() || newFileName.trim() === preset.fileName) {
+      return;
+    }
+
+    setUpdatingFileName(preset.id);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/admin/assets/update-preset-filename', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          assetId: preset.assetId,
+          presetId: preset.id,
+          fileName: newFileName.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update fileName');
+      }
+
+      // Reload preset files
+      const reloadResponse = await fetch('/api/admin/assets/preset-files', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (reloadResponse.ok) {
+        const reloadData = await reloadResponse.json();
+        setPresetFiles(reloadData.files || []);
+      }
+
+      if (onCategoryChange) {
+        onCategoryChange();
+      }
+    } catch (error: unknown) {
+      console.error('Error updating preset fileName:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update fileName';
+      alert(`Failed to update fileName: ${errorMessage}`);
+    } finally {
+      setUpdatingFileName(null);
+      setEditingFileName(prev => {
+        const newState = { ...prev };
+        delete newState[preset.id];
+        return newState;
+      });
+    }
+  }, [user, onCategoryChange]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -196,16 +253,78 @@ export function PresetFileManager({ onCategoryChange }: PresetFileManagerProps) 
 
             {expandedAsset === assetId && (
               <div className="px-6 py-4 border-t border-neutral-800 space-y-4">
-                {presets.map((preset) => (
-                  <div key={preset.id} className="bg-neutral-950 border border-neutral-800 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-white mb-1 truncate">{preset.fileName}</h4>
-                        {preset.relativePath && (
-                          <p className="text-xs text-neutral-500 truncate">{preset.relativePath}</p>
-                        )}
+                {presets.map((preset) => {
+                  const isEditing = editingFileName[preset.id] !== undefined;
+                  const isUpdating = updatingFileName === preset.id;
+                  
+                  return (
+                    <div key={preset.id} className="bg-neutral-950 border border-neutral-800 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1 min-w-0">
+                          {isEditing ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingFileName[preset.id] || preset.fileName}
+                                onChange={(e) => setEditingFileName(prev => ({
+                                  ...prev,
+                                  [preset.id]: e.target.value
+                                }))}
+                                onBlur={() => {
+                                  const newFileName = editingFileName[preset.id];
+                                  if (newFileName && newFileName.trim() && newFileName.trim() !== preset.fileName) {
+                                    handleFileNameUpdate(preset, newFileName.trim());
+                                  } else {
+                                    setEditingFileName(prev => {
+                                      const newState = { ...prev };
+                                      delete newState[preset.id];
+                                      return newState;
+                                    });
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                  } else if (e.key === 'Escape') {
+                                    setEditingFileName(prev => {
+                                      const newState = { ...prev };
+                                      delete newState[preset.id];
+                                      return newState;
+                                    });
+                                  }
+                                }}
+                                autoFocus
+                                disabled={isUpdating}
+                                className="flex-1 px-2 py-1 bg-neutral-900 border border-neutral-700 rounded text-white text-sm font-medium"
+                              />
+                              {isUpdating && (
+                                <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-ccaBlue"></div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-medium text-white mb-1 truncate">{preset.fileName}</h4>
+                              <button
+                                onClick={() => {
+                                  setEditingFileName(prev => ({
+                                    ...prev,
+                                    [preset.id]: preset.fileName
+                                  }));
+                                }}
+                                className="p-1 text-neutral-400 hover:text-white transition-colors"
+                                title="Edit file name"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                          {preset.relativePath && (
+                            <p className="text-xs text-neutral-500 truncate">{preset.relativePath}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Before Image */}
@@ -295,7 +414,8 @@ export function PresetFileManager({ onCategoryChange }: PresetFileManagerProps) 
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

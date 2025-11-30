@@ -58,8 +58,12 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
   const [expandedLUT, setExpandedLUT] = useState<string | null>(null);
   const [expandedAsset, setExpandedAsset] = useState<string | null>(null);
   const [editingLutName, setEditingLutName] = useState<{ [key: string]: string }>({});
+  const [editingLutFileName, setEditingLutFileName] = useState<{ [key: string]: string }>({});
   const [editingAssetTitle, setEditingAssetTitle] = useState<{ [key: string]: string }>({});
+  const [editingOverlayFileName, setEditingOverlayFileName] = useState<{ [key: string]: string }>({});
   const [updatingAssetTitle, setUpdatingAssetTitle] = useState<string | null>(null);
+  const [updatingLutName, setUpdatingLutName] = useState<string | null>(null);
+  const [updatingOverlayFileName, setUpdatingOverlayFileName] = useState<string | null>(null);
   
   const beforeVideoInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const afterVideoInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -398,6 +402,131 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
     }
   }, [user, onCategoryChange]);
 
+  const handleLutNameUpdate = useCallback(async (lut: LUTFile, lutName?: string, fileName?: string) => {
+    if (!user) return;
+
+    const hasLutName = lutName !== undefined && lutName.trim() !== lut.lutName;
+    const hasFileName = fileName !== undefined && fileName.trim() !== (lut.fileName || '');
+    
+    if (!hasLutName && !hasFileName) {
+      return;
+    }
+
+    setUpdatingLutName(lut.id);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/admin/assets/update-lut-filename', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          assetId: lut.assetId,
+          previewId: lut.id,
+          ...(hasLutName ? { lutName: lutName!.trim() } : {}),
+          ...(hasFileName ? { fileName: fileName!.trim() } : {}),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update LUT name');
+      }
+
+      // Reload LUT files
+      const reloadResponse = await fetch('/api/admin/assets/lut-files', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (reloadResponse.ok) {
+        const reloadData = await reloadResponse.json();
+        setLutFiles(reloadData.luts || []);
+      }
+
+      // Clear editing states
+      setEditingLutName(prev => {
+        const newState = { ...prev };
+        delete newState[lut.id];
+        return newState;
+      });
+      setEditingLutFileName(prev => {
+        const newState = { ...prev };
+        delete newState[lut.id];
+        return newState;
+      });
+
+      if (onCategoryChange) {
+        onCategoryChange();
+      }
+    } catch (error: unknown) {
+      console.error('Error updating LUT name:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update LUT name';
+      alert(`Failed to update LUT name: ${errorMessage}`);
+    } finally {
+      setUpdatingLutName(null);
+    }
+  }, [user, onCategoryChange]);
+
+  const handleOverlayFileNameUpdate = useCallback(async (overlay: OverlayFile, newFileName: string) => {
+    if (!user || !newFileName.trim() || newFileName.trim() === overlay.fileName) {
+      return;
+    }
+
+    setUpdatingOverlayFileName(overlay.id);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/admin/assets/update-overlay-filename', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          assetId: overlay.assetId,
+          overlayId: overlay.id,
+          fileName: newFileName.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update fileName');
+      }
+
+      // Reload overlay files
+      const reloadResponse = await fetch('/api/admin/assets/overlay-files', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (reloadResponse.ok) {
+        const reloadData = await reloadResponse.json();
+        setOverlayFiles(reloadData.files || []);
+      }
+
+      // Clear editing state
+      setEditingOverlayFileName(prev => {
+        const newState = { ...prev };
+        delete newState[overlay.id];
+        return newState;
+      });
+
+      if (onCategoryChange) {
+        onCategoryChange();
+      }
+    } catch (error: unknown) {
+      console.error('Error updating overlay fileName:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update fileName';
+      alert(`Failed to update fileName: ${errorMessage}`);
+    } finally {
+      setUpdatingOverlayFileName(null);
+    }
+  }, [user, onCategoryChange]);
+
   // Group LUTs by asset
   const lutsByAsset = useMemo(() => {
     const grouped: { [assetId: string]: { assetTitle: string; luts: LUTFile[] } } = {};
@@ -475,36 +604,100 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
                     No files in this category
                   </p>
                 ) : (
-                  categoryFiles.map((file) => (
-                    <div
-                      key={file.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, file)}
-                      onDragEnd={handleDragEnd}
-                      className={`
-                        p-3 rounded-lg border cursor-move transition-all
-                        ${draggedFile?.id === file.id
-                          ? 'opacity-50 border-ccaBlue bg-ccaBlue/10'
-                          : 'border-neutral-700 bg-neutral-800 hover:border-neutral-600'
-                        }
-                        ${updating === file.id ? 'opacity-50 pointer-events-none' : ''}
-                      `}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{file.fileName}</p>
-                          <p className="text-xs text-neutral-400 truncate mt-1">
-                            From: {file.assetTitle}
-                          </p>
-                          {file.storagePath && (
-                            <p className="text-xs text-neutral-500 truncate mt-1">
-                              {file.storagePath}
+                  categoryFiles.map((file) => {
+                    const isEditing = editingOverlayFileName[file.id] !== undefined;
+                    const isUpdatingFileName = updatingOverlayFileName === file.id;
+                    
+                    return (
+                      <div
+                        key={file.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, file)}
+                        onDragEnd={handleDragEnd}
+                        className={`
+                          p-3 rounded-lg border cursor-move transition-all
+                          ${draggedFile?.id === file.id
+                            ? 'opacity-50 border-ccaBlue bg-ccaBlue/10'
+                            : 'border-neutral-700 bg-neutral-800 hover:border-neutral-600'
+                          }
+                          ${updating === file.id ? 'opacity-50 pointer-events-none' : ''}
+                        `}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            {isEditing ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={editingOverlayFileName[file.id] || file.fileName}
+                                  onChange={(e) => setEditingOverlayFileName(prev => ({
+                                    ...prev,
+                                    [file.id]: e.target.value
+                                  }))}
+                                  onBlur={() => {
+                                    const newFileName = editingOverlayFileName[file.id];
+                                    if (newFileName && newFileName.trim() && newFileName.trim() !== file.fileName) {
+                                      handleOverlayFileNameUpdate(file, newFileName.trim());
+                                    } else {
+                                      setEditingOverlayFileName(prev => {
+                                        const newState = { ...prev };
+                                        delete newState[file.id];
+                                        return newState;
+                                      });
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.currentTarget.blur();
+                                    } else if (e.key === 'Escape') {
+                                      setEditingOverlayFileName(prev => {
+                                        const newState = { ...prev };
+                                        delete newState[file.id];
+                                        return newState;
+                                      });
+                                    }
+                                  }}
+                                  autoFocus
+                                  disabled={isUpdatingFileName}
+                                  className="flex-1 px-2 py-1 bg-neutral-900 border border-neutral-700 rounded text-white text-sm font-medium"
+                                />
+                                {isUpdatingFileName && (
+                                  <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-ccaBlue"></div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium truncate">{file.fileName}</p>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingOverlayFileName(prev => ({
+                                      ...prev,
+                                      [file.id]: file.fileName
+                                    }));
+                                  }}
+                                  className="p-1 text-neutral-400 hover:text-white transition-colors"
+                                  title="Edit file name"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
+                            <p className="text-xs text-neutral-400 truncate mt-1">
+                              From: {file.assetTitle}
                             </p>
-                          )}
+                            {file.storagePath && (
+                              <p className="text-xs text-neutral-500 truncate mt-1">
+                                {file.storagePath}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  }))
                 )}
               </div>
             </div>
@@ -621,6 +814,9 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
                 const isExpanded = expandedLUT === lut.id;
                 const isUploadingBefore = uploadingLUT === `${lut.id}-before`;
                 const isUploadingAfter = uploadingLUT === `${lut.id}-after`;
+                const isEditingLutName = editingLutName[lut.id] !== undefined;
+                const isEditingFileName = editingLutFileName[lut.id] !== undefined;
+                const isUpdating = updatingLutName === lut.id;
 
                           return (
                             <div
@@ -630,13 +826,134 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
                               <div className="flex items-start justify-between">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <h3 className="text-sm font-semibold truncate">{lut.lutName}</h3>
+                                    {isEditingLutName ? (
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <input
+                                          type="text"
+                                          value={editingLutName[lut.id] || lut.lutName}
+                                          onChange={(e) => setEditingLutName(prev => ({
+                                            ...prev,
+                                            [lut.id]: e.target.value
+                                          }))}
+                                          onBlur={() => {
+                                            const newLutName = editingLutName[lut.id];
+                                            if (newLutName && newLutName.trim() && newLutName.trim() !== lut.lutName) {
+                                              handleLutNameUpdate(lut, newLutName.trim());
+                                            } else {
+                                              setEditingLutName(prev => {
+                                                const newState = { ...prev };
+                                                delete newState[lut.id];
+                                                return newState;
+                                              });
+                                            }
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.currentTarget.blur();
+                                            } else if (e.key === 'Escape') {
+                                              setEditingLutName(prev => {
+                                                const newState = { ...prev };
+                                                delete newState[lut.id];
+                                                return newState;
+                                              });
+                                            }
+                                          }}
+                                          autoFocus
+                                          disabled={isUpdating}
+                                          className="flex-1 px-2 py-1 bg-neutral-900 border border-neutral-700 rounded text-white text-sm font-semibold"
+                                        />
+                                        {isUpdating && (
+                                          <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-ccaBlue"></div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <h3 className="text-sm font-semibold truncate">{lut.lutName}</h3>
+                                        <button
+                                          onClick={() => {
+                                            setEditingLutName(prev => ({
+                                              ...prev,
+                                              [lut.id]: lut.lutName
+                                            }));
+                                          }}
+                                          className="p-1 text-neutral-400 hover:text-white transition-colors"
+                                          title="Edit LUT name"
+                                        >
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                          </svg>
+                                        </button>
+                                      </>
+                                    )}
                                     {lut.isPlaceholder && (
                                       <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded">
                                         New
                                       </span>
                                     )}
                                   </div>
+                                  {lut.fileName && (
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {isEditingFileName ? (
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <input
+                                            type="text"
+                                            value={editingLutFileName[lut.id] || lut.fileName}
+                                            onChange={(e) => setEditingLutFileName(prev => ({
+                                              ...prev,
+                                              [lut.id]: e.target.value
+                                            }))}
+                                            onBlur={() => {
+                                              const newFileName = editingLutFileName[lut.id];
+                                              if (newFileName && newFileName.trim() && newFileName.trim() !== lut.fileName) {
+                                                handleLutNameUpdate(lut, undefined, newFileName.trim());
+                                              } else {
+                                                setEditingLutFileName(prev => {
+                                                  const newState = { ...prev };
+                                                  delete newState[lut.id];
+                                                  return newState;
+                                                });
+                                              }
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                e.currentTarget.blur();
+                                              } else if (e.key === 'Escape') {
+                                                setEditingLutFileName(prev => {
+                                                  const newState = { ...prev };
+                                                  delete newState[lut.id];
+                                                  return newState;
+                                                });
+                                              }
+                                            }}
+                                            autoFocus
+                                            disabled={isUpdating}
+                                            className="flex-1 px-2 py-1 bg-neutral-900 border border-neutral-700 rounded text-white text-xs"
+                                          />
+                                          {isUpdating && (
+                                            <div className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-ccaBlue"></div>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <span className="text-xs text-neutral-500 truncate">{lut.fileName}</span>
+                                          <button
+                                            onClick={() => {
+                                              setEditingLutFileName(prev => ({
+                                                ...prev,
+                                                [lut.id]: lut.fileName || ''
+                                              }));
+                                            }}
+                                            className="p-0.5 text-neutral-400 hover:text-white transition-colors"
+                                            title="Edit file name"
+                                          >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  )}
                                   <div className="flex gap-4 mt-1 text-xs text-neutral-500">
                                     <span>
                                       Before: {lut.beforeVideoPath ? '✓ Set' : '✗ Not set'}
