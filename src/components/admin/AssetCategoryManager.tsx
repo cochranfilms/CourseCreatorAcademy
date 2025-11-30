@@ -21,6 +21,7 @@ interface LUTFile {
   afterVideoPath?: string;
   lutFilePath?: string;
   fileName?: string;
+  isPlaceholder?: boolean; // True if this is a placeholder for an asset without previews
 }
 
 type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
@@ -55,6 +56,7 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
   const [updating, setUpdating] = useState<string | null>(null);
   const [uploadingLUT, setUploadingLUT] = useState<string | null>(null);
   const [expandedLUT, setExpandedLUT] = useState<string | null>(null);
+  const [editingLutName, setEditingLutName] = useState<{ [key: string]: string }>({});
   
   const beforeVideoInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const afterVideoInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -256,7 +258,12 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
 
       const { storagePath } = await uploadResponse.json();
 
-      // Step 2: Update LUT preview document
+      // Step 2: Update or create LUT preview document
+      const isPlaceholder = lut.isPlaceholder || lut.id.startsWith('placeholder-');
+      const lutName = isPlaceholder 
+        ? (editingLutName[lut.id] || lut.lutName)
+        : undefined;
+
       const updateResponse = await fetch('/api/admin/assets/update-lut-videos', {
         method: 'POST',
         headers: {
@@ -266,6 +273,7 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
         body: JSON.stringify({
           assetId: lut.assetId,
           lutPreviewId: lut.id,
+          ...(lutName ? { lutName } : {}),
           [videoType === 'before' ? 'beforeVideoPath' : 'afterVideoPath']: storagePath,
         }),
       });
@@ -273,6 +281,18 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
       if (!updateResponse.ok) {
         const error = await updateResponse.json();
         throw new Error(error.error || 'Failed to update LUT preview');
+      }
+
+      const updateData = await updateResponse.json();
+      
+      // If a new preview was created, update the local state
+      if (isPlaceholder && updateData.lutPreviewId) {
+        // Clear editing state for this LUT
+        setEditingLutName(prev => {
+          const newState = { ...prev };
+          delete newState[lut.id];
+          return newState;
+        });
       }
 
       // Reload LUT files
@@ -297,7 +317,7 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
     } finally {
       setUploadingLUT(null);
     }
-  }, [user, onCategoryChange]);
+  }, [user, onCategoryChange, editingLutName]);
 
   const handleVideoFileSelect = useCallback((
     lut: LUTFile,
@@ -306,13 +326,19 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
   ) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('video/')) {
+      // For placeholders, ensure LUT name is set
+      if (lut.isPlaceholder && !editingLutName[lut.id] && !lut.lutName) {
+        alert('Please enter a LUT name first');
+        e.target.value = '';
+        return;
+      }
       handleLUTVideoUpload(lut, videoType, file);
     } else {
       alert('Please select a video file');
     }
     // Reset input
     e.target.value = '';
-  }, [handleLUTVideoUpload]);
+  }, [handleLUTVideoUpload, editingLutName]);
 
   if (loading) {
     return (
@@ -464,6 +490,28 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
 
                     {isExpanded && (
                       <div className="mt-4 pt-4 border-t border-neutral-700 space-y-4">
+                        {/* LUT Name Input for Placeholders */}
+                        {lut.isPlaceholder && (
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              LUT Name *
+                            </label>
+                            <input
+                              type="text"
+                              value={editingLutName[lut.id] || lut.lutName}
+                              onChange={(e) => setEditingLutName(prev => ({
+                                ...prev,
+                                [lut.id]: e.target.value
+                              }))}
+                              placeholder="Enter LUT name"
+                              className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded text-white"
+                            />
+                            <p className="text-xs text-neutral-400 mt-1">
+                              This will be the name displayed for this LUT preview
+                            </p>
+                          </div>
+                        )}
+
                         {/* Before Video Upload */}
                         <div>
                           <label className="block text-sm font-medium mb-2">

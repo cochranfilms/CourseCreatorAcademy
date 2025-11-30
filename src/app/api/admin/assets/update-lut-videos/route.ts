@@ -36,11 +36,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { assetId, lutPreviewId, beforeVideoPath, afterVideoPath } = await req.json();
+    const { assetId, lutPreviewId, lutName, beforeVideoPath, afterVideoPath } = await req.json();
 
-    if (!assetId || !lutPreviewId) {
+    if (!assetId) {
       return NextResponse.json(
-        { error: 'Missing assetId or lutPreviewId' },
+        { error: 'Missing assetId' },
         { status: 400 }
       );
     }
@@ -52,38 +52,94 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get the LUT preview document
-    const lutPreviewRef = adminDb
-      .collection('assets')
-      .doc(assetId)
-      .collection('lutPreviews')
-      .doc(lutPreviewId);
+    // Get asset document to get asset title
+    const assetDoc = await adminDb.collection('assets').doc(assetId).get();
+    if (!assetDoc.exists) {
+      return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+
+    const assetData = assetDoc.data();
+    const assetTitle = assetData?.title || 'Untitled';
+
+    // Check if this is a placeholder (starts with "placeholder-")
+    const isPlaceholder = lutPreviewId?.startsWith('placeholder-');
     
-    const lutPreviewDoc = await lutPreviewRef.get();
+    let finalLutPreviewId = lutPreviewId;
+    let lutPreviewRef;
 
-    if (!lutPreviewDoc.exists) {
-      return NextResponse.json({ error: 'LUT preview not found' }, { status: 404 });
+    if (isPlaceholder) {
+      // Create a new lutPreview document
+      if (!lutName) {
+        return NextResponse.json(
+          { error: 'lutName is required when creating a new LUT preview' },
+          { status: 400 }
+        );
+      }
+
+      lutPreviewRef = adminDb
+        .collection('assets')
+        .doc(assetId)
+        .collection('lutPreviews')
+        .doc();
+
+      finalLutPreviewId = lutPreviewRef.id;
+
+      // Create the document with initial data
+      await lutPreviewRef.set({
+        assetId,
+        assetTitle,
+        lutName,
+        beforeVideoPath: beforeVideoPath || null,
+        afterVideoPath: afterVideoPath || null,
+        createdAt: FirebaseFirestore.FieldValue.serverTimestamp(),
+        updatedAt: FirebaseFirestore.FieldValue.serverTimestamp(),
+      });
+    } else {
+      // Update existing document
+      if (!lutPreviewId) {
+        return NextResponse.json(
+          { error: 'Missing lutPreviewId for update' },
+          { status: 400 }
+        );
+      }
+
+      lutPreviewRef = adminDb
+        .collection('assets')
+        .doc(assetId)
+        .collection('lutPreviews')
+        .doc(lutPreviewId);
+      
+      const lutPreviewDoc = await lutPreviewRef.get();
+
+      if (!lutPreviewDoc.exists) {
+        return NextResponse.json({ error: 'LUT preview not found' }, { status: 404 });
+      }
+
+      // Update Firestore document
+      const updates: Record<string, string | null> = {};
+      if (beforeVideoPath !== undefined) {
+        updates.beforeVideoPath = beforeVideoPath || null;
+      }
+      if (afterVideoPath !== undefined) {
+        updates.afterVideoPath = afterVideoPath || null;
+      }
+
+      await lutPreviewRef.update({
+        ...updates,
+        updatedAt: FirebaseFirestore.FieldValue.serverTimestamp(),
+      });
     }
 
-    // Update Firestore document
-    const updates: Record<string, string> = {};
-    if (beforeVideoPath) {
-      updates.beforeVideoPath = beforeVideoPath;
-    }
-    if (afterVideoPath) {
-      updates.afterVideoPath = afterVideoPath;
-    }
-
-    await lutPreviewRef.update({
-      ...updates,
-      updatedAt: FirebaseFirestore.FieldValue.serverTimestamp(),
-    });
+    // Get the final document to return
+    const finalDoc = await lutPreviewRef.get();
+    const finalData = finalDoc.data();
 
     return NextResponse.json({
       success: true,
-      message: 'LUT videos updated successfully',
-      beforeVideoPath: beforeVideoPath || lutPreviewDoc.data()?.beforeVideoPath,
-      afterVideoPath: afterVideoPath || lutPreviewDoc.data()?.afterVideoPath,
+      message: isPlaceholder ? 'LUT preview created successfully' : 'LUT videos updated successfully',
+      lutPreviewId: finalLutPreviewId,
+      beforeVideoPath: finalData?.beforeVideoPath || null,
+      afterVideoPath: finalData?.afterVideoPath || null,
     });
   } catch (error: unknown) {
     console.error('Error updating LUT videos:', error);

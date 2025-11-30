@@ -62,12 +62,11 @@ const categories: AssetCategory[] = ['All Packs', 'LUTs & Presets', 'Overlays & 
  * Gets subcategory from storage path
  */
 function getSubCategory(asset: Asset): SubCategory {
-  if (!asset.storagePath) return null;
+  const path = (asset.storagePath || '').toLowerCase();
+  const title = (asset.title || '').toLowerCase();
+  const category = asset.category;
   
-  const path = asset.storagePath.toLowerCase();
-  const title = asset.title.toLowerCase();
-  
-  // Check storage path first
+  // Check storage path first (most reliable)
   if (path.includes('/overlays/')) return 'Overlays';
   if (path.includes('/transitions/')) return 'Transitions';
   if (path.includes('/sfx/')) return 'SFX';
@@ -82,6 +81,12 @@ function getSubCategory(asset: Asset): SubCategory {
   if (title.includes('plugin')) return 'Plugins';
   if (title.includes('lut')) return 'LUTs';
   if (title.includes('preset')) return 'Presets';
+  
+  // If category is "LUTs & Presets" and no other match, default to LUTs
+  // (Presets would have matched above if they were presets)
+  if (category === 'LUTs & Presets') {
+    return 'LUTs';
+  }
   
   return null;
 }

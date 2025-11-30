@@ -51,13 +51,24 @@ export async function GET(req: NextRequest) {
       afterVideoPath?: string;
       lutFilePath?: string;
       fileName?: string;
+      isPlaceholder?: boolean; // True if this is a placeholder for an asset without previews
     }> = [];
+
+    const assetsWithPreviews = new Set<string>();
 
     // Fetch LUT previews from each asset's subcollection
     for (const assetDoc of lutAssetsSnap.docs) {
       const assetId = assetDoc.id;
       const assetData = assetDoc.data();
       const assetTitle = assetData.title || 'Untitled';
+      const storagePath = assetData.storagePath || '';
+      
+      // Check if this is a LUT asset (not a preset)
+      const path = storagePath.toLowerCase();
+      const title = assetTitle.toLowerCase();
+      const isLUT = path.includes('/luts/') || title.includes('lut');
+
+      let hasPreviews = false;
 
       try {
         const lutPreviewsSnap = await adminDb
@@ -68,6 +79,7 @@ export async function GET(req: NextRequest) {
           .get();
 
         lutPreviewsSnap.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
+          hasPreviews = true;
           const data = doc.data();
           allLUTs.push({
             id: doc.id,
@@ -110,11 +122,28 @@ export async function GET(req: NextRequest) {
             return nameA.localeCompare(nameB);
           });
 
-          allLUTs.push(...previews);
+          if (previews.length > 0) {
+            hasPreviews = true;
+            allLUTs.push(...previews);
+          }
         } catch (fallbackError) {
           console.error(`Error loading LUT previews for asset ${assetId}:`, fallbackError);
           // Continue with other assets even if one fails
         }
+      }
+
+      // If this is a LUT asset but has no previews, add a placeholder entry
+      if (isLUT && !hasPreviews) {
+        allLUTs.push({
+          id: `placeholder-${assetId}`, // Use placeholder ID
+          assetId,
+          assetTitle,
+          lutName: assetTitle, // Use asset title as default LUT name
+          isPlaceholder: true,
+        });
+        assetsWithPreviews.add(assetId);
+      } else if (hasPreviews) {
+        assetsWithPreviews.add(assetId);
       }
     }
 
