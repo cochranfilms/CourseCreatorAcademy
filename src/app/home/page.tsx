@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import { doc, getDoc, collection, getDocs, query, orderBy, limit, getDocFromCache, getDocsFromCache } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { auth } from '@/lib/firebaseClient';
-import { signInWithCustomToken, fetchSignInMethodsForEmail, sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithCustomToken, signInWithEmailAndPassword } from 'firebase/auth';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getMuxAnimatedGifUrl } from '@/lib/muxThumbnails';
 
@@ -146,8 +146,6 @@ export default function HomePage() {
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userMemberSince, setUserMemberSince] = useState<Date | null>(null);
-  const [needsPassword, setNeedsPassword] = useState(false);
-  const [passwordEmailSent, setPasswordEmailSent] = useState(false);
   const [recentlyAdded, setRecentlyAdded] = useState<Video[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [discounts, setDiscounts] = useState<Discount[]>([]);
@@ -215,28 +213,6 @@ export default function HomePage() {
 
   useEffect(() => {
     if (user && firebaseReady && db) {
-      // Helper to check if password sign-in is enabled for this account
-      const checkPasswordMethod = async () => {
-        try {
-          // Fast path: if providerData already includes password provider, no prompt
-          if (user?.providerData?.some((p) => p?.providerId === 'password')) {
-            setNeedsPassword(false);
-            return;
-          }
-          if (auth && user.email) {
-            const methods = await fetchSignInMethodsForEmail(auth, user.email);
-            setNeedsPassword(!methods.includes('password'));
-          }
-        } catch {}
-      };
-
-      // Initial check and also whenever tab regains focus/visibility
-      checkPasswordMethod();
-      const onFocus = () => { checkPasswordMethod(); };
-      const onVisibility = () => { if (!document.hidden) checkPasswordMethod(); };
-      window.addEventListener('focus', onFocus);
-      document.addEventListener('visibilitychange', onVisibility);
-
       // Get member since date from Firebase Auth metadata
       const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime) : null;
       if (creationTime) {
@@ -276,11 +252,6 @@ export default function HomePage() {
       };
 
       fetchProfile();
-
-      return () => {
-        window.removeEventListener('focus', onFocus);
-        document.removeEventListener('visibilitychange', onVisibility);
-      };
     } else {
       // Reset profile when user logs out
       setUserProfile(null);
@@ -646,35 +617,6 @@ export default function HomePage() {
   return (
     <main className="min-h-screen max-w-7xl mx-auto px-2 sm:px-3 md:px-4 lg:px-6 py-2 sm:py-3 md:py-4 lg:py-6 xl:py-8 pt-safe overflow-x-hidden">
       <Suspense fallback={null}><ClaimFromSessionId /></Suspense>
-      {/* Prompt to set a password for email login, if needed */}
-      {user && needsPassword && !user?.providerData?.some((p) => p?.providerId === 'password') && (
-        <div className="mb-3 sm:mb-4 md:mb-6 rounded-lg sm:rounded-xl border border-amber-600/40 bg-amber-500/10 p-2.5 sm:p-3 md:p-4 text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 md:gap-4">
-          <div className="text-xs sm:text-sm flex-1 leading-relaxed break-words min-w-0">
-            <span className="block sm:inline">Secure your account: set a password to enable email login</span>
-            {user.email && (
-              <span className="block sm:inline mt-1 sm:mt-0 sm:ml-1 break-all">for {user.email}</span>
-            )}
-          </div>
-          <button
-            onClick={async () => {
-              if (!auth || !user?.email) return;
-              try {
-                await sendPasswordResetEmail(auth, user.email);
-                setPasswordEmailSent(true);
-                setNeedsPassword(false);
-              } catch {}
-            }}
-            className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-amber-500/20 active:bg-amber-500/30 hover:bg-amber-500/30 text-amber-100 text-[10px] sm:text-xs md:text-sm font-medium border border-amber-500/40 touch-manipulation min-h-[44px] flex items-center justify-center w-full sm:w-auto flex-shrink-0"
-          >
-            {passwordEmailSent ? 'Email Sent' : (
-              <>
-                <span className="hidden sm:inline">Send Password Setup Email</span>
-                <span className="sm:hidden">Setup Password</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
       <div className="grid lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 min-w-0">
