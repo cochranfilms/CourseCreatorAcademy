@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       .collection('lutPreviews')
       .get();
 
-    const updatePromises = lutPreviewsSnap.docs.map((doc) =>
+    const updatePromises = lutPreviewsSnap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) =>
       doc.ref.update({
         assetTitle: title.trim(),
         updatedAt: FirebaseFirestore.FieldValue.serverTimestamp(),
