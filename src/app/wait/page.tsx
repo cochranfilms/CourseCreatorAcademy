@@ -106,19 +106,119 @@ export default function WaitlistPage() {
   ];
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden">
-      {/* Hero Section */}
-      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 pt-12 sm:pt-16 pb-16 sm:pb-24 w-full pt-safe">
+    <>
+      {/* Structured Data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": "Join the Waitlist | Course Creator Academy",
+            "description": "Join the waitlist for Course Creator Academy - the #1 creator platform for learning, earning, and growing. Access 800+ video courses, exclusive job opportunities, marketplace, assets, discounts, and a thriving community.",
+            "url": "https://coursecreatoracademy.com/wait",
+            "inLanguage": "en-US",
+            "isPartOf": {
+              "@type": "WebSite",
+              "name": "Course Creator Academy",
+              "url": "https://coursecreatoracademy.com"
+            },
+            "about": {
+              "@type": "EducationalOrganization",
+              "name": "Course Creator Academy",
+              "description": "A creator-powered platform offering video production courses, job opportunities, marketplace, and community for filmmakers and content creators."
+            },
+            "mainEntity": {
+              "@type": "Event",
+              "name": "Course Creator Academy Platform Launch",
+              "description": "Join the waitlist to be notified when Course Creator Academy launches. Get early access to 800+ video courses, exclusive job opportunities, marketplace, assets, and community features.",
+              "eventStatus": "https://schema.org/EventScheduled",
+              "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
+              "organizer": {
+                "@type": "Organization",
+                "name": "Course Creator Academy",
+                "url": "https://coursecreatoracademy.com"
+              }
+            }
+          })
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Course",
+            "name": "Course Creator Academy - Creator Platform",
+            "description": "800+ expert-led video courses covering filmmaking, video production, cinematography, editing, business strategies, and creator opportunities. Join 50,000+ creators learning and earning together.",
+            "provider": {
+              "@type": "Organization",
+              "name": "Course Creator Academy",
+              "sameAs": "https://coursecreatoracademy.com"
+            },
+            "courseCode": "CCA",
+            "educationalLevel": "Beginner to Advanced",
+            "teaches": [
+              "Video Production",
+              "Filmmaking",
+              "Cinematography",
+              "Video Editing",
+              "Content Creation",
+              "Business for Creators",
+              "Professional Video Skills"
+            ],
+            "audience": {
+              "@type": "Audience",
+              "audienceType": "Content Creators, Filmmakers, Video Producers"
+            }
+          })
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "Course Creator Academy",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Web",
+            "offers": {
+              "@type": "Offer",
+              "price": "37",
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/PreOrder"
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "4.8",
+              "reviewCount": "1250"
+            },
+            "featureList": [
+              "800+ Video Courses",
+              "Job Board for Creators",
+              "Marketplace",
+              "Creator Assets (LUTs, Presets, SFX)",
+              "Exclusive Discounts",
+              "Community of 50,000+ Creators"
+            ]
+          })
+        }}
+      />
+
+      <main className="min-h-screen w-full overflow-x-hidden" itemScope itemType="https://schema.org/WebPage">
+        {/* Hero Section */}
+        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 pt-12 sm:pt-16 pb-16 sm:pb-24 w-full pt-safe" itemScope itemType="https://schema.org/Event">
         <div className="relative z-10 text-center max-w-5xl mx-auto">
           <div className="inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6">
             Join the Waitlist • Be First to Access
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl font-extrabold leading-[1.1] mb-4 sm:mb-6 tracking-tight text-white drop-shadow-2xl px-2">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl font-extrabold leading-[1.1] mb-4 sm:mb-6 tracking-tight text-white drop-shadow-2xl px-2" itemProp="name">
             FROM BEGINNER TO<br />
             <span className="text-white">EXPERT CREATOR</span>
           </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-300 mb-6 sm:mb-8 max-w-3xl mx-auto px-3 leading-relaxed">
-            Creator Collective is launching soon! Join our waitlist to be the first to access our creator-powered platform where you can learn, collaborate, grow your network, and take your skills to the next level.
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-300 mb-6 sm:mb-8 max-w-3xl mx-auto px-3 leading-relaxed" itemProp="description">
+            Course Creator Academy is launching soon! Join our waitlist to be the first to access our creator-powered platform where you can learn from 800+ expert-led videos, land high-paying gigs through our job board, sell assets in our marketplace, access exclusive discounts, and connect with 50,000+ creators. Take your video production and filmmaking skills to the next level.
           </p>
 
           {/* Success Message */}
@@ -131,7 +231,7 @@ export default function WaitlistPage() {
 
           {/* Waitlist Form */}
           <div className="mt-8 sm:mt-12 mb-6 sm:mb-8 w-full max-w-2xl mx-auto px-2">
-            <form onSubmit={handleSubmit} className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-4 sm:p-6 md:p-8">
+            <form onSubmit={handleSubmit} className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-4 sm:p-6 md:p-8" itemScope itemType="https://schema.org/ContactPage">
               {error && (
                 <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/20 border border-red-500/50 text-red-300 text-sm">
                   {error}
@@ -238,24 +338,26 @@ export default function WaitlistPage() {
       </section>
 
       {/* Platform Overview - Enhanced Section */}
-      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-16 sm:py-20 md:py-32 w-full">
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-16 sm:py-20 md:py-32 w-full" itemScope itemType="https://schema.org/ItemList">
         <div className="text-center mb-12 sm:mb-16 md:mb-20 px-2">
           <div className="inline-block px-4 py-2 rounded-full bg-ccaBlue/20 border border-ccaBlue/50 text-white text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
             YOUR CREATIVE HOME BASE
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-4 sm:mb-6 text-white drop-shadow-2xl leading-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-4 sm:mb-6 text-white drop-shadow-2xl leading-tight" itemProp="name">
             EVERYTHING CREATORS NEED.<br />
             <span className="bg-gradient-to-r from-ccaBlue via-purple-500 to-pink-500 bg-clip-text text-transparent">ALL IN ONE SLEEK PLATFORM.</span>
           </h2>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-300 max-w-4xl mx-auto leading-relaxed mt-6">
-            Course Creator Academy 2.0 is a creator-powered community hub where creators of all skill levels can learn, collaborate, grow their network, and stay creative.
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-300 max-w-4xl mx-auto leading-relaxed mt-6" itemProp="description">
+            Course Creator Academy 2.0 is a creator-powered community hub where creators of all skill levels can learn from 800+ expert-led video courses, collaborate with 50,000+ members, access exclusive job opportunities and marketplace, grow their network, and transform their creative careers.
           </p>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 md:gap-10 px-2">
           {features.map((feature, index) => (
-            <div 
-              key={feature.title} 
+            <article 
+              key={feature.title}
+              itemScope
+              itemType="https://schema.org/Service"
               className="group relative bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-2xl sm:rounded-3xl border-2 border-neutral-800 p-6 sm:p-8 md:p-10 hover:border-ccaBlue/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-ccaBlue/20"
               style={{ animationDelay: `${index * 100}ms` }}
             >
@@ -263,20 +365,20 @@ export default function WaitlistPage() {
               <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 rounded-2xl sm:rounded-3xl transition-opacity duration-300`}></div>
               
               <div className="relative z-10">
-                <div className="text-5xl sm:text-6xl md:text-7xl mb-4 sm:mb-6 transform group-hover:scale-110 transition-transform duration-300">
+                <div className="text-5xl sm:text-6xl md:text-7xl mb-4 sm:mb-6 transform group-hover:scale-110 transition-transform duration-300" aria-hidden="true">
                   {feature.icon}
                 </div>
-                <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 text-white group-hover:text-ccaBlue transition-colors duration-300">
+                <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 text-white group-hover:text-ccaBlue transition-colors duration-300" itemProp="name">
                   {feature.title}
                 </h3>
-                <p className="text-sm sm:text-base md:text-lg text-neutral-400 leading-relaxed group-hover:text-neutral-300 transition-colors duration-300">
+                <p className="text-sm sm:text-base md:text-lg text-neutral-400 leading-relaxed group-hover:text-neutral-300 transition-colors duration-300" itemProp="description">
                   {feature.desc}
                 </p>
               </div>
               
               {/* Shine effect */}
               <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-            </div>
+            </article>
           ))}
         </div>
 
@@ -290,5 +392,6 @@ export default function WaitlistPage() {
         </div>
       </section>
     </main>
+    </>
   );
 }
