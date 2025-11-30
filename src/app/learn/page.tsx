@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Card } from '@/components/ui/Card';
 import MuxPlayer from '@mux/mux-player-react';
+import { getMuxAnimatedGifUrl } from '@/lib/muxThumbnails';
 const CreatorKitsScroller = dynamic(
   () => import('@/components/CreatorKitsScroller').then(m => m.CreatorKitsScroller),
   { ssr: false, loading: () => null }
@@ -49,6 +50,7 @@ export default function LearnPage() {
   const [viewerModules, setViewerModules] = useState<any[]>([]);
   const [viewerInitial, setViewerInitial] = useState<{ moduleId: string; lessonId: string } | null>(null);
   const [featuredPlaybackToken, setFeaturedPlaybackToken] = useState<string | null>(null);
+  const [featuredVideoPlaying, setFeaturedVideoPlaying] = useState(false);
 
   async function openViewerForCourse(course: Course) {
     try {
@@ -273,24 +275,38 @@ export default function LearnPage() {
             <div className="relative rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 max-w-5xl mx-auto">
               <div className="aspect-video relative bg-black overflow-hidden">
                 {featuredCourse.thumbnailPlaybackId ? (
-                  <MuxPlayer
-                    playbackId={featuredCourse.thumbnailPlaybackId}
-                    streamType="on-demand"
-                    primaryColor="#3B82F6"
-                    className="w-full h-full"
-                    playsInline
-                    preload="metadata"
-                    // @ts-ignore
-                    preferMse
-                    // Cap resolution to 1080p for better quality while maintaining performance
-                    // @ts-ignore
-                    maxResolution="1080p"
-                    // @ts-ignore
-                    disablePictureInPicture
-                    // @ts-ignore
-                    autoPictureInPicture={false}
-                    {...(featuredPlaybackToken ? { tokens: { playback: featuredPlaybackToken } as any } : {})}
-                  />
+                  <>
+                    {/* Animated GIF preview overlay - shows before video plays */}
+                    {!featuredVideoPlaying && (
+                      <div className="absolute inset-0 z-10">
+                        <img
+                          src={getMuxAnimatedGifUrl(featuredCourse.thumbnailPlaybackId, 640, 10, 13, 15)}
+                          alt={`${featuredCourse.title} preview`}
+                          className="w-full h-full object-cover"
+                          style={{ pointerEvents: 'none' }}
+                        />
+                      </div>
+                    )}
+                    <MuxPlayer
+                      playbackId={featuredCourse.thumbnailPlaybackId}
+                      streamType="on-demand"
+                      primaryColor="#3B82F6"
+                      className="w-full h-full"
+                      playsInline
+                      preload="metadata"
+                      onPlay={() => setFeaturedVideoPlaying(true)}
+                      // @ts-ignore
+                      preferMse
+                      // Cap resolution to 1080p for better quality while maintaining performance
+                      // @ts-ignore
+                      maxResolution="1080p"
+                      // @ts-ignore
+                      disablePictureInPicture
+                      // @ts-ignore
+                      autoPictureInPicture={false}
+                      {...(featuredPlaybackToken ? { tokens: { playback: featuredPlaybackToken } as any } : {})}
+                    />
+                  </>
                 ) : featuredCourse.coverImage ? (
                   <div
                     className="relative w-full h-full cursor-pointer group"
