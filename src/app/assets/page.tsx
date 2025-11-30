@@ -2021,14 +2021,19 @@ export default function AssetsPage() {
                       <img 
                         src={asset.thumbnailUrl} 
                         alt={asset.title}
-                        className={`${isTemplate ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover'}`}
+                        className={`relative z-10 ${isTemplate ? 'max-w-full max-h-full object-contain block' : 'w-full h-full object-cover'}`}
                         onError={(e) => {
                           console.error('Failed to load thumbnail:', asset.title, asset.thumbnailUrl);
                           e.currentTarget.style.display = 'none';
+                          // Show fallback when image fails
+                          const fallback = e.currentTarget.parentElement?.querySelector('.fallback-icon') as HTMLElement;
+                          if (fallback) {
+                            fallback.classList.remove('hidden');
+                          }
                         }}
                       />
                     ) : null}
-                    <div className="absolute inset-0 w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-900 to-black pointer-events-none">
+                    <div className={`absolute inset-0 w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-900 to-black pointer-events-none fallback-icon ${asset.thumbnailUrl && asset.thumbnailUrl.startsWith('https://') && !asset.thumbnailUrl.includes('via.placeholder.com') && (asset.thumbnailUrl.includes('firebasestorage.googleapis.com') || asset.thumbnailUrl.includes('firebasestorage.app')) ? 'hidden' : ''}`}>
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
