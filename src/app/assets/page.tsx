@@ -5,6 +5,7 @@ import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { toggleSaved, isSaved } from '@/lib/userData';
+import { TemplateModal } from '@/components/TemplateModal';
 
 type AssetCategory = 'All Packs' | 'LUTs & Presets' | 'Overlays & Transitions' | 'SFX & Plugins' | 'Templates';
 type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | 'LUTs' | 'Presets' | null;
@@ -1429,6 +1430,7 @@ export default function AssetsPage() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [favoritedAssets, setFavoritedAssets] = useState<Set<string>>(new Set());
+  const [selectedTemplate, setSelectedTemplate] = useState<Asset | null>(null);
 
   // Handle URL hash navigation from saved items
   useEffect(() => {
@@ -2002,7 +2004,13 @@ export default function AssetsPage() {
                 <div 
                   key={asset.id} 
                   className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group"
-                  onClick={() => handleDownload(asset)}
+                  onClick={() => {
+                    if (isTemplate) {
+                      setSelectedTemplate(asset);
+                    } else {
+                      handleDownload(asset);
+                    }
+                  }}
                 >
                   <div className={`${isTemplate ? 'aspect-video' : 'aspect-square'} bg-neutral-900 relative overflow-hidden`}>
                     {asset.thumbnailUrl && 
@@ -2092,6 +2100,20 @@ export default function AssetsPage() {
           </div>
         )}
       </div>
+
+      {/* Template Modal */}
+      <TemplateModal
+        isOpen={!!selectedTemplate}
+        onClose={() => setSelectedTemplate(null)}
+        asset={selectedTemplate}
+        onDownload={() => {
+          if (selectedTemplate) {
+            handleDownload(selectedTemplate);
+            setSelectedTemplate(null);
+          }
+        }}
+        downloading={selectedTemplate ? downloading === selectedTemplate.id : false}
+      />
     </main>
   );
 }
