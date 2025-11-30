@@ -1347,6 +1347,9 @@ function PluginCard({ asset, onDownload, downloading, favorited, onFavorite }: {
   );
 }
 
+// Global audio manager to track and pause other sounds when a new one plays
+const activeAudioRefs = new Set<HTMLAudioElement>();
+
 /**
  * Sound Effect Player Component
  */
@@ -1363,6 +1366,16 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const waveformRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
+
+  // Register/unregister audio element
+  useEffect(() => {
+    if (audioRef.current) {
+      activeAudioRefs.add(audioRef.current);
+      return () => {
+        activeAudioRefs.delete(audioRef.current!);
+      };
+    }
+  }, [audioUrl]);
 
   // Load favorite status
   useEffect(() => {
@@ -1405,9 +1418,6 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
 
     const audio = audioRef.current;
     
-    // Force load immediately
-    audio.load();
-    
     const updateTime = () => {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
@@ -1427,12 +1437,24 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
     const handleEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
+      // Remove from active refs when ended
+      activeAudioRefs.delete(audio);
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+    };
+
+    const handlePlay = () => {
+      setIsPlaying(true);
     };
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('durationchange', updateDuration);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('play', handlePlay);
 
     return () => {
       if (rafRef.current) {
@@ -1442,52 +1464,50 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('durationchange', updateDuration);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('play', handlePlay);
+      activeAudioRefs.delete(audio);
     };
   }, [audioUrl, soundEffect.duration, isDragging]);
 
-  const togglePlay = useCallback(async () => {
+  const togglePlay = useCallback(() => {
     if (!audioRef.current || !audioUrl) return;
 
+    const audio = audioRef.current;
+
     if (isPlaying) {
-      audioRef.current.pause();
+      audio.pause();
       setIsPlaying(false);
     } else {
-      const audio = audioRef.current;
-      
-      // Ensure audio is loaded and ready
-      if (audio.readyState < 2) {
-        audio.load();
-        // Wait for audio to be ready
-        await new Promise<void>((resolve) => {
-          const handleCanPlay = () => {
-            audio.removeEventListener('canplay', handleCanPlay);
-            resolve();
-          };
-          audio.addEventListener('canplay', handleCanPlay);
-          // Timeout fallback
-          setTimeout(() => {
-            audio.removeEventListener('canplay', handleCanPlay);
-            resolve();
-          }, 1000);
-        });
-      }
-      
-      try {
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          await playPromise;
-          setIsPlaying(true);
+      // Pause all other audio elements
+      activeAudioRefs.forEach((otherAudio) => {
+        if (otherAudio !== audio && !otherAudio.paused) {
+          otherAudio.pause();
         }
-      } catch (error) {
-        console.error('Error playing audio:', error);
-        // Retry once
-        try {
-          audio.load();
-          await audio.play();
-          setIsPlaying(true);
-        } catch (retryError) {
-          console.error('Retry play failed:', retryError);
-        }
+      });
+
+      // Update state immediately for instant UI feedback
+      setIsPlaying(true);
+
+      // Play audio (non-blocking)
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            // Already set to playing, just ensure state is correct
+          })
+          .catch((error) => {
+            // If play fails, reset state and try once more
+            setIsPlaying(false);
+            audio.load();
+            audio.play()
+              .then(() => setIsPlaying(true))
+              .catch((retryError) => {
+                console.error('Error playing audio:', retryError);
+                setIsPlaying(false);
+              });
+          });
       }
     }
   }, [isPlaying, audioUrl]);
