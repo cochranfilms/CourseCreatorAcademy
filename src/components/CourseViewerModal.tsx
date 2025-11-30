@@ -308,14 +308,13 @@ export default function CourseViewerModal({ courseSlug, courseTitle, modules, in
               </div>
             )}
 
-            <div className="mt-2 sm:mt-3 bg-black border border-neutral-800 flex-shrink-0">
+            <div className="mt-2 sm:mt-3 bg-black border border-neutral-800 flex-shrink-0 aspect-video overflow-hidden">
               {effectiveLesson?.muxPlaybackId ? (
               <MuxPlayer
                 playbackId={effectiveLesson.muxPlaybackId || undefined}
                 streamType="on-demand"
                 primaryColor="#3B82F6"
-                className="w-full"
-                style={{ aspectRatio: '16 / 9', maxHeight: 'calc(95vh - 300px)' }}
+                className="w-full h-full"
                 playsInline
                 preload="metadata"
                 // @ts-ignore

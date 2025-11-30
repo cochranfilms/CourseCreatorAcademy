@@ -11,6 +11,7 @@ import CourseViewerModal from '@/components/CourseViewerModal';
 import dynamic from 'next/dynamic';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Card } from '@/components/ui/Card';
+import MuxPlayer from '@mux/mux-player-react';
 const CreatorKitsScroller = dynamic(
   () => import('@/components/CreatorKitsScroller').then(m => m.CreatorKitsScroller),
   { ssr: false, loading: () => null }
@@ -47,6 +48,8 @@ export default function LearnPage() {
   const [viewerCourseSlug, setViewerCourseSlug] = useState('');
   const [viewerModules, setViewerModules] = useState<any[]>([]);
   const [viewerInitial, setViewerInitial] = useState<{ moduleId: string; lessonId: string } | null>(null);
+  const [featuredVideoPlaying, setFeaturedVideoPlaying] = useState(false);
+  const [featuredPlaybackToken, setFeaturedPlaybackToken] = useState<string | null>(null);
 
   async function openViewerForCourse(course: Course) {
     try {
@@ -183,6 +186,42 @@ export default function LearnPage() {
     } catch {}
   }, []);
 
+  // Fetch playback token for featured video when it starts playing
+  useEffect(() => {
+    let cancelled = false;
+    const fetchToken = async () => {
+      if (!featuredVideoPlaying || !featuredCourse?.thumbnailPlaybackId || !user) {
+        setFeaturedPlaybackToken(null);
+        return;
+      }
+      
+      try {
+        const idToken = await user.getIdToken();
+        const tokenUrl = `/api/mux/token?playbackId=${encodeURIComponent(featuredCourse.thumbnailPlaybackId)}`;
+        const res = await fetch(tokenUrl, {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
+        
+        if (!res.ok) {
+          console.warn('Failed to fetch featured video playback token:', res.status);
+          return;
+        }
+        
+        const json = await res.json();
+        if (!cancelled && json?.token) {
+          setFeaturedPlaybackToken(json.token);
+        }
+      } catch (error) {
+        console.error('Error fetching featured video playback token:', error);
+      }
+    };
+    
+    fetchToken();
+    return () => { cancelled = true; };
+  }, [featuredVideoPlaying, featuredCourse?.thumbnailPlaybackId, user]);
+
   if (loading) {
     return (
       <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
@@ -230,43 +269,73 @@ export default function LearnPage() {
         {featuredCourse && (
           <div className="mt-8 mb-6">
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Featured Video</h2>
-            <div
-              className="relative rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 cursor-pointer group"
-              onClick={() => openViewerForCourse(featuredCourse)}
-            >
-              <div className="aspect-video relative">
-                {featuredCourse.thumbnailPlaybackId ? (
-                  <Image
-                    src={getMuxThumbnailUrl(featuredCourse.thumbnailPlaybackId, featuredCourse.thumbnailDurationSec) || ''}
-                    alt={`${featuredCourse.title} thumbnail`}
-                    fill
-                    sizes="100vw"
-                    className="object-cover"
-                  />
-                ) : featuredCourse.coverImage ? (
-                  <Image
-                    src={featuredCourse.coverImage}
-                    alt={featuredCourse.title}
-                    fill
-                    sizes="100vw"
-                    className="object-cover"
+            <div className="relative rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 max-w-5xl mx-auto">
+              <div className="aspect-video relative bg-black overflow-hidden">
+                {featuredVideoPlaying && featuredCourse.thumbnailPlaybackId ? (
+                  <MuxPlayer
+                    playbackId={featuredCourse.thumbnailPlaybackId}
+                    streamType="on-demand"
+                    primaryColor="#3B82F6"
+                    className="w-full h-full"
+                    playsInline
+                    preload="metadata"
+                    autoPlay
+                    // @ts-ignore
+                    preferMse
+                    // Cap resolution to 1080p for better quality while maintaining performance
+                    // @ts-ignore
+                    maxResolution="1080p"
+                    // @ts-ignore
+                    disablePictureInPicture
+                    // @ts-ignore
+                    autoPictureInPicture={false}
+                    {...(featuredPlaybackToken ? { tokens: { playback: featuredPlaybackToken } as any } : {})}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-neutral-600">
-                    <svg className="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                  <div
+                    className="relative w-full h-full cursor-pointer group"
+                    onClick={() => {
+                      if (featuredCourse.thumbnailPlaybackId) {
+                        setFeaturedVideoPlaying(true);
+                      } else {
+                        openViewerForCourse(featuredCourse);
+                      }
+                    }}
+                  >
+                    {featuredCourse.thumbnailPlaybackId ? (
+                      <Image
+                        src={getMuxThumbnailUrl(featuredCourse.thumbnailPlaybackId, featuredCourse.thumbnailDurationSec) || ''}
+                        alt={`${featuredCourse.title} thumbnail`}
+                        fill
+                        sizes="100vw"
+                        className="object-cover"
+                      />
+                    ) : featuredCourse.coverImage ? (
+                      <Image
+                        src={featuredCourse.coverImage}
+                        alt={featuredCourse.title}
+                        fill
+                        sizes="100vw"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-neutral-600">
+                        <svg className="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    )}
+                    {/* Play button overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition">
+                      <div className="w-16 h-16 rounded-full bg-white/90 text-black flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+                        <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                 )}
-                {/* Play button overlay */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-white/90 text-black flex items-center justify-center shadow-lg group-hover:scale-105 transition">
-                    <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </div>
-                </div>
               </div>
               <div className="p-4 md:p-5">
                 <div className="inline-flex items-center gap-2 text-xs mb-2">
@@ -275,6 +344,14 @@ export default function LearnPage() {
                 <div className="text-xl md:text-2xl font-semibold text-white">{featuredCourse.title}</div>
                 {featuredCourse.summary && (
                   <p className="text-neutral-300 mt-2 line-clamp-2">{featuredCourse.summary}</p>
+                )}
+                {!featuredVideoPlaying && featuredCourse.thumbnailPlaybackId && (
+                  <button
+                    onClick={() => openViewerForCourse(featuredCourse)}
+                    className="mt-3 text-sm text-ccaBlue hover:text-white transition"
+                  >
+                    View Full Course →
+                  </button>
                 )}
               </div>
             </div>
