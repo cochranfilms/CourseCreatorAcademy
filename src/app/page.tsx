@@ -20,35 +20,6 @@ export default function Page() {
   const startNoFees = () => setCheckoutPlan('noFees60');
   const startAllAccess = () => setCheckoutPlan('membership87');
 
-  const categories = ['Lighting','Composition','Cinematography','Editing','Audio','Business','YouTube','Weddings','Real Estate','Commercial','Travel','Photo','Color','FPV','After Effects','Gear'];
-  const perks = ['Software Discounts','Private Community','Case Studies','Mentorship Calls','Video Contests','Budget Calculator','100+ Custom SFX','Keyboard Shortcuts','Access to Future Content'];
-
-  const testimonials = [
-    {
-      quote: "This platform LITERALLY pays for itself.",
-      author: "Emily S",
-      role: "CCA Member",
-      revenue: "$100K+"
-    },
-    {
-      quote: "Officially at 100k/mo recurring with our agency at 18 years old.",
-      author: "Xavier C",
-      role: "XC Productions",
-      revenue: "$100K/mo"
-    },
-    {
-      quote: "We hit 500k in revenue for 2024 in the 2 areas we service.",
-      author: "Tyler F",
-      role: "Owner, TFREP Media",
-      revenue: "$500K+"
-    },
-    {
-      quote: "FTF has been one of the best investments I have made.",
-      author: "Trevor M",
-      role: "Creator, Filmmaker",
-      revenue: null
-    }
-  ];
 
   const earningWays = [
     {
@@ -219,44 +190,6 @@ export default function Page() {
           </div>
         </section>
 
-        {/* Money-Making Stats Section */}
-        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
-            <div className="inline-block px-4 py-2 rounded-full bg-green-500/20 border border-green-500/50 text-green-400 text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
-              REAL RESULTS FROM REAL CREATORS
-            </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">
-              THIS ISN'T JUST LEARNING.<br />
-              <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent">THIS IS REAL MONEY.</span>
-            </h2>
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 max-w-3xl mx-auto leading-relaxed">
-              Our members aren't just watching videos—they're closing deals, building businesses, and transforming their careers.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 px-2">
-            {[
-              { value: "$2.3M+", label: "Total Deals Closed in 2024", icon: "💼", color: "from-green-500/20 to-emerald-500/20" },
-              { value: "$150K", label: "Biggest Single Deal", icon: "🎯", color: "from-blue-500/20 to-cyan-500/20" },
-              { value: "46%", label: "10X ROI in Under 1 Year", icon: "📈", color: "from-purple-500/20 to-pink-500/20" },
-              { value: "50K+", label: "Active Members Since 2017", icon: "👥", color: "from-orange-500/20 to-red-500/20" }
-            ].map((stat, idx) => (
-              <div
-                key={idx}
-                className="bg-gradient-to-br from-neutral-950/90 to-neutral-900/90 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-neutral-800 p-5 sm:p-6 md:p-8 text-center hover:border-ccaBlue/50 transition-all duration-300 hover:shadow-lg hover:shadow-ccaBlue/20 hover:-translate-y-1"
-              >
-                <div className="text-3xl sm:text-4xl mb-3">{stat.icon}</div>
-                <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-ccaBlue mb-2">
-                  {stat.value}
-                </div>
-                <div className="text-xs sm:text-sm text-neutral-400 font-medium">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* How Creators Earn Section */}
         <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
           <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
@@ -264,8 +197,8 @@ export default function Page() {
               MULTIPLE WAYS TO EARN
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">
-              HOW CREATORS MAKE<br />
-              <span className="text-white">REAL MONEY HERE</span>
+              THIS ISN'T JUST LEARNING.<br />
+              <span className="text-white">THIS IS REAL MONEY.</span>
             </h2>
             <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 max-w-3xl mx-auto leading-relaxed">
               This platform isn't about passive learning—it's about active earning. Here's how our members turn opportunity into income.
@@ -443,137 +376,6 @@ export default function Page() {
             </div>
           </div>
           <div className="mt-6 sm:mt-8 text-center text-xs sm:text-sm text-neutral-400 px-3">14‑day refund policy • 96% satisfaction rating • Instant access</div>
-        </section>
-
-        {/* What's Inside - Learning Content */}
-        <section id="curriculum" className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ccaBlue/5 to-transparent pointer-events-none" />
-          
-          <div className="relative z-10 text-center mb-8 sm:mb-12 md:mb-16 px-2">
-            <div className="inline-block px-4 py-1.5 rounded-full bg-ccaBlue/10 border border-ccaBlue/30 text-ccaBlue text-xs sm:text-sm font-semibold mb-4 sm:mb-6">
-              COMPREHENSIVE CURRICULUM
-            </div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold mb-4 sm:mb-6 text-white drop-shadow-2xl leading-tight">
-              LEARN FROM THE BEST<br />
-              <span className="bg-gradient-to-r from-ccaBlue via-purple-500 to-pink-500 bg-clip-text text-transparent">MASTER YOUR CRAFT</span>
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-300 max-w-3xl mx-auto leading-relaxed">
-              800+ expert-led videos across 16 categories. Learn the skills that turn creators into professionals.
-            </p>
-          </div>
-
-          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 px-2">
-            {categories.map((category, index) => {
-              const categoryIcons: { [key: string]: string } = {
-                'Lighting': '💡',
-                'Composition': '🎨',
-                'Cinematography': '🎬',
-                'Editing': '✂️',
-                'Audio': '🎵',
-                'Business': '💼',
-                'YouTube': '📺',
-                'Weddings': '💒',
-                'Real Estate': '🏠',
-                'Commercial': '📊',
-                'Travel': '✈️',
-                'Photo': '📸',
-                'Color': '🌈',
-                'FPV': '🚁',
-                'After Effects': '⚡',
-                'Gear': '📷'
-              };
-
-              const icon = categoryIcons[category] || '🎯';
-              
-              return (
-                <div
-                  key={category}
-                  className="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-neutral-800 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 p-4 sm:p-5 md:p-6 transition-all duration-300 hover:border-ccaBlue/60 hover:shadow-lg hover:shadow-ccaBlue/20 hover:-translate-y-1 active:scale-95 touch-manipulation cursor-pointer"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-ccaBlue/0 via-ccaBlue/0 to-purple-500/0 group-hover:from-ccaBlue/10 group-hover:via-purple-500/5 group-hover:to-pink-500/5 transition-all duration-300 opacity-0 group-hover:opacity-100" />
-                  
-                  <div className="relative z-10 flex flex-col items-center justify-center text-center min-h-[100px] sm:min-h-[120px]">
-                    <div className="text-3xl sm:text-4xl md:text-5xl mb-2 sm:mb-3 transform group-hover:scale-110 transition-transform duration-300">
-                      {icon}
-                    </div>
-                    <div className="text-xs sm:text-sm md:text-base font-semibold text-white group-hover:text-ccaBlue transition-colors duration-300">
-                      {category}
-                    </div>
-                    <div className="mt-2 sm:mt-3 w-8 h-0.5 bg-gradient-to-r from-transparent via-ccaBlue/0 to-transparent group-hover:via-ccaBlue group-hover:w-12 transition-all duration-300" />
-                  </div>
-
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="relative z-10 mt-8 sm:mt-12 md:mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 px-2">
-            {[
-              { value: '800+', label: 'Video Lessons' },
-              { value: '500+', label: 'Hours of Content' },
-              { value: '16', label: 'Categories' },
-              { value: '100%', label: 'Expert-Led' }
-            ].map((stat, idx) => (
-              <div
-                key={idx}
-                className="bg-gradient-to-br from-neutral-950/80 to-neutral-900/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-neutral-800/50 p-4 sm:p-5 md:p-6 text-center hover:border-ccaBlue/50 transition-all duration-300"
-              >
-                <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-ccaBlue mb-1 sm:mb-2">
-                  {stat.value}
-                </div>
-                <div className="text-xs sm:text-sm text-neutral-400 font-medium">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Included Perks */}
-        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
-          <div className="text-center mb-6 sm:mb-8 md:mb-12 px-2">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">INCLUDED BONUS PERKS</h2>
-            <p className="text-sm sm:text-base md:text-lg text-neutral-400 max-w-2xl mx-auto">Everything you need to succeed, included at no extra cost.</p>
-          </div>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 px-2">
-            {perks.map((p) => (
-              <div key={p} className="rounded-xl sm:rounded-2xl border border-neutral-800 bg-gradient-to-br from-neutral-950 to-neutral-900 p-4 sm:p-5 md:p-6 text-neutral-200 active:border-ccaBlue/50 hover:border-ccaBlue/50 transition touch-manipulation hover:shadow-lg hover:shadow-ccaBlue/20">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ccaBlue flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="font-medium text-sm sm:text-base">{p}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Testimonials Section */}
-        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
-            <div className="inline-block px-4 py-2 rounded-full bg-purple-500/20 border border-purple-500/50 text-purple-400 text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
-              REAL STORIES FROM REAL CREATORS
-            </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">HEAR FROM OUR MEMBERS</h2>
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 leading-relaxed">We've helped hundreds of our members grow and turn filmmaking into their fulltime career.</p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 md:gap-6 mb-8 sm:mb-10 md:mb-12 px-2">
-            {testimonials.map((testimonial, idx) => (
-              <div key={idx} className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-5 sm:p-6 md:p-8 active:border-ccaBlue/50 hover:border-ccaBlue/50 transition touch-manipulation hover:shadow-lg hover:shadow-ccaBlue/20">
-                {testimonial.revenue && (
-                  <div className="text-2xl sm:text-3xl font-bold text-ccaBlue mb-3 sm:mb-4">{testimonial.revenue}</div>
-                )}
-                <p className="text-base sm:text-lg text-neutral-200 mb-3 sm:mb-4 italic leading-relaxed">"{testimonial.quote}"</p>
-                <div>
-                  <div className="font-semibold text-white text-sm sm:text-base">{testimonial.author}</div>
-                  <div className="text-xs sm:text-sm text-neutral-400">{testimonial.role}</div>
-                </div>
-              </div>
-            ))}
-          </div>
         </section>
 
         {/* FAQ Section */}
