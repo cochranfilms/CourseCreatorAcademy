@@ -440,7 +440,7 @@ export async function POST(req: NextRequest) {
       try {
         // Parse request body (JSON with storage path)
         const body = await req.json();
-        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL, previewVideoStoragePath, beforeImageStoragePath, afterImageStoragePath, subCategory, description } = body;
+        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL, previewVideoStoragePath, subCategory, description } = body;
 
         if (!storagePath || !category || !fileName) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Missing storagePath, category, or fileName' })}\n\n`));
@@ -488,8 +488,6 @@ export async function POST(req: NextRequest) {
         const thumbnailFolderPath = `assets/${categoryFolder}/${packName}`;
         const thumbnailPath = `${thumbnailFolderPath}/preview.png`;
         const previewVideoPath = `${thumbnailFolderPath}/preview.mp4`;
-        const beforeImagePath = `${thumbnailFolderPath}/before.png`;
-        const afterImagePath = `${thumbnailFolderPath}/after.png`;
 
         // Create thumbnail folder structure (by creating a .keep file)
         try {
@@ -572,53 +570,6 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Handle before/after images upload if provided (for Presets)
-        let beforeImageUrl: string | null = null;
-        let afterImageUrl: string | null = null;
-        if (beforeImageStoragePath || afterImageStoragePath) {
-          try {
-            if (beforeImageStoragePath) {
-              // Copy before image to final location
-              const beforeImageSourceFile = bucket.file(beforeImageStoragePath);
-              const beforeImageDestFile = bucket.file(beforeImagePath);
-              await beforeImageSourceFile.copy(beforeImageDestFile);
-              
-              // Delete temporary before image file
-              await beforeImageSourceFile.delete().catch(() => {});
-
-              // Generate signed URL for before image
-              const expiresAt = new Date();
-              expiresAt.setFullYear(expiresAt.getFullYear() + 10);
-              [beforeImageUrl] = await beforeImageDestFile.getSignedUrl({
-                action: 'read',
-                expires: expiresAt,
-              });
-            }
-
-            if (afterImageStoragePath) {
-              // Copy after image to final location
-              const afterImageSourceFile = bucket.file(afterImageStoragePath);
-              const afterImageDestFile = bucket.file(afterImagePath);
-              await afterImageSourceFile.copy(afterImageDestFile);
-              
-              // Delete temporary after image file
-              await afterImageSourceFile.delete().catch(() => {});
-
-              // Generate signed URL for after image
-              const expiresAt = new Date();
-              expiresAt.setFullYear(expiresAt.getFullYear() + 10);
-              [afterImageUrl] = await afterImageDestFile.getSignedUrl({
-                action: 'read',
-                expires: expiresAt,
-              });
-            }
-          } catch (error: any) {
-            console.error('Failed to process before/after images:', error);
-            // Don't fail the entire process if images fail
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ step: `Warning: Failed to process before/after images: ${error.message}` })}\n\n`));
-          }
-        }
-
         sendProgress(controller, 40, 'Creating main asset document...', 'processing');
 
         await assetRef.set({
@@ -628,8 +579,6 @@ export async function POST(req: NextRequest) {
           fileType: 'zip',
           ...(thumbnailUrl ? { thumbnailUrl } : {}),
           ...(previewVideoUrl ? { previewVideoPath, previewVideoUrl } : {}),
-          ...(beforeImageUrl ? { beforeImagePath, beforeImageUrl } : {}),
-          ...(afterImageUrl ? { afterImagePath, afterImageUrl } : {}),
           ...(description ? { description } : {}),
           createdAt: FirebaseFirestore.FieldValue.serverTimestamp(),
           updatedAt: FirebaseFirestore.FieldValue.serverTimestamp(),
