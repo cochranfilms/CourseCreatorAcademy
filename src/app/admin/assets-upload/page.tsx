@@ -8,7 +8,7 @@ import { AssetUploadZone } from '@/components/admin/AssetUploadZone';
 import { ProcessingStatus } from '@/components/admin/ProcessingStatus';
 import { AssetCategoryManager } from '@/components/admin/AssetCategoryManager';
 
-type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets';
+type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets' | 'Templates';
 type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
 
 type ProcessingState = {
@@ -37,7 +37,7 @@ export default function AdminAssetsUploadPage() {
   });
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleFileSelect = useCallback(async (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory, previewVideo?: File) => {
+  const handleFileSelect = useCallback(async (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory, previewVideo?: File, description?: string) => {
     if (!user || !firebaseReady || !storage) {
       setProcessingState({
         status: 'error',
@@ -214,6 +214,7 @@ export default function AdminAssetsUploadPage() {
           thumbnailDownloadURL,
           previewVideoStoragePath,
           subCategory: subCategory || undefined,
+          description: description || undefined,
         }),
       });
 

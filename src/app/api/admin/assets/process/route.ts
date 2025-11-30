@@ -15,6 +15,7 @@ const CATEGORY_MAP: Record<string, string> = {
   'Overlays & Transitions': 'overlays',
   'SFX & Plugins': 'sfx',
   'LUTs & Presets': 'luts',
+  'Templates': 'templates',
 };
 
 // File extensions
@@ -436,7 +437,7 @@ export async function POST(req: NextRequest) {
       try {
         // Parse request body (JSON with storage path)
         const body = await req.json();
-        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL, previewVideoStoragePath, subCategory } = body;
+        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL, previewVideoStoragePath, subCategory, description } = body;
 
         if (!storagePath || !category || !fileName) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Missing storagePath, category, or fileName' })}\n\n`));
@@ -571,6 +572,7 @@ export async function POST(req: NextRequest) {
           fileType: 'zip',
           ...(thumbnailUrl ? { thumbnailUrl } : {}),
           ...(previewVideoUrl ? { previewVideoPath, previewVideoUrl } : {}),
+          ...(description ? { description } : {}),
           createdAt: FirebaseFirestore.FieldValue.serverTimestamp(),
           updatedAt: FirebaseFirestore.FieldValue.serverTimestamp(),
         });

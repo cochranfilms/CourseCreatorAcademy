@@ -1,11 +1,11 @@
 "use client";
 import { useState, useCallback, useRef } from 'react';
 
-type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets';
+type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets' | 'Templates';
 type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
 
 interface AssetUploadZoneProps {
-  onFileSelect: (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory, previewVideo?: File) => void;
+  onFileSelect: (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory, previewVideo?: File, description?: string) => void;
   disabled?: boolean;
 }
 
@@ -16,6 +16,7 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [previewVideoFile, setPreviewVideoFile] = useState<File | null>(null);
+  const [description, setDescription] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const previewVideoInputRef = useRef<HTMLInputElement>(null);
@@ -45,21 +46,21 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
 
     if (zipFile) {
       const subCategory = (selectedCategory === 'Overlays & Transitions' || selectedCategory === 'SFX & Plugins') ? selectedSubCategory : undefined;
-      onFileSelect(zipFile, selectedCategory, imageFile || thumbnailFile || undefined, subCategory, videoFile || previewVideoFile || undefined);
+      onFileSelect(zipFile, selectedCategory, imageFile || thumbnailFile || undefined, subCategory, videoFile || previewVideoFile || undefined, description || undefined);
     } else {
       alert('Please upload a ZIP file');
     }
-  }, [disabled, selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile, previewVideoFile]);
+  }, [disabled, selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile, previewVideoFile, description]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.zip')) {
       const subCategory = (selectedCategory === 'Overlays & Transitions' || selectedCategory === 'SFX & Plugins') ? selectedSubCategory : undefined;
-      onFileSelect(file, selectedCategory, thumbnailFile || undefined, subCategory, previewVideoFile || undefined);
+      onFileSelect(file, selectedCategory, thumbnailFile || undefined, subCategory, previewVideoFile || undefined, description || undefined);
     } else {
       alert('Please upload a ZIP file');
     }
-  }, [selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile, previewVideoFile]);
+  }, [selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile, previewVideoFile, description]);
 
   const handleThumbnailInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -135,6 +136,7 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
           <option value="Overlays & Transitions">Overlays & Transitions</option>
           <option value="SFX & Plugins">SFX & Plugins</option>
           <option value="LUTs & Presets">LUTs & Presets</option>
+          <option value="Templates">Templates</option>
         </select>
       </div>
 
@@ -271,6 +273,26 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
         </div>
       )}
 
+      {/* Description Field for Templates */}
+      {selectedCategory === 'Templates' && (
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-2">
+            Description (Optional)
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={disabled}
+            rows={4}
+            className="w-full px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+            placeholder="Enter a description for this template..."
+          />
+          <p className="text-xs text-neutral-500 mt-1">
+            Add a description to help users understand what this template includes
+          </p>
+        </div>
+      )}
+
       {/* ZIP Upload Zone */}
       <div>
         <label className="block text-sm font-medium text-neutral-300 mb-2">
@@ -282,7 +304,7 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
           onDrop={handleDrop}
           onClick={handleClick}
           className={`
-            border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors
+            border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors bg-black
             ${isDragging 
               ? 'border-ccaBlue bg-ccaBlue/10' 
               : 'border-neutral-800 hover:border-neutral-700'

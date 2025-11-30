@@ -1997,13 +1997,14 @@ export default function AssetsPage() {
               }
               
               // Default asset card
+              const isTemplate = asset.category === 'Templates';
               return (
                 <div 
                   key={asset.id} 
                   className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group"
                   onClick={() => handleDownload(asset)}
                 >
-                  <div className="aspect-square bg-neutral-900 relative overflow-hidden">
+                  <div className={`${isTemplate ? 'aspect-video' : 'aspect-square'} bg-neutral-900 relative overflow-hidden`}>
                     {asset.thumbnailUrl && 
                      asset.thumbnailUrl.startsWith('https://') && 
                      !asset.thumbnailUrl.includes('via.placeholder.com') &&

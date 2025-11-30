@@ -64,6 +64,39 @@ async function main() {
       samplesCount: 0,
       order: 2,
     },
+    {
+      handle: 'MADDOX',
+      displayName: 'Maddox',
+      avatarUrl: null,
+      bannerUrl: null,
+      bio: 'Creative director and filmmaker specializing in commercial and brand storytelling. Expert in color grading, composition, and bringing creative visions to life.',
+      kitSlug: 'maddox',
+      connectAccountId: null, // Will need to be set when Stripe Connect is set up
+      samplesCount: 0,
+      order: 3,
+    },
+    {
+      handle: 'BENNETT',
+      displayName: 'Brandon Bennett',
+      avatarUrl: null,
+      bannerUrl: null,
+      bio: 'Award-winning cinematographer and educator focused on teaching advanced filmmaking techniques. Known for breaking down complex concepts into actionable lessons.',
+      kitSlug: 'brandon-bennett',
+      connectAccountId: null, // Will need to be set when Stripe Connect is set up
+      samplesCount: 0,
+      order: 4,
+    },
+    {
+      handle: 'JORDAN',
+      displayName: 'Jordan Hammond',
+      avatarUrl: null,
+      bannerUrl: null,
+      bio: 'Adventure photographer and filmmaker capturing breathtaking landscapes and travel experiences. Specializes in drone cinematography and post-production workflows.',
+      kitSlug: 'jordan-hammond',
+      connectAccountId: null, // Will need to be set when Stripe Connect is set up
+      samplesCount: 0,
+      order: 5,
+    },
   ];
 
   console.log('\n🎬 Creating test Legacy Creators...\n');
