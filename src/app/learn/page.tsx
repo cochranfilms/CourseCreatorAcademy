@@ -48,7 +48,6 @@ export default function LearnPage() {
   const [viewerCourseSlug, setViewerCourseSlug] = useState('');
   const [viewerModules, setViewerModules] = useState<any[]>([]);
   const [viewerInitial, setViewerInitial] = useState<{ moduleId: string; lessonId: string } | null>(null);
-  const [featuredVideoPlaying, setFeaturedVideoPlaying] = useState(false);
   const [featuredPlaybackToken, setFeaturedPlaybackToken] = useState<string | null>(null);
 
   async function openViewerForCourse(course: Course) {
@@ -191,11 +190,11 @@ export default function LearnPage() {
     } catch {}
   }, []);
 
-  // Fetch playback token for featured video when it starts playing
+  // Fetch playback token for featured video
   useEffect(() => {
     let cancelled = false;
     const fetchToken = async () => {
-      if (!featuredVideoPlaying || !featuredCourse?.thumbnailPlaybackId || !user) {
+      if (!featuredCourse?.thumbnailPlaybackId || !user) {
         setFeaturedPlaybackToken(null);
         return;
       }
@@ -225,7 +224,7 @@ export default function LearnPage() {
     
     fetchToken();
     return () => { cancelled = true; };
-  }, [featuredVideoPlaying, featuredCourse?.thumbnailPlaybackId, user]);
+  }, [featuredCourse?.thumbnailPlaybackId, user]);
 
   if (loading) {
     return (
@@ -273,7 +272,7 @@ export default function LearnPage() {
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Featured Video</h2>
             <div className="relative rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 max-w-5xl mx-auto">
               <div className="aspect-video relative bg-black overflow-hidden">
-                {featuredVideoPlaying && featuredCourse.thumbnailPlaybackId ? (
+                {featuredCourse.thumbnailPlaybackId ? (
                   <MuxPlayer
                     playbackId={featuredCourse.thumbnailPlaybackId}
                     streamType="on-demand"
@@ -281,7 +280,6 @@ export default function LearnPage() {
                     className="w-full h-full"
                     playsInline
                     preload="metadata"
-                    autoPlay
                     // @ts-ignore
                     preferMse
                     // Cap resolution to 1080p for better quality while maintaining performance
@@ -293,41 +291,18 @@ export default function LearnPage() {
                     autoPictureInPicture={false}
                     {...(featuredPlaybackToken ? { tokens: { playback: featuredPlaybackToken } as any } : {})}
                   />
-                ) : (
+                ) : featuredCourse.coverImage ? (
                   <div
                     className="relative w-full h-full cursor-pointer group"
-                    onClick={() => {
-                      if (featuredCourse.thumbnailPlaybackId) {
-                        setFeaturedVideoPlaying(true);
-                      } else {
-                        openViewerForCourse(featuredCourse);
-                      }
-                    }}
+                    onClick={() => openViewerForCourse(featuredCourse)}
                   >
-                    {featuredCourse.thumbnailPlaybackId ? (
-                      <Image
-                        src={getMuxThumbnailUrl(featuredCourse.thumbnailPlaybackId, featuredCourse.thumbnailDurationSec) || ''}
-                        alt={`${featuredCourse.title} thumbnail`}
-                        fill
-                        sizes="100vw"
-                        className="object-cover"
-                      />
-                    ) : featuredCourse.coverImage ? (
-                      <Image
-                        src={featuredCourse.coverImage}
-                        alt={featuredCourse.title}
-                        fill
-                        sizes="100vw"
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-neutral-600">
-                        <svg className="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    )}
+                    <Image
+                      src={featuredCourse.coverImage}
+                      alt={featuredCourse.title}
+                      fill
+                      sizes="100vw"
+                      className="object-cover"
+                    />
                     {/* Play button overlay */}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition">
                       <div className="w-16 h-16 rounded-full bg-white/90 text-black flex items-center justify-center shadow-lg group-hover:scale-105 transition">
@@ -336,6 +311,16 @@ export default function LearnPage() {
                         </svg>
                       </div>
                     </div>
+                  </div>
+                ) : (
+                  <div
+                    className="w-full h-full flex items-center justify-center text-neutral-600 cursor-pointer"
+                    onClick={() => openViewerForCourse(featuredCourse)}
+                  >
+                    <svg className="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                   </div>
                 )}
               </div>
@@ -347,7 +332,7 @@ export default function LearnPage() {
                 {featuredCourse.summary && (
                   <p className="text-neutral-300 mt-2 line-clamp-2">{featuredCourse.summary}</p>
                 )}
-                {!featuredVideoPlaying && featuredCourse.thumbnailPlaybackId && (
+                {featuredCourse.thumbnailPlaybackId && (
                   <button
                     onClick={() => openViewerForCourse(featuredCourse)}
                     className="mt-3 text-sm text-ccaBlue hover:text-white transition"
