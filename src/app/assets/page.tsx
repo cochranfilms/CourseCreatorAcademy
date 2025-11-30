@@ -1397,15 +1397,16 @@ export default function AssetsPage() {
     loadFavorites();
   }, [user, assets]);
 
-  // Load sound effects for SFX assets when SFX & Plugins category is selected
-  // Prefetch when category is selected, so SFX subcategory loads instantly
+  // Load sound effects for SFX/Plugins assets when SFX & Plugins category is selected
+  // Prefetch when category is selected, so SFX/Plugins subcategory loads instantly
   useEffect(() => {
-    // Load when SFX subcategory is selected OR when SFX & Plugins category is selected (for prefetching)
+    // Load when SFX or Plugins subcategory is selected OR when SFX & Plugins category is selected (for prefetching)
     const shouldLoad = selectedSubCategory === 'SFX' || 
+                      selectedSubCategory === 'Plugins' ||
                       (selectedCategory === 'SFX & Plugins' && selectedSubCategory === null);
     
     if (!shouldLoad) {
-      // Clear sound effects when leaving SFX category
+      // Clear sound effects when leaving SFX & Plugins category
       if (selectedCategory !== 'SFX & Plugins') {
         setSoundEffects({});
       }
@@ -1413,11 +1414,23 @@ export default function AssetsPage() {
     }
 
     const loadSoundEffects = async () => {
-      const sfxAssets = assets.filter(asset => getSubCategory(asset) === 'SFX');
+      // Filter assets by selected subcategory, or show all SFX & Plugins assets if no subcategory selected
+      const targetAssets = assets.filter(asset => {
+        const assetSubCategory = getSubCategory(asset);
+        if (selectedSubCategory === 'SFX') {
+          return assetSubCategory === 'SFX';
+        } else if (selectedSubCategory === 'Plugins') {
+          return assetSubCategory === 'Plugins';
+        } else {
+          // Show all SFX & Plugins assets when no subcategory is selected
+          return assetSubCategory === 'SFX' || assetSubCategory === 'Plugins';
+        }
+      });
+      
       const effectsMap: { [assetId: string]: SoundEffect[] } = {};
 
       // Parallelize all API calls for instant loading
-      const promises = sfxAssets.map(async (asset) => {
+      const promises = targetAssets.map(async (asset) => {
         try {
           const response = await fetch(`/api/assets/sound-effects?assetId=${asset.id}`);
           if (response.ok) {
@@ -1622,8 +1635,8 @@ export default function AssetsPage() {
     }
   };
 
-  // Show individual sound effects for SFX subcategory
-  const showSoundEffects = selectedSubCategory === 'SFX';
+  // Show individual sound effects for SFX or Plugins subcategory
+  const showSoundEffects = selectedSubCategory === 'SFX' || selectedSubCategory === 'Plugins';
   const showOverlays = selectedCategory === 'Overlays & Transitions';
   const showLUTs = selectedSubCategory === 'LUTs';
   const allSoundEffects: Array<{ soundEffect: SoundEffect; asset: Asset }> = [];

@@ -453,6 +453,10 @@ export async function POST(req: NextRequest) {
           categoryFolder = 'transitions';
         } else if (category === 'Overlays & Transitions') {
           categoryFolder = 'overlays'; // Default to overlays if no subcategory or Overlays selected
+        } else if (category === 'SFX & Plugins' && subCategory === 'Plugins') {
+          categoryFolder = 'plugins';
+        } else if (category === 'SFX & Plugins') {
+          categoryFolder = 'sfx'; // Default to sfx if no subcategory or SFX selected
         }
         const packName = fileName.replace(/\.zip$/i, '');
         const zipStoragePath = `assets/${categoryFolder}/${fileName}`;
@@ -661,17 +665,21 @@ export async function POST(req: NextRequest) {
           results.documentsCreated = processed;
 
         } else if (category === 'SFX & Plugins') {
-          sendProgress(controller, 50, 'Processing audio files...', 'processing');
+          const isPlugin = subCategory === 'Plugins';
+          sendProgress(controller, 50, isPlugin ? 'Processing plugin files...' : 'Processing audio files...', 'processing');
           
           const batch = adminDb.batch();
           let processed = 0;
           let totalFiles = 0;
 
+          // Determine storage folder based on subcategory
+          const storageFolder = isPlugin ? 'plugins' : 'sfx';
+
           // Process files one at a time using streaming
           const processAudioFile = async (audioFile: { fileName: string; localPath: string; extension: string; relativePath: string }) => {
             totalFiles++;
             try {
-              const storagePath = `assets/sfx/${packName}/sounds/${audioFile.fileName}`;
+              const storagePath = `assets/${storageFolder}/${packName}/sounds/${audioFile.fileName}`;
               
               // Get duration
               const duration = await getAudioDuration(audioFile.localPath);
@@ -699,7 +707,8 @@ export async function POST(req: NextRequest) {
               });
 
               processed++;
-              sendProgress(controller, 50 + Math.min(30, (processed / Math.max(1, totalFiles)) * 30), `Processing audio ${processed}...`, 'processing');
+              const fileTypeLabel = isPlugin ? 'plugin' : 'audio';
+              sendProgress(controller, 50 + Math.min(30, (processed / Math.max(1, totalFiles)) * 30), `Processing ${fileTypeLabel} ${processed}...`, 'processing');
             } catch (error: any) {
               results.errors.push(`Error processing ${audioFile.fileName}: ${error.message}`);
             }

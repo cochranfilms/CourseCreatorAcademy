@@ -2,7 +2,7 @@
 import { useState, useCallback, useRef } from 'react';
 
 type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets';
-type SubCategory = 'Overlays' | 'Transitions' | null;
+type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
 
 interface AssetUploadZoneProps {
   onFileSelect: (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory) => void;
@@ -41,7 +41,7 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
     const imageFile = files.find(f => /\.(jpg|jpeg|png|webp)$/i.test(f.name));
 
     if (zipFile) {
-      const subCategory = selectedCategory === 'Overlays & Transitions' ? selectedSubCategory : undefined;
+      const subCategory = (selectedCategory === 'Overlays & Transitions' || selectedCategory === 'SFX & Plugins') ? selectedSubCategory : undefined;
       onFileSelect(zipFile, selectedCategory, imageFile || thumbnailFile || undefined, subCategory);
     } else {
       alert('Please upload a ZIP file');
@@ -51,7 +51,7 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.zip')) {
-      const subCategory = selectedCategory === 'Overlays & Transitions' ? selectedSubCategory : undefined;
+      const subCategory = (selectedCategory === 'Overlays & Transitions' || selectedCategory === 'SFX & Plugins') ? selectedSubCategory : undefined;
       onFileSelect(file, selectedCategory, thumbnailFile || undefined, subCategory);
     } else {
       alert('Please upload a ZIP file');
@@ -104,6 +104,8 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
             // Reset subcategory when category changes
             if (newCategory === 'Overlays & Transitions') {
               setSelectedSubCategory('Overlays');
+            } else if (newCategory === 'SFX & Plugins') {
+              setSelectedSubCategory('SFX');
             }
           }}
           disabled={disabled}
@@ -129,6 +131,24 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
           >
             <option value="Overlays">Overlays</option>
             <option value="Transitions">Transitions</option>
+          </select>
+        </div>
+      )}
+
+      {/* Subcategory Selector for SFX & Plugins */}
+      {selectedCategory === 'SFX & Plugins' && (
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-2">
+            Subcategory
+          </label>
+          <select
+            value={selectedSubCategory || ''}
+            onChange={(e) => setSelectedSubCategory(e.target.value as SubCategory)}
+            disabled={disabled}
+            className="w-full px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="SFX">SFX</option>
+            <option value="Plugins">Plugins</option>
           </select>
         </div>
       )}

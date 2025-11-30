@@ -9,7 +9,7 @@ import { ProcessingStatus } from '@/components/admin/ProcessingStatus';
 import { AssetCategoryManager } from '@/components/admin/AssetCategoryManager';
 
 type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets';
-type SubCategory = 'Overlays' | 'Transitions' | null;
+type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
 
 type ProcessingState = {
   status: 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
