@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface OverlayFile {
@@ -56,7 +56,10 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
   const [updating, setUpdating] = useState<string | null>(null);
   const [uploadingLUT, setUploadingLUT] = useState<string | null>(null);
   const [expandedLUT, setExpandedLUT] = useState<string | null>(null);
+  const [expandedAsset, setExpandedAsset] = useState<string | null>(null);
   const [editingLutName, setEditingLutName] = useState<{ [key: string]: string }>({});
+  const [editingAssetTitle, setEditingAssetTitle] = useState<{ [key: string]: string }>({});
+  const [updatingAssetTitle, setUpdatingAssetTitle] = useState<string | null>(null);
   
   const beforeVideoInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const afterVideoInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -340,6 +343,78 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
     e.target.value = '';
   }, [handleLUTVideoUpload, editingLutName]);
 
+  const handleAssetTitleUpdate = useCallback(async (assetId: string, newTitle: string) => {
+    if (!user || !newTitle.trim()) return;
+
+    setUpdatingAssetTitle(assetId);
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/admin/assets/update-asset-title', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          assetId,
+          title: newTitle.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update asset title');
+      }
+
+      // Clear editing state
+      setEditingAssetTitle(prev => {
+        const newState = { ...prev };
+        delete newState[assetId];
+        return newState;
+      });
+
+      // Reload LUT files
+      const reloadResponse = await fetch('/api/admin/assets/lut-files', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (reloadResponse.ok) {
+        const reloadData = await reloadResponse.json();
+        setLutFiles(reloadData.luts || []);
+      }
+
+      if (onCategoryChange) {
+        onCategoryChange();
+      }
+    } catch (error: unknown) {
+      console.error('Error updating asset title:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update asset title';
+      alert(`Failed to update asset title: ${errorMessage}`);
+    } finally {
+      setUpdatingAssetTitle(null);
+    }
+  }, [user, onCategoryChange]);
+
+  // Group LUTs by asset
+  const lutsByAsset = useMemo(() => {
+    const grouped: { [assetId: string]: { assetTitle: string; luts: LUTFile[] } } = {};
+    
+    lutFiles.forEach(lut => {
+      if (!grouped[lut.assetId]) {
+        grouped[lut.assetId] = {
+          assetTitle: lut.assetTitle,
+          luts: [],
+        };
+      }
+      grouped[lut.assetId].luts.push(lut);
+    });
+    
+    return grouped;
+  }, [lutFiles]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -449,138 +524,234 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-ccaBlue"></div>
           </div>
         ) : (
-          <div className="space-y-4 max-h-[800px] overflow-y-auto">
-            {lutFiles.length === 0 ? (
+          <div className="space-y-6 max-h-[800px] overflow-y-auto">
+            {Object.keys(lutsByAsset).length === 0 ? (
               <p className="text-neutral-500 text-sm py-8 text-center">
                 No LUT previews found
               </p>
             ) : (
-              lutFiles.map((lut) => {
+              Object.entries(lutsByAsset).map(([assetId, { assetTitle, luts }]) => {
+                const isAssetExpanded = expandedAsset === assetId;
+                const isUpdatingTitle = updatingAssetTitle === assetId;
+                const editingTitle = editingAssetTitle[assetId] !== undefined;
+
+                return (
+                  <div
+                    key={assetId}
+                    className="border border-neutral-700 bg-neutral-800 rounded-lg p-4"
+                  >
+                    {/* Asset Header with Editable Title */}
+                    <div className="flex items-start justify-between mb-4 pb-4 border-b border-neutral-700">
+                      <div className="flex-1 min-w-0">
+                        {editingTitle ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={editingAssetTitle[assetId] || assetTitle}
+                              onChange={(e) => setEditingAssetTitle(prev => ({
+                                ...prev,
+                                [assetId]: e.target.value
+                              }))}
+                              onBlur={() => {
+                                const newTitle = editingAssetTitle[assetId];
+                                if (newTitle && newTitle.trim() && newTitle.trim() !== assetTitle) {
+                                  handleAssetTitleUpdate(assetId, newTitle.trim());
+                                } else {
+                                  setEditingAssetTitle(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[assetId];
+                                    return newState;
+                                  });
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur();
+                                } else if (e.key === 'Escape') {
+                                  setEditingAssetTitle(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[assetId];
+                                    return newState;
+                                  });
+                                }
+                              }}
+                              autoFocus
+                              disabled={isUpdatingTitle}
+                              className="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-700 rounded text-white text-lg font-semibold"
+                            />
+                            {isUpdatingTitle && (
+                              <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-ccaBlue"></div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-semibold truncate">{assetTitle}</h2>
+                            <button
+                              onClick={() => {
+                                setEditingAssetTitle(prev => ({
+                                  ...prev,
+                                  [assetId]: assetTitle
+                                }));
+                              }}
+                              className="p-1 text-neutral-400 hover:text-white transition-colors"
+                              title="Edit asset title"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                        <p className="text-sm text-neutral-400 mt-1">
+                          {luts.length} LUT{luts.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setExpandedAsset(isAssetExpanded ? null : assetId)}
+                        className="ml-4 px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded text-sm transition-colors"
+                      >
+                        {isAssetExpanded ? 'Collapse' : 'Expand'}
+                      </button>
+                    </div>
+
+                    {/* LUTs List */}
+                    {isAssetExpanded && (
+                      <div className="space-y-3">
+                        {luts.map((lut) => {
                 const isExpanded = expandedLUT === lut.id;
                 const isUploadingBefore = uploadingLUT === `${lut.id}-before`;
                 const isUploadingAfter = uploadingLUT === `${lut.id}-after`;
 
-                return (
-                  <div
-                    key={lut.id}
-                    className="border border-neutral-700 bg-neutral-800 rounded-lg p-4"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold truncate">{lut.lutName}</h3>
-                        <p className="text-sm text-neutral-400 truncate mt-1">
-                          From: {lut.assetTitle}
-                        </p>
-                        <div className="flex gap-4 mt-2 text-xs text-neutral-500">
-                          <span>
-                            Before: {lut.beforeVideoPath ? '✓ Set' : '✗ Not set'}
-                          </span>
-                          <span>
-                            After: {lut.afterVideoPath ? '✓ Set' : '✗ Not set'}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setExpandedLUT(isExpanded ? null : lut.id)}
-                        className="ml-4 px-4 py-2 bg-ccaBlue hover:bg-ccaBlue/80 text-white rounded text-sm transition-colors"
-                      >
-                        {isExpanded ? 'Collapse' : 'Edit Videos'}
-                      </button>
-                    </div>
+                          return (
+                            <div
+                              key={lut.id}
+                              className="border border-neutral-600 bg-neutral-900/50 rounded-lg p-3"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="text-sm font-semibold truncate">{lut.lutName}</h3>
+                                    {lut.isPlaceholder && (
+                                      <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded">
+                                        New
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-4 mt-1 text-xs text-neutral-500">
+                                    <span>
+                                      Before: {lut.beforeVideoPath ? '✓ Set' : '✗ Not set'}
+                                    </span>
+                                    <span>
+                                      After: {lut.afterVideoPath ? '✓ Set' : '✗ Not set'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setExpandedLUT(isExpanded ? null : lut.id)}
+                                  className="ml-4 px-3 py-1.5 bg-ccaBlue hover:bg-ccaBlue/80 text-white rounded text-xs transition-colors"
+                                >
+                                  {isExpanded ? 'Collapse' : 'Edit Videos'}
+                                </button>
+                              </div>
 
-                    {isExpanded && (
-                      <div className="mt-4 pt-4 border-t border-neutral-700 space-y-4">
-                        {/* LUT Name Input for Placeholders */}
-                        {lut.isPlaceholder && (
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              LUT Name *
-                            </label>
-                            <input
-                              type="text"
-                              value={editingLutName[lut.id] || lut.lutName}
-                              onChange={(e) => setEditingLutName(prev => ({
-                                ...prev,
-                                [lut.id]: e.target.value
-                              }))}
-                              placeholder="Enter LUT name"
-                              className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded text-white"
-                            />
-                            <p className="text-xs text-neutral-400 mt-1">
-                              This will be the name displayed for this LUT preview
-                            </p>
-                          </div>
-                        )}
+                              {isExpanded && (
+                                <div className="mt-3 pt-3 border-t border-neutral-600 space-y-3">
+                                  {/* LUT Name Input for Placeholders */}
+                                  {lut.isPlaceholder && (
+                                    <div>
+                                      <label className="block text-xs font-medium mb-1">
+                                        LUT Name *
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={editingLutName[lut.id] || lut.lutName}
+                                        onChange={(e) => setEditingLutName(prev => ({
+                                          ...prev,
+                                          [lut.id]: e.target.value
+                                        }))}
+                                        placeholder="Enter LUT name"
+                                        className="w-full px-2 py-1.5 bg-neutral-900 border border-neutral-700 rounded text-white text-sm"
+                                      />
+                                      <p className="text-xs text-neutral-400 mt-1">
+                                        This will be the name displayed for this LUT preview
+                                      </p>
+                                    </div>
+                                  )}
 
-                        {/* Before Video Upload */}
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            Before Video {lut.beforeVideoPath && '(✓ Uploaded)'}
-                          </label>
-                          {lut.beforeVideoPath && (
-                            <p className="text-xs text-neutral-400 mb-2 truncate">
-                              {lut.beforeVideoPath}
-                            </p>
-                          )}
-                          <input
-                            ref={(el) => {
-                              beforeVideoInputRefs.current[`${lut.id}-before`] = el;
-                            }}
-                            type="file"
-                            accept="video/*"
-                            onChange={(e) => handleVideoFileSelect(lut, 'before', e)}
-                            disabled={isUploadingBefore}
-                            className="hidden"
-                            id={`before-${lut.id}`}
-                          />
-                          <label
-                            htmlFor={`before-${lut.id}`}
-                            className={`
-                              inline-block px-4 py-2 rounded cursor-pointer transition-colors
-                              ${isUploadingBefore
-                                ? 'bg-neutral-600 text-neutral-400 cursor-not-allowed'
-                                : 'bg-neutral-700 hover:bg-neutral-600 text-white'
-                              }
-                            `}
-                          >
-                            {isUploadingBefore ? 'Uploading...' : lut.beforeVideoPath ? 'Replace Before Video' : 'Upload Before Video'}
-                          </label>
-                        </div>
+                                  {/* Before Video Upload */}
+                                  <div>
+                                    <label className="block text-xs font-medium mb-1">
+                                      Before Video {lut.beforeVideoPath && '(✓ Uploaded)'}
+                                    </label>
+                                    {lut.beforeVideoPath && (
+                                      <p className="text-xs text-neutral-400 mb-1 truncate">
+                                        {lut.beforeVideoPath}
+                                      </p>
+                                    )}
+                                    <input
+                                      ref={(el) => {
+                                        beforeVideoInputRefs.current[`${lut.id}-before`] = el;
+                                      }}
+                                      type="file"
+                                      accept="video/*"
+                                      onChange={(e) => handleVideoFileSelect(lut, 'before', e)}
+                                      disabled={isUploadingBefore}
+                                      className="hidden"
+                                      id={`before-${lut.id}`}
+                                    />
+                                    <label
+                                      htmlFor={`before-${lut.id}`}
+                                      className={`
+                                        inline-block px-3 py-1.5 rounded cursor-pointer transition-colors text-sm
+                                        ${isUploadingBefore
+                                          ? 'bg-neutral-600 text-neutral-400 cursor-not-allowed'
+                                          : 'bg-neutral-700 hover:bg-neutral-600 text-white'
+                                        }
+                                      `}
+                                    >
+                                      {isUploadingBefore ? 'Uploading...' : lut.beforeVideoPath ? 'Replace Before Video' : 'Upload Before Video'}
+                                    </label>
+                                  </div>
 
-                        {/* After Video Upload */}
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            After Video {lut.afterVideoPath && '(✓ Uploaded)'}
-                          </label>
-                          {lut.afterVideoPath && (
-                            <p className="text-xs text-neutral-400 mb-2 truncate">
-                              {lut.afterVideoPath}
-                            </p>
-                          )}
-                          <input
-                            ref={(el) => {
-                              afterVideoInputRefs.current[`${lut.id}-after`] = el;
-                            }}
-                            type="file"
-                            accept="video/*"
-                            onChange={(e) => handleVideoFileSelect(lut, 'after', e)}
-                            disabled={isUploadingAfter}
-                            className="hidden"
-                            id={`after-${lut.id}`}
-                          />
-                          <label
-                            htmlFor={`after-${lut.id}`}
-                            className={`
-                              inline-block px-4 py-2 rounded cursor-pointer transition-colors
-                              ${isUploadingAfter
-                                ? 'bg-neutral-600 text-neutral-400 cursor-not-allowed'
-                                : 'bg-neutral-700 hover:bg-neutral-600 text-white'
-                              }
-                            `}
-                          >
-                            {isUploadingAfter ? 'Uploading...' : lut.afterVideoPath ? 'Replace After Video' : 'Upload After Video'}
-                          </label>
-                        </div>
+                                  {/* After Video Upload */}
+                                  <div>
+                                    <label className="block text-xs font-medium mb-1">
+                                      After Video {lut.afterVideoPath && '(✓ Uploaded)'}
+                                    </label>
+                                    {lut.afterVideoPath && (
+                                      <p className="text-xs text-neutral-400 mb-1 truncate">
+                                        {lut.afterVideoPath}
+                                      </p>
+                                    )}
+                                    <input
+                                      ref={(el) => {
+                                        afterVideoInputRefs.current[`${lut.id}-after`] = el;
+                                      }}
+                                      type="file"
+                                      accept="video/*"
+                                      onChange={(e) => handleVideoFileSelect(lut, 'after', e)}
+                                      disabled={isUploadingAfter}
+                                      className="hidden"
+                                      id={`after-${lut.id}`}
+                                    />
+                                    <label
+                                      htmlFor={`after-${lut.id}`}
+                                      className={`
+                                        inline-block px-3 py-1.5 rounded cursor-pointer transition-colors text-sm
+                                        ${isUploadingAfter
+                                          ? 'bg-neutral-600 text-neutral-400 cursor-not-allowed'
+                                          : 'bg-neutral-700 hover:bg-neutral-600 text-white'
+                                        }
+                                      `}
+                                    >
+                                      {isUploadingAfter ? 'Uploading...' : lut.afterVideoPath ? 'Replace After Video' : 'Upload After Video'}
+                                    </label>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
