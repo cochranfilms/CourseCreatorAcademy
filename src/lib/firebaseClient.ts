@@ -50,6 +50,25 @@ export const auth = firebaseReady && app ? getAuth(app) : (null as any);
 // Firestore with persistent local cache for instant, offline-first reads.
 // In the browser we initialize Firestore with IndexedDB-backed cache so that
 // onSnapshot/get* calls return cached data immediately and hydrate in the background.
+// Suppress harmless Firestore persistence lease warnings
+// These occur when multiple tabs try to access the same IndexedDB database
+// and are expected behavior - they don't affect functionality
+if (typeof window !== 'undefined') {
+  const originalError = console.error;
+  console.error = (...args: any[]) => {
+    const firstArg = args[0];
+    const message = typeof firstArg === 'string' ? firstArg : String(firstArg || '');
+    
+    // Only filter Firestore persistence lease warnings
+    if (message.includes('Failed to obtain primary lease') && 
+        message.includes('@firebase/firestore')) {
+      return; // Suppress this specific harmless warning
+    }
+    
+    originalError.apply(console, args);
+  };
+}
+
 export const db = firebaseReady && app
   ? (typeof window !== 'undefined'
       ? initializeFirestore(app, {
