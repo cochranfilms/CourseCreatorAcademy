@@ -42,8 +42,8 @@ export default function AdminCourseVideosUploadPage() {
             onClick={() => setActiveTab('upload')}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === 'upload'
-                ? 'text-ccaBlue border-b-2 border-ccaBlue'
-                : 'text-neutral-400 hover:text-neutral-300'
+                ? 'bg-black text-white border-b-2 border-ccaBlue'
+                : 'bg-black/50 text-neutral-400 hover:bg-black hover:text-neutral-300'
             }`}
           >
             Upload New Video
@@ -52,8 +52,8 @@ export default function AdminCourseVideosUploadPage() {
             onClick={() => setActiveTab('manage')}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === 'manage'
-                ? 'text-ccaBlue border-b-2 border-ccaBlue'
-                : 'text-neutral-400 hover:text-neutral-300'
+                ? 'bg-black text-white border-b-2 border-ccaBlue'
+                : 'bg-black/50 text-neutral-400 hover:bg-black hover:text-neutral-300'
             }`}
           >
             Manage Existing Videos
