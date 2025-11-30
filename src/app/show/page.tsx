@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import MuxPlayer from '@mux/mux-player-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
@@ -24,6 +24,7 @@ export default function ShowPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [videoPlaying, setVideoPlaying] = useState(false);
+  const showPlayerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function fetchEpisode() {
@@ -81,6 +82,27 @@ export default function ShowPage() {
     fetchEpisode();
   }, []);
 
+  // Control video element opacity to show/hide it while keeping controls visible
+  useEffect(() => {
+    if (!showPlayerRef.current || !episode?.playbackId) return;
+    
+    const updateVideoOpacity = () => {
+      const video = showPlayerRef.current?.querySelector('video') as HTMLVideoElement;
+      if (video) {
+        video.style.opacity = videoPlaying ? '1' : '0';
+        video.style.transition = 'opacity 0.3s';
+      }
+    };
+    
+    // Try immediately
+    updateVideoOpacity();
+    
+    // Also try after a short delay in case MuxPlayer hasn't rendered yet
+    const timeout = setTimeout(updateVideoOpacity, 100);
+    
+    return () => clearTimeout(timeout);
+  }, [videoPlaying, episode?.playbackId]);
+
   return (
     <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
       <h1 className="text-3xl md:text-4xl font-bold">CCA Show</h1>
@@ -106,18 +128,16 @@ export default function ShowPage() {
       ) : episode && episode.playbackId ? (
         <div className="mt-8 max-w-4xl mx-auto rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
           <div className="aspect-video bg-neutral-800 rounded-xl overflow-hidden relative">
-            {/* Animated GIF preview overlay - shows before video plays */}
-            {!videoPlaying && (
-              <div className="absolute inset-0 z-0">
-                <img
-                  src={getMuxAnimatedGifUrl(episode.playbackId, 640, 10, 13, 15)}
-                  alt={`${episode.title} preview`}
-                  className="w-full h-full object-cover"
-                  style={{ pointerEvents: 'none' }}
-                />
-              </div>
-            )}
-            <div className="relative z-10 w-full h-full">
+            {/* Animated GIF preview - always visible until video plays */}
+            <div className="absolute inset-0 z-0">
+              <img
+                src={getMuxAnimatedGifUrl(episode.playbackId, 640, 10, 13, 15)}
+                alt={`${episode.title} preview`}
+                className={`w-full h-full object-cover transition-opacity ${videoPlaying ? 'opacity-0' : 'opacity-100'}`}
+                style={{ pointerEvents: 'none' }}
+              />
+            </div>
+            <div ref={showPlayerRef} className="relative z-10 w-full h-full">
               <MuxPlayer
                 playbackId={episode.playbackId}
                 streamType="on-demand"

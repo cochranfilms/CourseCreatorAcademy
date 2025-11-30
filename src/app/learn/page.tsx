@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 // Link removed; cards open a modal directly
@@ -51,6 +51,7 @@ export default function LearnPage() {
   const [viewerInitial, setViewerInitial] = useState<{ moduleId: string; lessonId: string } | null>(null);
   const [featuredPlaybackToken, setFeaturedPlaybackToken] = useState<string | null>(null);
   const [featuredVideoPlaying, setFeaturedVideoPlaying] = useState(false);
+  const featuredPlayerRef = useRef<HTMLDivElement | null>(null);
 
   async function openViewerForCourse(course: Course) {
     try {
@@ -228,6 +229,27 @@ export default function LearnPage() {
     return () => { cancelled = true; };
   }, [featuredCourse?.thumbnailPlaybackId, user]);
 
+  // Control video element opacity to show/hide it while keeping controls visible
+  useEffect(() => {
+    if (!featuredPlayerRef.current || !featuredCourse?.thumbnailPlaybackId) return;
+    
+    const updateVideoOpacity = () => {
+      const video = featuredPlayerRef.current?.querySelector('video') as HTMLVideoElement;
+      if (video) {
+        video.style.opacity = featuredVideoPlaying ? '1' : '0';
+        video.style.transition = 'opacity 0.3s';
+      }
+    };
+    
+    // Try immediately
+    updateVideoOpacity();
+    
+    // Also try after a short delay in case MuxPlayer hasn't rendered yet
+    const timeout = setTimeout(updateVideoOpacity, 100);
+    
+    return () => clearTimeout(timeout);
+  }, [featuredVideoPlaying, featuredCourse?.thumbnailPlaybackId]);
+
   if (loading) {
     return (
       <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
@@ -276,18 +298,16 @@ export default function LearnPage() {
               <div className="aspect-video relative bg-black overflow-hidden">
                 {featuredCourse.thumbnailPlaybackId ? (
                   <>
-                    {/* Animated GIF preview overlay - shows before video plays */}
-                    {!featuredVideoPlaying && (
-                      <div className="absolute inset-0 z-0">
-                        <img
-                          src={getMuxAnimatedGifUrl(featuredCourse.thumbnailPlaybackId, 640, 10, 13, 15)}
-                          alt={`${featuredCourse.title} preview`}
-                          className="w-full h-full object-cover"
-                          style={{ pointerEvents: 'none' }}
-                        />
-                      </div>
-                    )}
-                    <div className="relative z-10 w-full h-full">
+                    {/* Animated GIF preview - always visible until video plays */}
+                    <div className="absolute inset-0 z-0">
+                      <img
+                        src={getMuxAnimatedGifUrl(featuredCourse.thumbnailPlaybackId, 640, 10, 13, 15)}
+                        alt={`${featuredCourse.title} preview`}
+                        className={`w-full h-full object-cover transition-opacity ${featuredVideoPlaying ? 'opacity-0' : 'opacity-100'}`}
+                        style={{ pointerEvents: 'none' }}
+                      />
+                    </div>
+                    <div ref={featuredPlayerRef} className="relative z-10 w-full h-full">
                       <MuxPlayer
                         playbackId={featuredCourse.thumbnailPlaybackId}
                         streamType="on-demand"
