@@ -64,9 +64,23 @@ export async function GET(req: NextRequest) {
       const storagePath = assetData.storagePath || '';
       
       // Check if this is a LUT asset (not a preset)
+      // Use same logic as getSubCategory function
       const path = storagePath.toLowerCase();
       const title = assetTitle.toLowerCase();
-      const isLUT = path.includes('/luts/') || title.includes('lut');
+      const category = assetData.category || '';
+      
+      // Check storage path first
+      let isLUT = path.includes('/luts/');
+      
+      // Fallback to title keywords
+      if (!isLUT) {
+        isLUT = title.includes('lut');
+      }
+      
+      // If category is "LUTs & Presets" and not identified as preset, default to LUT
+      if (!isLUT && category === 'LUTs & Presets' && !path.includes('/presets/') && !title.includes('preset')) {
+        isLUT = true;
+      }
 
       let hasPreviews = false;
 

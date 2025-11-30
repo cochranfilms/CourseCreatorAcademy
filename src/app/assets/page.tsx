@@ -1946,14 +1946,91 @@ export default function AssetsPage() {
               );
             })}
             </div>
+          ) : filteredAssets.length > 0 ? (
+            // Show pack assets when no individual previews exist
+            <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredAssets.map((asset) => {
+                // Use side-by-side slider for LUTs with video previews (legacy support for direct asset videos)
+                if (asset.beforeVideoPath && asset.afterVideoPath) {
+                  return <SideBySideVideoSlider key={asset.id} asset={asset} />;
+                }
+                
+                // Default asset card for LUT packs without previews
+                const isTemplate = asset.category === 'Templates';
+                return (
+                  <div 
+                    key={asset.id}
+                    className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-600 transition-colors"
+                  >
+                    {asset.thumbnailUrl ? (
+                      <div className="aspect-square relative">
+                        <img 
+                          src={asset.thumbnailUrl} 
+                          alt={asset.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="aspect-square bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center">
+                        <div className="text-neutral-600 text-4xl font-bold">
+                          {asset.title.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                    )}
+                    <div className="p-3">
+                      <h3 className="text-white font-medium text-sm mb-1 line-clamp-2">{asset.title}</h3>
+                      <p className="text-neutral-400 text-xs mb-3">{asset.category}</p>
+                      <div className="flex items-center justify-between">
+                        <button
+                          onClick={() => handleDownload(asset)}
+                          disabled={downloading === asset.id}
+                          className="px-3 py-1.5 bg-ccaBlue hover:bg-ccaBlue/80 text-white text-xs rounded transition-colors disabled:opacity-50"
+                        >
+                          {downloading === asset.id ? 'Downloading...' : 'Download'}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!user) {
+                              alert('Please sign in to favorite assets');
+                              return;
+                            }
+                            const assetSubCategory = getSubCategory(asset);
+                            const nowFavorited = await toggleSaved(user.uid, 'asset', asset.id, {
+                              assetId: asset.id,
+                              title: asset.title,
+                              category: asset.category,
+                              thumbnailUrl: asset.thumbnailUrl || undefined,
+                              subCategory: assetSubCategory || undefined,
+                            });
+                            setFavoritedAssets(prev => {
+                              const newSet = new Set(prev);
+                              if (nowFavorited) {
+                                newSet.add(asset.id);
+                              } else {
+                                newSet.delete(asset.id);
+                              }
+                              return newSet;
+                            });
+                          }}
+                          className={`p-1.5 rounded transition-colors ${
+                            favoritedAssets.has(asset.id)
+                              ? 'text-red-500 hover:text-red-400'
+                              : 'text-neutral-400 hover:text-neutral-300'
+                          }`}
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div className="mt-6 text-neutral-400 text-center">
-              <p>No LUT previews found.</p>
-              <p className="text-sm text-neutral-500 mt-2">
-                {filteredAssets.length > 0 
-                  ? `${filteredAssets.length} LUT pack(s) found, but no preview videos are available yet.`
-                  : 'No LUT assets found in this category.'}
-              </p>
+              <p>No LUT assets found in this category.</p>
             </div>
           )
         ) : filteredAssets.length === 0 ? (
