@@ -1677,6 +1677,8 @@ export default function AssetsPage() {
   const [overlays, setOverlays] = useState<Overlay[]>([]);
   const [lutPreviews, setLutPreviews] = useState<{ [assetId: string]: LUTPreview[] }>({});
   const [loadingLutPreviews, setLoadingLutPreviews] = useState(false);
+  const [presetFiles, setPresetFiles] = useState<{ [assetId: string]: PresetFile[] }>({});
+  const [loadingPresetFiles, setLoadingPresetFiles] = useState(false);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [favoritedAssets, setFavoritedAssets] = useState<Set<string>>(new Set());
