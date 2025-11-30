@@ -554,7 +554,14 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
     if (item.type === 'course' && item.image) return item.image;
     
     // For assets, use thumbnailUrl (photo or video thumbnail)
-    if (item.type === 'asset' && item.thumbnailUrl) return item.thumbnailUrl;
+    // For presets, prefer afterImagePath (shows the preset effect) or thumbnailUrl
+    if (item.type === 'asset') {
+      // Presets: use afterImagePath if available (shows the preset effect), otherwise thumbnailUrl
+      if (item.subCategory === 'Presets' && item.afterImagePath) {
+        return getPublicStorageUrl(item.afterImagePath);
+      }
+      if (item.thumbnailUrl) return item.thumbnailUrl;
+    }
     
     // For videos/lessons, use Mux thumbnail (prefer animated GIF if available)
     if ((item.type === 'video' || item.type === 'lesson') && item.muxPlaybackId) {

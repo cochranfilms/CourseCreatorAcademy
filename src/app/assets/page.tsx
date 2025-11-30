@@ -723,12 +723,25 @@ function SideBySideImageSlider({ preset, asset }: { preset: PresetFile; asset: A
   }, [isDragging]);
 
   const handleFavorite = async () => {
-    if (!user) return;
+    if (!user) {
+      alert('Please sign in to favorite assets');
+      return;
+    }
     try {
+      // Use after image as thumbnail (the "after" shows the preset effect)
+      const thumbnailUrl = afterImageUrl || beforeImageUrl || asset.thumbnailUrl;
+      
       const newFavoriteState = await toggleSaved(user.uid, 'asset', preset.id, {
         title: preset.fileName,
         assetId: preset.assetId,
         assetTitle: preset.assetTitle,
+        category: 'LUTs & Presets',
+        subCategory: 'Presets',
+        thumbnailUrl: thumbnailUrl || undefined,
+        beforeImagePath: preset.beforeImagePath || undefined,
+        afterImagePath: preset.afterImagePath || undefined,
+        storagePath: preset.storagePath || undefined,
+        fileType: preset.fileType || undefined,
       });
       setIsFavorited(newFavoriteState);
     } catch (error) {
