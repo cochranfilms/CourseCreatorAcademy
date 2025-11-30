@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
           });
 
           // Sort manually
-          previews.sort((a, b) => {
+          previews.sort((a: { lutName: string }, b: { lutName: string }) => {
             const nameA = (a.lutName || '').toLowerCase();
             const nameB = (b.lutName || '').toLowerCase();
             return nameA.localeCompare(nameB);
