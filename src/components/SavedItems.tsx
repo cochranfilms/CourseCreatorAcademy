@@ -6,6 +6,7 @@ import { db } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { createPortal } from 'react-dom';
 import { toggleSaved, SavedType } from '@/lib/userData';
+import { getBestMuxThumbnailUrl } from '@/lib/muxThumbnails';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -23,6 +24,7 @@ type SavedItem = {
   images?: string[]; // Add images array for marketplace listings
   thumbnailUrl?: string;
   muxPlaybackId?: string;
+  muxAnimatedGifUrl?: string;
   durationSec?: number;
   assetId?: string;
   beforeVideoPath?: string;
@@ -44,12 +46,6 @@ type SavedItemsProps = {
   isOpen: boolean;
   onClose: () => void;
 };
-
-function getMuxThumbnailUrl(playbackId?: string, durationSec?: number) {
-  if (!playbackId) return '';
-  const time = durationSec && durationSec > 0 ? Math.floor(durationSec / 2) : 1;
-  return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=${time}&width=640&fit_mode=preserve`;
-}
 
 function getPublicStorageUrl(storagePath: string): string {
   const bucket = 'course-creator-academy-866d6.firebasestorage.app';
@@ -307,6 +303,7 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
                 if (lessonSnap.exists()) {
                   const lessonData = lessonSnap.data();
                   item.muxPlaybackId = lessonData.muxPlaybackId;
+                  item.muxAnimatedGifUrl = lessonData.muxAnimatedGifUrl;
                   item.durationSec = lessonData.durationSec;
                 }
               }
@@ -555,9 +552,9 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
     // For assets, use thumbnailUrl (photo or video thumbnail)
     if (item.type === 'asset' && item.thumbnailUrl) return item.thumbnailUrl;
     
-    // For videos/lessons, use Mux thumbnail
+    // For videos/lessons, use Mux thumbnail (prefer animated GIF if available)
     if ((item.type === 'video' || item.type === 'lesson') && item.muxPlaybackId) {
-      return getMuxThumbnailUrl(item.muxPlaybackId, item.durationSec);
+      return getBestMuxThumbnailUrl(item.muxPlaybackId, item.muxAnimatedGifUrl, item.durationSec);
     }
     
     // Fallback to image field for other types
