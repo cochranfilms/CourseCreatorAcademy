@@ -149,7 +149,7 @@ export default function Page() {
 
       <main className="min-h-screen w-full overflow-x-hidden">
         {/* Hero Section - Your Creative Home Base */}
-        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 pt-12 sm:pt-16 pb-16 sm:pb-24 w-full pt-safe">
+        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 pt-12 sm:pt-16 pb-8 sm:pb-12 w-full pt-safe">
           <div className="relative z-10 text-center max-w-5xl mx-auto">
             <div className="inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6 animate-fade-in">
               Learn from Creators. Land Gigs. Save on Gear & Software.
@@ -179,7 +179,7 @@ export default function Page() {
         </section>
 
         {/* How Creators Earn Section */}
-        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16 w-full">
           <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
             <div className="inline-block px-4 py-2 rounded-full bg-green-500/20 border border-green-500/50 text-green-400 text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
               MULTIPLE WAYS TO EARN
@@ -214,7 +214,7 @@ export default function Page() {
         </section>
 
         {/* Platform Features - Learn, Earn, Connect, Access */}
-        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16 w-full">
           <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">
               EVERYTHING YOU NEED TO<br />
@@ -247,7 +247,7 @@ export default function Page() {
         </section>
 
         {/* Pricing Section - A Simple Plan That Unlocks Everything */}
-        <section id="pricing" className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 pb-safe w-full">
+        <section id="pricing" className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16 pb-safe w-full">
           <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
             <div className="inline-block px-4 py-2 rounded-full bg-white/10 border border-white/20 text-white text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
               CHOOSE YOUR PATH
@@ -367,7 +367,7 @@ export default function Page() {
         </section>
 
         {/* FAQ Section */}
-        <section className="relative max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <section className="relative max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16 w-full">
           <div className="text-center mb-6 sm:mb-8 md:mb-12 px-2">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">FREQUENTLY ASKED QUESTIONS</h2>
           </div>
@@ -384,7 +384,7 @@ export default function Page() {
         </section>
 
         {/* Final CTA */}
-        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16 w-full">
           <div className="bg-gradient-to-br from-ccaBlue/20 via-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-2xl sm:rounded-3xl border-2 border-ccaBlue/50 p-6 sm:p-8 md:p-12 lg:p-16 text-center">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-4 sm:mb-6 text-white leading-tight">
               READY TO TURN YOUR<br />

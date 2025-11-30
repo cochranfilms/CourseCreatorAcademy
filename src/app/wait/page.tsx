@@ -247,7 +247,7 @@ export default function WaitlistPage() {
 
       <main className="min-h-screen w-full overflow-x-hidden" itemScope itemType="https://schema.org/WebPage">
         {/* Hero Section */}
-        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 pt-12 sm:pt-16 pb-16 sm:pb-24 w-full pt-safe" itemScope itemType="https://schema.org/Event">
+        <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 pt-12 sm:pt-16 pb-8 sm:pb-12 w-full pt-safe" itemScope itemType="https://schema.org/Event">
         <div className="relative z-10 text-center max-w-5xl mx-auto">
           <div className="inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6">
             Join the Waitlist • Be First to Access
@@ -377,7 +377,7 @@ export default function WaitlistPage() {
       </section>
 
       {/* Platform Overview - Enhanced Section */}
-      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-16 sm:py-20 md:py-32 w-full" itemScope itemType="https://schema.org/ItemList">
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16 w-full" itemScope itemType="https://schema.org/ItemList">
         <div className="text-center mb-12 sm:mb-16 md:mb-20 px-2">
           <div className="inline-block px-4 py-2 rounded-full bg-ccaBlue/20 border border-ccaBlue/50 text-white text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
             YOUR CREATIVE HOME BASE
@@ -422,17 +422,17 @@ export default function WaitlistPage() {
         </div>
 
         {/* Call to action below features */}
-        <div className="mt-16 sm:mt-20 md:mt-24 text-center">
+        <div className="mt-8 sm:mt-12 md:mt-16 text-center">
           <div className="inline-block px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-ccaBlue/20 via-purple-500/20 to-pink-500/20 border-2 border-ccaBlue/50 backdrop-blur-sm">
             <p className="text-base sm:text-lg md:text-xl text-white font-semibold">
-              Ready to level up? <span className="text-ccaBlue">Join the waitlist above!</span>
+              Ready to level up? <span className="font-bold text-black">Join the waitlist above!</span>
             </p>
           </div>
         </div>
       </section>
 
       {/* How Creators Earn Section */}
-      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16 w-full">
         <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
           <div className="inline-block px-4 py-2 rounded-full bg-green-500/20 border border-green-500/50 text-green-400 text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
             MULTIPLE WAYS TO EARN
