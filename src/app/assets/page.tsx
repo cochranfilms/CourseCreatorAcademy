@@ -2021,7 +2021,7 @@ export default function AssetsPage() {
                       <img 
                         src={asset.thumbnailUrl} 
                         alt={asset.title}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full ${isTemplate ? 'object-contain' : 'object-cover'}`}
                         onError={(e) => {
                           console.error('Failed to load thumbnail:', asset.title, asset.thumbnailUrl);
                           e.currentTarget.style.display = 'none';
@@ -2044,9 +2044,9 @@ export default function AssetsPage() {
                     </div>
                   </div>
                   <div className="p-3 bg-black flex flex-col h-full">
-                    <div className="font-semibold text-white text-sm line-clamp-2 min-h-[2.5rem]">{asset.title}</div>
-                    <div className="text-xs text-neutral-400 mt-1 min-h-[1rem]">{asset.category}</div>
-                    <div className="text-xs text-neutral-500 mt-2 line-clamp-2 min-h-[2.5rem]">
+                    <div className="font-semibold text-white text-sm line-clamp-2 h-[2.5rem] flex items-start">{asset.title}</div>
+                    <div className="text-xs text-neutral-400 mt-1 h-[1rem] flex items-center">{asset.category}</div>
+                    <div className="text-xs text-neutral-500 mt-2 line-clamp-2 h-[2.75rem] flex items-start">
                       {asset.description || '\u00A0'}
                     </div>
                     {/* Action Buttons */}
