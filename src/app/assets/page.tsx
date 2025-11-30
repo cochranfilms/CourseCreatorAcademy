@@ -2055,10 +2055,11 @@ export default function AssetsPage() {
                       {asset.description || '\u00A0'}
                     </div>
                     {/* Action Buttons */}
-                    <div className="flex items-center justify-end mt-3 mt-auto">
+                    <div className="flex items-center justify-end mt-3 mt-auto" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={async (e) => {
                           e.stopPropagation();
+                          e.preventDefault();
                           if (!user) {
                             alert('Please sign in to favorite assets');
                             return;
@@ -2087,7 +2088,7 @@ export default function AssetsPage() {
                             return newSet;
                           });
                         }}
-                        className={`w-8 h-8 flex items-center justify-center transition-colors ${
+                        className={`w-8 h-8 flex items-center justify-center transition-colors relative z-10 ${
                           favoritedAssets.has(asset.id)
                             ? 'text-pink-500 hover:text-pink-400' 
                             : 'text-neutral-400 hover:text-pink-500'

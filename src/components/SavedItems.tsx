@@ -81,6 +81,23 @@ function SavedItemCard({
   const videoUrl = getVideoUrl(item);
   const isVideo = isVideoAsset(item) && videoUrl;
   
+  // Debug logging
+  useEffect(() => {
+    if (item.type === 'asset' && isVideo) {
+      console.log('Video asset detected:', {
+        title: item.title,
+        previewVideoPath: item.previewVideoPath,
+        previewVideoUrl: item.previewVideoUrl,
+        previewStoragePath: item.previewStoragePath,
+        beforeVideoPath: item.beforeVideoPath,
+        storagePath: item.storagePath,
+        fileType: item.fileType,
+        videoUrl,
+        isVideo
+      });
+    }
+  }, [item, isVideo, videoUrl]);
+  
   // Determine aspect ratio based on item type
   // Templates, Overlays, and Marketplace items use aspect-video (16:9)
   // Regular assets use aspect-square
@@ -155,18 +172,12 @@ function SavedItemCard({
               <video
                 ref={videoRef}
                 src={videoUrl}
-                className="w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover"
                 playsInline
                 muted
                 loop
                 preload="metadata"
                 crossOrigin="anonymous"
-                style={{
-                  maxWidth: '1280px',
-                  maxHeight: '720px',
-                  width: '100%',
-                  height: 'auto'
-                }}
                 onError={(e) => {
                   // Fallback to thumbnail if video fails
                   const videoEl = e.target as HTMLVideoElement;
@@ -180,7 +191,7 @@ function SavedItemCard({
                 <img
                   src={getItemImage(item)!}
                   alt={getItemTitle(item)}
-                  className="w-full h-full object-cover hidden"
+                  className="absolute inset-0 w-full h-full object-cover hidden"
                   loading="lazy"
                 />
               )}
@@ -191,7 +202,7 @@ function SavedItemCard({
               <img
                 src={getItemImage(item)!}
                 alt={getItemTitle(item)}
-                className={`${isTemplate ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover group-hover:scale-105'} transition-transform duration-300`}
+                className={`absolute inset-0 ${isTemplate ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover group-hover:scale-105'} transition-transform duration-300`}
                 loading="lazy"
                 decoding="async"
                 onError={(e) => {
@@ -243,7 +254,7 @@ function SavedItemCard({
 
 export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'all' | 'market' | 'video' | 'job' | 'asset'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'market' | 'video' | 'job' | 'asset' | 'course'>('all');
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -543,12 +554,12 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
 
   const getVideoUrl = (item: SavedItem): string | null => {
     if (item.type !== 'asset') return null;
-    // Plugins: prefer previewVideoUrl (signed URL) or generate from previewVideoPath
-    if (item.previewVideoUrl) {
-      return item.previewVideoUrl;
-    }
+    // Plugins: prefer previewVideoPath (always generate fresh URL) over potentially expired previewVideoUrl
     if (item.previewVideoPath) {
       return getPublicStorageUrl(item.previewVideoPath);
+    }
+    if (item.previewVideoUrl) {
+      return item.previewVideoUrl;
     }
     // Overlays: prefer previewStoragePath (720p version)
     if (item.previewStoragePath) {
@@ -601,7 +612,7 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
 
           {/* Tabs */}
           <div className="flex items-center gap-1 px-6 pt-4 border-b border-neutral-800 bg-neutral-900/50 overflow-x-auto">
-            {(['all', 'market', 'video', 'job', 'asset'] as const).map((tab) => (
+            {(['all', 'market', 'video', 'job', 'asset', 'course'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
