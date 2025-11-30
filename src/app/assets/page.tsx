@@ -687,11 +687,13 @@ function SideBySideImageSlider({ preset, asset }: { preset: PresetFile; asset: A
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   };
 
@@ -807,6 +809,7 @@ function SideBySideImageSlider({ preset, asset }: { preset: PresetFile; asset: A
               style={{ left: `${sliderPosition}%` }}
               onMouseDown={handleMouseDown}
               onTouchStart={handleTouchStart}
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center">
                 <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2238,7 +2241,7 @@ export default function AssetsPage() {
                 ...asset,
                 beforeVideoPath: preview.beforeVideoPath,
                 afterVideoPath: preview.afterVideoPath,
-                title: preview.assetTitle || `${asset.title} - ${preview.lutName}`, // Use assetTitle from document, fallback to pack name + LUT name
+                title: preview.lutName || preview.assetTitle || asset.title, // Use lutName first (editable in admin), fallback to assetTitle, then pack name
               };
               
               return (
