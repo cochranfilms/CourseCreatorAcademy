@@ -94,7 +94,8 @@ export async function PUT(req: NextRequest) {
     const imageStoragePath = `assets/presets/${dirName}/${imageFileName}`;
 
     // Upload image file
-    const bucket = adminStorage.bucket();
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || 'course-creator-academy-866d6';
+    const bucket = adminStorage.bucket(`${projectId}.firebasestorage.app`);
     const imageFile = bucket.file(imageStoragePath);
     
     const arrayBuffer = await file.arrayBuffer();

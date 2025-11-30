@@ -56,6 +56,20 @@ interface LUTPreview {
   fileName?: string; // Original filename of the .cube file
 }
 
+interface PresetFile {
+  id: string;
+  assetId: string;
+  assetTitle: string;
+  fileName: string;
+  storagePath: string;
+  fileType?: string;
+  relativePath?: string;
+  beforeImagePath?: string;
+  beforeImageUrl?: string;
+  afterImagePath?: string;
+  afterImageUrl?: string;
+}
+
 const categories: AssetCategory[] = ['All Packs', 'LUTs & Presets', 'Overlays & Transitions', 'SFX & Plugins', 'Templates'];
 
 /**
@@ -607,6 +621,237 @@ function SideBySideVideoSlider({ asset, previewId, lutFilePath, fileName }: { as
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Side-by-Side Image Slider Component for Preset previews
+ * Shows before/after images with a draggable slider
+ */
+function SideBySideImageSlider({ preset, asset }: { preset: PresetFile; asset: Asset }) {
+  const { user } = useAuth();
+  const [beforeImageUrl, setBeforeImageUrl] = useState<string | null>(preset.beforeImageUrl || null);
+  const [afterImageUrl, setAfterImageUrl] = useState<string | null>(preset.afterImageUrl || null);
+  const [sliderPosition, setSliderPosition] = useState(50);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const sliderRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setIsFavorited(false);
+      return;
+    }
+    const checkFavorite = async () => {
+      const saved = await isSaved(user.uid, 'asset', preset.id);
+      setIsFavorited(saved);
+    };
+    checkFavorite();
+  }, [user, preset.id]);
+
+  useEffect(() => {
+    if (preset.beforeImagePath && !beforeImageUrl) {
+      const url = getPublicStorageUrl(preset.beforeImagePath);
+      setBeforeImageUrl(url);
+    }
+    if (preset.afterImagePath && !afterImageUrl) {
+      const url = getPublicStorageUrl(preset.afterImagePath);
+      setAfterImageUrl(url);
+    }
+  }, [preset.beforeImagePath, preset.afterImagePath, beforeImageUrl, afterImageUrl]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(containerRef.current);
+    return () => {
+      if (containerRef.current) {
+        observer.unobserve(containerRef.current);
+      }
+    };
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const x = clientX - rect.left;
+      const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+      setSliderPosition(percentage);
+    };
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('touchmove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchend', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('touchmove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const handleFavorite = async () => {
+    if (!user) return;
+    try {
+      const newFavoriteState = await toggleSaved(user.uid, 'asset', preset.id, {
+        title: preset.fileName,
+        assetId: preset.assetId,
+        assetTitle: preset.assetTitle,
+      });
+      setIsFavorited(newFavoriteState);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (downloading) return;
+    if (!user) {
+      alert('Please sign in to download assets');
+      return;
+    }
+    setDownloading(true);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/assets/download?assetId=${asset.id}&presetId=${preset.id}`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = preset.fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download preset file');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (!beforeImageUrl && !afterImageUrl) {
+    return null;
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="group rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-600 transition-colors"
+    >
+      <div className="relative aspect-square bg-neutral-900">
+        {isVisible && beforeImageUrl && afterImageUrl ? (
+          <>
+            <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}>
+              <img
+                src={beforeImageUrl}
+                alt="Before"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded">
+                Before
+              </div>
+            </div>
+            <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}>
+              <img
+                src={afterImageUrl}
+                alt="After"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded">
+                After
+              </div>
+            </div>
+            <div
+              ref={sliderRef}
+              className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize z-10"
+              style={{ left: `${sliderPosition}%` }}
+              onMouseDown={handleMouseDown}
+              onTouchStart={handleTouchStart}
+            >
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="text-neutral-500">Loading preview...</div>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="px-4 py-2 bg-white text-black rounded-lg font-semibold hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto"
+            >
+              {downloading ? 'Downloading...' : 'Download'}
+            </button>
+          </div>
+        </div>
+        <div className="absolute top-2 right-2 z-20">
+          <button
+            onClick={handleFavorite}
+            className={`p-2 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-colors ${
+              isFavorited ? 'text-red-500' : ''
+            }`}
+            title={isFavorited ? 'Unfavorite' : 'Favorite'}
+          >
+            <svg 
+              className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} 
+              fill={isFavorited ? 'currentColor' : 'none'} 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div className="p-3">
+        <h3 className="text-white font-semibold mb-1 truncate">{preset.fileName}</h3>
+        <p className="text-neutral-400 text-sm truncate">{preset.assetTitle}</p>
       </div>
     </div>
   );
@@ -1694,6 +1939,51 @@ export default function AssetsPage() {
     }
   }, [selectedSubCategory, assets]);
 
+  // Load preset files for Preset assets when Presets subcategory is selected
+  useEffect(() => {
+    if (selectedSubCategory !== 'Presets') {
+      setPresetFiles({});
+      setLoadingPresetFiles(false);
+      return;
+    }
+
+    const loadPresetFiles = async () => {
+      setLoadingPresetFiles(true);
+      const presetAssets = assets.filter(asset => getSubCategory(asset) === 'Presets');
+      const filesMap: { [assetId: string]: PresetFile[] } = {};
+
+      console.log(`[Preset Files] Loading files for ${presetAssets.length} Preset asset(s)`);
+
+      for (const asset of presetAssets) {
+        try {
+          const response = await fetch(`/api/assets/preset-files?assetId=${asset.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            const files = data.presetFiles || [];
+            filesMap[asset.id] = files;
+            console.log(`[Preset Files] Loaded ${files.length} file(s) for "${asset.title}" (${asset.id})`);
+          } else {
+            console.warn(`[Preset Files] Failed to load files for "${asset.title}" (${asset.id}): ${response.status}`);
+          }
+        } catch (error) {
+          console.error(`[Preset Files] Error loading preset files for ${asset.id}:`, error);
+        }
+      }
+
+      const totalFiles = Object.values(filesMap).reduce((sum, arr) => sum + arr.length, 0);
+      console.log(`[Preset Files] Total files loaded: ${totalFiles}`);
+
+      setPresetFiles(filesMap);
+      setLoadingPresetFiles(false);
+    };
+
+    if (assets.length > 0) {
+      loadPresetFiles();
+    } else {
+      setLoadingPresetFiles(false);
+    }
+  }, [selectedSubCategory, assets]);
+
   // Get subcategories for the current category
   const getSubCategories = (category: AssetCategory): SubCategory[] => {
     if (category === 'Overlays & Transitions') return ['Overlays', 'Transitions'];
@@ -1797,8 +2087,10 @@ export default function AssetsPage() {
   const showSoundEffects = selectedSubCategory === 'SFX' || selectedSubCategory === 'Plugins';
   const showOverlays = selectedCategory === 'Overlays & Transitions';
   const showLUTs = selectedSubCategory === 'LUTs';
+  const showPresets = selectedSubCategory === 'Presets';
   const allSoundEffects: Array<{ soundEffect: SoundEffect; asset: Asset }> = [];
   const allLUTPreviews: Array<{ preview: LUTPreview; asset: Asset }> = [];
+  const allPresetFiles: Array<{ preset: PresetFile; asset: Asset }> = [];
 
   if (showSoundEffects) {
     filteredAssets.forEach(asset => {
@@ -1833,6 +2125,16 @@ export default function AssetsPage() {
           asset,
         });
       }
+    });
+  }
+
+  // Collect all preset files for display
+  if (showPresets) {
+    filteredAssets.forEach(asset => {
+      const files = presetFiles[asset.id] || [];
+      files.forEach(preset => {
+        allPresetFiles.push({ preset, asset });
+      });
     });
   }
 
@@ -2031,6 +2333,34 @@ export default function AssetsPage() {
           ) : (
             <div className="mt-6 text-neutral-400 text-center">
               <p>No LUT assets found in this category.</p>
+            </div>
+          )
+        ) : showPresets ? (
+          loadingPresetFiles ? (
+            <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="rounded-lg overflow-hidden border border-neutral-700 bg-black">
+                  <div className="aspect-square bg-neutral-900 animate-pulse"></div>
+                  <div className="p-3">
+                    <div className="h-4 bg-neutral-900 rounded w-3/4 mb-2 animate-pulse"></div>
+                    <div className="h-3 bg-neutral-900 rounded w-1/2 animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : allPresetFiles.length > 0 ? (
+            <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {allPresetFiles.map(({ preset, asset }) => (
+                <SideBySideImageSlider 
+                  key={preset.id} 
+                  preset={preset}
+                  asset={asset}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 text-neutral-400 text-center">
+              <p>No preset files found in this category.</p>
             </div>
           )
         ) : filteredAssets.length === 0 ? (

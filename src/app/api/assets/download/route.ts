@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
     const assetId = searchParams.get('assetId');
+    const presetId = searchParams.get('presetId');
 
     if (!assetId) {
       return NextResponse.json({ error: 'assetId is required' }, { status: 400 });
@@ -30,14 +31,33 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Membership required' }, { status: 403 });
     }
 
-    // Get asset document from Firestore
-    const assetDoc = await adminDb.collection('assets').doc(assetId).get();
-    if (!assetDoc.exists) {
-      return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
-    }
+    let storagePath: string | undefined;
 
-    const assetData = assetDoc.data();
-    const storagePath = assetData?.storagePath;
+    // If presetId is provided, get the individual preset file path
+    if (presetId) {
+      const presetDoc = await adminDb
+        .collection('assets')
+        .doc(assetId)
+        .collection('presets')
+        .doc(presetId)
+        .get();
+      
+      if (!presetDoc.exists) {
+        return NextResponse.json({ error: 'Preset not found' }, { status: 404 });
+      }
+
+      const presetData = presetDoc.data();
+      storagePath = presetData?.storagePath;
+    } else {
+      // Get asset document from Firestore (for pack downloads)
+      const assetDoc = await adminDb.collection('assets').doc(assetId).get();
+      if (!assetDoc.exists) {
+        return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+      }
+
+      const assetData = assetDoc.data();
+      storagePath = assetData?.storagePath;
+    }
 
     if (!storagePath) {
       return NextResponse.json({ error: 'Asset has no storage path' }, { status: 400 });
