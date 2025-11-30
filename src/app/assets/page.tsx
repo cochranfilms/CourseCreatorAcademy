@@ -845,13 +845,20 @@ function SideBySideImageSlider({ preset, asset }: { preset: PresetFile; asset: A
             </div>
           )}
         </div>
-        <div className="absolute bottom-2 right-2 z-20">
+        <div className="absolute bottom-2 right-2 z-30 pointer-events-auto">
           <button
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               handleFavorite();
             }}
-            className={`p-2 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-colors ${
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+            }}
+            className={`p-2 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-colors cursor-pointer ${
               isFavorited ? 'text-pink-500' : ''
             }`}
             title={isFavorited ? 'Unfavorite' : 'Favorite'}
