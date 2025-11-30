@@ -95,14 +95,15 @@ function SavedItemCard({
   }, [item, isVideo, videoUrl]);
   
   // Determine aspect ratio based on item type
-  // Templates, Overlays, Plugins, Courses, and Marketplace items use aspect-video (16:9)
+  // Templates, Overlays, Transitions, SFX, Plugins, Courses, and Marketplace items use aspect-video (16:9)
   // Regular assets use aspect-square
   const isTemplate = item.type === 'asset' && item.category === 'Templates';
   const isOverlay = item.type === 'asset' && (item.subCategory === 'Overlays' || item.subCategory === 'Transitions' || item.previewStoragePath);
   const isPlugin = item.type === 'asset' && item.subCategory === 'Plugins';
+  const isSFX = item.type === 'asset' && item.subCategory === 'SFX';
   const isCourse = item.type === 'course';
   const isMarketplace = item.type === 'market';
-  const aspectClass = (isTemplate || isOverlay || isPlugin || isCourse || isMarketplace) ? 'aspect-video' : 'aspect-square';
+  const aspectClass = (isTemplate || isOverlay || isPlugin || isSFX || isCourse || isMarketplace) ? 'aspect-video' : 'aspect-square';
 
   // Intersection Observer for video playback
   useEffect(() => {
