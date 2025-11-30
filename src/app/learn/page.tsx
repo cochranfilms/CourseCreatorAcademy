@@ -278,7 +278,7 @@ export default function LearnPage() {
                   <>
                     {/* Animated GIF preview overlay - shows before video plays */}
                     {!featuredVideoPlaying && (
-                      <div className="absolute inset-0 z-10">
+                      <div className="absolute inset-0 z-0">
                         <img
                           src={getMuxAnimatedGifUrl(featuredCourse.thumbnailPlaybackId, 640, 10, 13, 15)}
                           alt={`${featuredCourse.title} preview`}
@@ -287,25 +287,27 @@ export default function LearnPage() {
                         />
                       </div>
                     )}
-                    <MuxPlayer
-                      playbackId={featuredCourse.thumbnailPlaybackId}
-                      streamType="on-demand"
-                      primaryColor="#3B82F6"
-                      className="w-full h-full"
-                      playsInline
-                      preload="metadata"
-                      onPlay={() => setFeaturedVideoPlaying(true)}
-                      // @ts-ignore
-                      preferMse
-                      // Cap resolution to 1080p for better quality while maintaining performance
-                      // @ts-ignore
-                      maxResolution="1080p"
-                      // @ts-ignore
-                      disablePictureInPicture
-                      // @ts-ignore
-                      autoPictureInPicture={false}
-                      {...(featuredPlaybackToken ? { tokens: { playback: featuredPlaybackToken } as any } : {})}
-                    />
+                    <div className="relative z-10 w-full h-full">
+                      <MuxPlayer
+                        playbackId={featuredCourse.thumbnailPlaybackId}
+                        streamType="on-demand"
+                        primaryColor="#3B82F6"
+                        className="w-full h-full"
+                        playsInline
+                        preload="metadata"
+                        onPlay={() => setFeaturedVideoPlaying(true)}
+                        // @ts-ignore
+                        preferMse
+                        // Cap resolution to 1080p for better quality while maintaining performance
+                        // @ts-ignore
+                        maxResolution="1080p"
+                        // @ts-ignore
+                        disablePictureInPicture
+                        // @ts-ignore
+                        autoPictureInPicture={false}
+                        {...(featuredPlaybackToken ? { tokens: { playback: featuredPlaybackToken } as any } : {})}
+                      />
+                    </div>
                   </>
                 ) : featuredCourse.coverImage ? (
                   <div

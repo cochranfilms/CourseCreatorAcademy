@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import MuxPlayer from '@mux/mux-player-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
+import { getMuxAnimatedGifUrl } from '@/lib/muxThumbnails';
 
 interface EpisodeData {
   assetId: string;
@@ -22,6 +23,7 @@ export default function ShowPage() {
   const [episode, setEpisode] = useState<EpisodeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
   useEffect(() => {
     async function fetchEpisode() {
@@ -103,24 +105,37 @@ export default function ShowPage() {
         </div>
       ) : episode && episode.playbackId ? (
         <div className="mt-8 max-w-4xl mx-auto rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 p-4">
-          <div className="aspect-video bg-neutral-800 rounded-xl overflow-hidden">
-            <MuxPlayer
-              playbackId={episode.playbackId}
-              streamType="on-demand"
-              primaryColor="#3B82F6"
-              className="w-full"
-              style={{ aspectRatio: '16 / 9' }}
-              playsInline
-              preload="metadata"
-              // @ts-ignore
-              preferMse
-              // @ts-ignore
-              maxResolution="540p"
-              // @ts-ignore
-              disablePictureInPicture
-              // @ts-ignore
-              autoPictureInPicture={false}
-            />
+          <div className="aspect-video bg-neutral-800 rounded-xl overflow-hidden relative">
+            {/* Animated GIF preview overlay - shows before video plays */}
+            {!videoPlaying && (
+              <div className="absolute inset-0 z-0">
+                <img
+                  src={getMuxAnimatedGifUrl(episode.playbackId, 640, 10, 13, 15)}
+                  alt={`${episode.title} preview`}
+                  className="w-full h-full object-cover"
+                  style={{ pointerEvents: 'none' }}
+                />
+              </div>
+            )}
+            <div className="relative z-10 w-full h-full">
+              <MuxPlayer
+                playbackId={episode.playbackId}
+                streamType="on-demand"
+                primaryColor="#3B82F6"
+                className="w-full h-full"
+                playsInline
+                preload="metadata"
+                onPlay={() => setVideoPlaying(true)}
+                // @ts-ignore
+                preferMse
+                // @ts-ignore
+                maxResolution="540p"
+                // @ts-ignore
+                disablePictureInPicture
+                // @ts-ignore
+                autoPictureInPicture={false}
+              />
+            </div>
           </div>
           <div className="mt-4 text-xl font-semibold">{episode.title}</div>
           <div className="text-neutral-400 text-sm">
