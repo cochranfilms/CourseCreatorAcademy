@@ -26,15 +26,15 @@ export default function Page() {
       title: "Land High-Paying Gigs",
       description: "Access exclusive job opportunities from brands and agencies. Our members have closed over $2.3M in deals this year alone.",
       icon: "💼",
-      stat: "$150K",
-      statLabel: "Biggest Single Deal",
+      stat: "$1,000+",
+      statLabel: "Local Trusted Jobs",
       gradient: "from-orange-500/20 to-red-500/20",
       borderColor: "border-orange-500/50"
     },
     {
-      title: "Sell Your Assets",
-      description: "Monetize your LUTs, presets, overlays, and templates. Build passive income selling to thousands of creators.",
-      icon: "🎨",
+      title: "Download All Assets",
+      description: "Gain Access to Industry Assets such as LUTs, SFX, Overlays, and Templates.",
+      icon: "🗃️",
       stat: "0% Fees",
       statLabel: "On No-Fees Plan",
       gradient: "from-pink-500/20 to-rose-500/20",
@@ -175,30 +175,18 @@ export default function Page() {
                 />
               </div>
             </div>
-
-            {/* Testimonial Quote */}
-            <div className="mt-6 sm:mt-8 mb-4 sm:mb-6 px-3">
-              <p className="text-base sm:text-lg text-neutral-300 italic">"This platform LITERALLY pays for itself."</p>
-              <p className="text-xs sm:text-sm text-neutral-500 mt-2">— Emily S, CCA Member</p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mt-8 sm:mt-10 px-3">
-              <button className="cta-button text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto touch-manipulation transform hover:scale-105 transition-transform" onClick={openPricing}>Start Your Opportunity</button>
-              <a className="px-6 sm:px-8 py-3 sm:py-4 rounded-lg border-2 border-neutral-700 active:border-neutral-600 hover:border-neutral-600 text-base sm:text-lg font-medium transition w-full sm:w-auto text-center touch-manipulation" href="#pricing">See Plans</a>
-            </div>
-            <div className="mt-4 sm:mt-6 text-xs sm:text-sm text-neutral-400 px-3">14‑day refund policy • Instant access • Rated Excellent</div>
           </div>
         </section>
 
         {/* How Creators Earn Section */}
         <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
           <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
-            <div className="inline-block px-4 py-2 rounded-full bg-ccaBlue/20 border border-ccaBlue/50 text-ccaBlue text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
+            <div className="inline-block px-4 py-2 rounded-full bg-green-500/20 border border-green-500/50 text-green-400 text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
               MULTIPLE WAYS TO EARN
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">
               THIS ISN'T JUST LEARNING.<br />
-              <span className="text-white">THIS IS REAL MONEY.</span>
+              <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent">THIS IS REAL MONEY.</span>
             </h2>
             <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 max-w-3xl mx-auto leading-relaxed">
               This platform isn't about passive learning—it's about active earning. Here's how our members turn opportunity into income.
