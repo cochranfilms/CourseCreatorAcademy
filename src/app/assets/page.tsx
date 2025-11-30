@@ -1057,10 +1057,10 @@ function PluginCard({ asset, onDownload, downloading, favorited, onFavorite }: {
           )}
         </div>
       </div>
-      <div className="p-3 bg-black flex flex-col h-full">
-        <div className="font-semibold text-white text-sm line-clamp-2 min-h-[2.5rem]">{asset.title}</div>
-        <div className="text-xs text-neutral-400 mt-1 min-h-[1rem]">{asset.category}</div>
-        <div className="text-xs text-neutral-500 mt-2 line-clamp-2 min-h-[2.5rem]">
+      <div className="p-3 bg-black flex flex-col flex-1">
+        <div className="font-semibold text-white text-sm line-clamp-2 leading-tight h-[2.5rem]">{asset.title}</div>
+        <div className="text-xs text-neutral-400 mt-1 leading-none h-4">{asset.category}</div>
+        <div className="text-xs text-neutral-500 mt-2 line-clamp-2 leading-tight h-[2.75rem]">
           {asset.description || '\u00A0'}
         </div>
         {/* Action Buttons */}
@@ -2012,7 +2012,7 @@ export default function AssetsPage() {
                     }
                   }}
                 >
-                  <div className={`${isTemplate ? 'aspect-video' : 'aspect-square'} bg-neutral-900 relative overflow-hidden`}>
+                  <div className={`${isTemplate ? 'aspect-video' : 'aspect-square'} bg-neutral-900 relative overflow-hidden flex items-center justify-center`}>
                     {asset.thumbnailUrl && 
                      asset.thumbnailUrl.startsWith('https://') && 
                      !asset.thumbnailUrl.includes('via.placeholder.com') &&
@@ -2021,14 +2021,14 @@ export default function AssetsPage() {
                       <img 
                         src={asset.thumbnailUrl} 
                         alt={asset.title}
-                        className={`w-full h-full ${isTemplate ? 'object-contain' : 'object-cover'}`}
+                        className={`${isTemplate ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover'}`}
                         onError={(e) => {
                           console.error('Failed to load thumbnail:', asset.title, asset.thumbnailUrl);
                           e.currentTarget.style.display = 'none';
                         }}
                       />
                     ) : null}
-                    <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-900 to-black">
+                    <div className="absolute inset-0 w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-900 to-black pointer-events-none">
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
@@ -2043,10 +2043,10 @@ export default function AssetsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="p-3 bg-black flex flex-col h-full">
-                    <div className="font-semibold text-white text-sm line-clamp-2 h-[2.5rem] flex items-start">{asset.title}</div>
-                    <div className="text-xs text-neutral-400 mt-1 h-[1rem] flex items-center">{asset.category}</div>
-                    <div className="text-xs text-neutral-500 mt-2 line-clamp-2 h-[2.75rem] flex items-start">
+                  <div className="p-3 bg-black flex flex-col flex-1">
+                    <div className="font-semibold text-white text-sm line-clamp-2 leading-tight h-[2.5rem]">{asset.title}</div>
+                    <div className="text-xs text-neutral-400 mt-1 leading-none h-4">{asset.category}</div>
+                    <div className="text-xs text-neutral-500 mt-2 line-clamp-2 leading-tight h-[2.75rem]">
                       {asset.description || '\u00A0'}
                     </div>
                     {/* Action Buttons */}
