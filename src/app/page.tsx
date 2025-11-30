@@ -35,8 +35,8 @@ export default function Page() {
       title: "Download All Assets",
       description: "Gain Access to Industry Assets such as LUTs, SFX, Overlays, and Templates.",
       icon: "🗃️",
-      stat: "0% Fees",
-      statLabel: "On No-Fees Plan",
+      stat: "300+ Assets",
+      statLabel: "Instant Download",
       gradient: "from-pink-500/20 to-rose-500/20",
       borderColor: "border-pink-500/50"
     },

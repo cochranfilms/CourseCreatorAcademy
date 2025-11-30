@@ -105,6 +105,45 @@ export default function WaitlistPage() {
     }
   ];
 
+  const earningWays = [
+    {
+      title: "Land High-Paying Gigs",
+      description: "Access exclusive job opportunities from brands and agencies. Our members have closed over $2.3M in deals this year alone.",
+      icon: "💼",
+      stat: "$1,000+",
+      statLabel: "Local Trusted Jobs",
+      gradient: "from-orange-500/20 to-red-500/20",
+      borderColor: "border-orange-500/50"
+    },
+    {
+      title: "Download All Assets",
+      description: "Gain Access to Industry Assets such as LUTs, SFX, Overlays, and Templates.",
+      icon: "🗃️",
+      stat: "300+ Assets",
+      statLabel: "Instant Download",
+      gradient: "from-pink-500/20 to-rose-500/20",
+      borderColor: "border-pink-500/50"
+    },
+    {
+      title: "Trade Gear Profitably",
+      description: "Buy and sell equipment directly with trusted creators. Upgrade your setup while building your network.",
+      icon: "📷",
+      stat: "Trusted",
+      statLabel: "Creator Network",
+      gradient: "from-purple-500/20 to-indigo-500/20",
+      borderColor: "border-purple-500/50"
+    },
+    {
+      title: "Save on Everything",
+      description: "Exclusive discounts on software, gear, and services. The savings alone can cover your membership.",
+      icon: "💰",
+      stat: "Exclusive",
+      statLabel: "Partner Deals",
+      gradient: "from-green-500/20 to-emerald-500/20",
+      borderColor: "border-green-500/50"
+    }
+  ];
+
   return (
     <>
       {/* Structured Data for SEO */}
@@ -389,6 +428,41 @@ export default function WaitlistPage() {
               Ready to level up? <span className="text-ccaBlue">Join the waitlist above!</span>
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* How Creators Earn Section */}
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-12 sm:py-16 md:py-24 w-full">
+        <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
+          <div className="inline-block px-4 py-2 rounded-full bg-green-500/20 border border-green-500/50 text-green-400 text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
+            MULTIPLE WAYS TO EARN
+          </div>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">
+            THIS ISN'T JUST LEARNING.<br />
+            <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent">THIS IS REAL MONEY.</span>
+          </h2>
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 max-w-3xl mx-auto leading-relaxed">
+            This platform isn't about passive learning—it's about active earning. Here's how our members turn opportunity into income.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8 px-2">
+          {earningWays.map((way, idx) => (
+            <div
+              key={idx}
+              className={`bg-gradient-to-br ${way.gradient} rounded-xl sm:rounded-2xl border-2 ${way.borderColor} p-6 sm:p-8 md:p-10 hover:shadow-xl hover:shadow-${way.borderColor.split('/')[0]}/20 transition-all duration-300 hover:-translate-y-1`}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="text-4xl sm:text-5xl">{way.icon}</div>
+                <div className="text-right">
+                  <div className="text-2xl sm:text-3xl font-bold text-white">{way.stat}</div>
+                  <div className="text-xs sm:text-sm text-neutral-300">{way.statLabel}</div>
+                </div>
+              </div>
+              <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-3">{way.title}</h3>
+              <p className="text-sm sm:text-base text-neutral-200 leading-relaxed">{way.description}</p>
+            </div>
+          ))}
         </div>
       </section>
     </main>

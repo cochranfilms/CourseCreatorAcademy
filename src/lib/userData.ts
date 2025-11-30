@@ -13,11 +13,17 @@ export async function toggleSaved(userId: string, type: SavedType, targetId: str
     await updateDoc(ref, { removedAt: serverTimestamp() });
     return false;
   }
+  
+  // Filter out undefined values from data object (Firestore doesn't accept undefined)
+  const cleanData = data ? Object.fromEntries(
+    Object.entries(data).filter(([_, value]) => value !== undefined)
+  ) : {};
+  
   await setDoc(ref, {
     type,
     targetId,
     createdAt: serverTimestamp(),
-    ...data,
+    ...cleanData,
   }, { merge: true });
   return true;
 }
