@@ -19,6 +19,8 @@ export function CreatorKitsScroller() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(true);
+  const offsetRef = useRef(0); // Store offset in ref to persist across re-renders
+  const animationFrameIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -52,32 +54,37 @@ export function CreatorKitsScroller() {
 
   // Auto-scroll animation (transform-based for reliability across browsers)
   useEffect(() => {
-    if (!isScrolling || creators.length === 0 || !trackRef.current) return;
+    if (creators.length === 0 || !trackRef.current) return;
 
     const track = trackRef.current;
     const scrollSpeed = 0.5; // pixels per frame (slower for smoother scroll)
-    let animationFrameId: number;
-    let offset = 0;
 
     const animate = () => {
-      if (!isScrolling || !track) return;
+      if (!track) return;
       
-      // Large square card size + gap
-      const itemWidth = 400 + 24; // card width + gap
-      const firstSetWidth = itemWidth * creators.length;
+      // Only update offset if scrolling is enabled
+      if (isScrolling) {
+        // Large square card size + gap
+        const itemWidth = 400 + 24; // card width + gap
+        const firstSetWidth = itemWidth * creators.length;
+        
+        // If we've moved past the first set, loop back seamlessly
+        offsetRef.current = (offsetRef.current + scrollSpeed) % firstSetWidth;
+      }
       
-      // If we've moved past the first set, loop back seamlessly
-      offset = (offset + scrollSpeed) % firstSetWidth;
-      track.style.transform = `translateX(-${offset}px)`;
+      // Always update transform to current offset (even when paused)
+      track.style.transform = `translateX(-${offsetRef.current}px)`;
       
-      animationFrameId = requestAnimationFrame(animate);
+      animationFrameIdRef.current = requestAnimationFrame(animate);
     };
 
-    animationFrameId = requestAnimationFrame(animate);
+    // Start animation
+    animationFrameIdRef.current = requestAnimationFrame(animate);
 
     return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
+      if (animationFrameIdRef.current !== null) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+        animationFrameIdRef.current = null;
       }
     };
   }, [isScrolling, creators]);
