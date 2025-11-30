@@ -1399,11 +1399,14 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
     loadAudioUrl();
   }, [soundEffect, prefetchedUrl]);
 
-  // Smooth time update using requestAnimationFrame
+  // Load and prepare audio immediately when URL is available
   useEffect(() => {
-    if (!audioRef.current || !audioUrl || isDragging) return;
+    if (!audioRef.current || !audioUrl) return;
 
     const audio = audioRef.current;
+    
+    // Force load immediately
+    audio.load();
     
     const updateTime = () => {
       if (rafRef.current) {
@@ -1442,23 +1445,49 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
     };
   }, [audioUrl, soundEffect.duration, isDragging]);
 
-  const togglePlay = useCallback(() => {
+  const togglePlay = useCallback(async () => {
     if (!audioRef.current || !audioUrl) return;
 
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setIsPlaying(true);
-          })
-          .catch((error) => {
-            console.error('Error playing audio:', error);
-            setIsPlaying(false);
-          });
+      const audio = audioRef.current;
+      
+      // Ensure audio is loaded and ready
+      if (audio.readyState < 2) {
+        audio.load();
+        // Wait for audio to be ready
+        await new Promise<void>((resolve) => {
+          const handleCanPlay = () => {
+            audio.removeEventListener('canplay', handleCanPlay);
+            resolve();
+          };
+          audio.addEventListener('canplay', handleCanPlay);
+          // Timeout fallback
+          setTimeout(() => {
+            audio.removeEventListener('canplay', handleCanPlay);
+            resolve();
+          }, 1000);
+        });
+      }
+      
+      try {
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          setIsPlaying(true);
+        }
+      } catch (error) {
+        console.error('Error playing audio:', error);
+        // Retry once
+        try {
+          audio.load();
+          await audio.play();
+          setIsPlaying(true);
+        } catch (retryError) {
+          console.error('Retry play failed:', retryError);
+        }
       }
     }
   }, [isPlaying, audioUrl]);
@@ -1873,17 +1902,18 @@ export default function AssetsPage() {
         effectsMap[assetId] = soundEffects;
       });
 
-      setSoundEffects(effectsMap);
-
-      // Prefetch audio URLs in batches for instant playback (limit concurrent requests)
+      // Prefetch audio URLs FIRST before setting sound effects (prioritize first batch)
       const allSoundEffects: SoundEffect[] = [];
       Object.values(effectsMap).forEach(effects => {
         allSoundEffects.push(...effects);
       });
 
       if (allSoundEffects.length > 0) {
-        // Prefetch audio URLs in batches of 5 to avoid overwhelming the server
-        const batchSize = 5;
+        // Prefetch first batch immediately and synchronously, then do the rest
+        const firstBatchSize = Math.min(10, allSoundEffects.length);
+        const firstBatch = allSoundEffects.slice(0, firstBatchSize);
+        const restBatch = allSoundEffects.slice(firstBatchSize);
+        
         const urlMap: { [soundEffectId: string]: string } = {};
         
         const prefetchBatch = async (batch: SoundEffect[]) => {
@@ -1907,19 +1937,31 @@ export default function AssetsPage() {
             }
           });
           
-          // Update state after each batch
-          setSoundEffectAudioUrls(prev => ({ ...prev, ...urlMap }));
+          return urlMap;
         };
 
-        // Process in batches with a small delay between batches
-        for (let i = 0; i < allSoundEffects.length; i += batchSize) {
-          const batch = allSoundEffects.slice(i, i + batchSize);
-          await prefetchBatch(batch);
-          // Small delay between batches to avoid overwhelming
-          if (i + batchSize < allSoundEffects.length) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+        // Prefetch first batch immediately (these are likely to be clicked first)
+        const firstBatchUrls = await prefetchBatch(firstBatch);
+        setSoundEffectAudioUrls(firstBatchUrls);
+        
+        // Now set the sound effects so components can render with prefetched URLs
+        setSoundEffects(effectsMap);
+
+        // Prefetch the rest in smaller batches in the background
+        if (restBatch.length > 0) {
+          const batchSize = 5;
+          for (let i = 0; i < restBatch.length; i += batchSize) {
+            const batch = restBatch.slice(i, i + batchSize);
+            const batchUrls = await prefetchBatch(batch);
+            setSoundEffectAudioUrls(prev => ({ ...prev, ...batchUrls }));
+            // Small delay between batches
+            if (i + batchSize < restBatch.length) {
+              await new Promise(resolve => setTimeout(resolve, 50));
+            }
           }
         }
+      } else {
+        setSoundEffects(effectsMap);
       }
     };
 
