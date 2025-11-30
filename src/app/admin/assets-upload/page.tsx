@@ -37,7 +37,7 @@ export default function AdminAssetsUploadPage() {
   });
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleFileSelect = useCallback(async (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory) => {
+  const handleFileSelect = useCallback(async (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory, previewVideo?: File) => {
     if (!user || !firebaseReady || !storage) {
       setProcessingState({
         status: 'error',
@@ -148,11 +148,54 @@ export default function AdminAssetsUploadPage() {
         thumbnailDownloadURL = undefined;
       }
 
+      // Step 2.5: Upload preview video if provided (for Plugins)
+      let previewVideoStoragePath: string | undefined;
+      const hasThumbnail = !!thumbnail;
+      
+      if (previewVideo) {
+        setProcessingState(prev => ({
+          ...prev,
+          progress: hasThumbnail ? 30 : 25,
+          currentStep: 'Uploading preview video...',
+        }));
+
+        const previewVideoFileName = previewVideo.name;
+        const previewVideoPath = `admin-assets-uploads/${user.uid}/${timestamp}_${previewVideoFileName.replace(/\s+/g, '_')}`;
+        const previewVideoStorageRef = ref(storage, previewVideoPath);
+        
+        const previewVideoUploadTask = uploadBytesResumable(previewVideoStorageRef, previewVideo, {
+          contentType: 'video/mp4',
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          previewVideoUploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const uploadProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setProcessingState(prev => ({
+                ...prev,
+                progress: (hasThumbnail ? 30 : 25) + Math.min(uploadProgress * 0.05, 5), // Preview video upload is 5% of total progress
+                currentStep: `Uploading preview video... ${Math.round(uploadProgress)}%`,
+              }));
+            },
+            (error) => {
+              reject(error);
+            },
+            async () => {
+              resolve();
+            }
+          );
+        });
+
+        previewVideoStoragePath = previewVideoPath;
+      }
+
       // Step 3: Call API to process the file from Storage
       const hasThumbnail = !!thumbnail;
+      const hasPreviewVideo = !!previewVideo;
       setProcessingState(prev => ({
         ...prev,
-        progress: hasThumbnail ? 30 : 25,
+        progress: hasThumbnail && hasPreviewVideo ? 35 : hasThumbnail || hasPreviewVideo ? 30 : 25,
         currentStep: 'Processing ZIP file...',
         status: 'processing',
       }));
@@ -170,6 +213,7 @@ export default function AdminAssetsUploadPage() {
           fileName: zipFileName,
           thumbnailStoragePath,
           thumbnailDownloadURL,
+          previewVideoStoragePath,
           subCategory: subCategory || undefined,
         }),
       });
@@ -205,9 +249,10 @@ export default function AdminAssetsUploadPage() {
                 const data = JSON.parse(line.slice(6));
                 
                 if (data.progress !== undefined) {
-                  // Server progress starts at 30% (after ZIP + optional thumbnail upload)
-                  // Map server progress (30-100%) to overall progress
-                  const serverProgress = Math.max(hasThumbnail ? 30 : 25, Math.min(100, data.progress));
+                  // Server progress starts after ZIP + optional thumbnail + optional preview video upload
+                  // Map server progress to overall progress
+                  const baseProgress = hasThumbnail && hasPreviewVideo ? 35 : hasThumbnail || hasPreviewVideo ? 30 : 25;
+                  const serverProgress = Math.max(baseProgress, Math.min(100, data.progress));
                   setProcessingState(prev => ({
                     ...prev,
                     progress: serverProgress,

@@ -436,7 +436,7 @@ export async function POST(req: NextRequest) {
       try {
         // Parse request body (JSON with storage path)
         const body = await req.json();
-        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL, subCategory } = body;
+        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL, previewVideoStoragePath, subCategory } = body;
 
         if (!storagePath || !category || !fileName) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Missing storagePath, category, or fileName' })}\n\n`));
@@ -479,6 +479,7 @@ export async function POST(req: NextRequest) {
 
         const thumbnailFolderPath = `assets/${categoryFolder}/${packName}`;
         const thumbnailPath = `${thumbnailFolderPath}/preview.png`;
+        const previewVideoPath = `${thumbnailFolderPath}/preview.mp4`;
 
         // Create thumbnail folder structure (by creating a .keep file)
         try {
@@ -535,6 +536,32 @@ export async function POST(req: NextRequest) {
           } catch {}
         }
 
+        // Handle preview video upload if provided (for Plugins)
+        let previewVideoUrl: string | null = null;
+        if (previewVideoStoragePath) {
+          try {
+            // Copy preview video to final location
+            const previewVideoSourceFile = bucket.file(previewVideoStoragePath);
+            const previewVideoDestFile = bucket.file(previewVideoPath);
+            await previewVideoSourceFile.copy(previewVideoDestFile);
+            
+            // Delete temporary preview video file
+            await previewVideoSourceFile.delete().catch(() => {});
+
+            // Generate signed URL for preview video
+            const expiresAt = new Date();
+            expiresAt.setFullYear(expiresAt.getFullYear() + 10);
+            [previewVideoUrl] = await previewVideoDestFile.getSignedUrl({
+              action: 'read',
+              expires: expiresAt,
+            });
+          } catch (error: any) {
+            console.error('Failed to process preview video:', error);
+            // Don't fail the entire process if preview video fails
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ step: `Warning: Failed to process preview video: ${error.message}` })}\n\n`));
+          }
+        }
+
         sendProgress(controller, 40, 'Creating main asset document...', 'processing');
 
         await assetRef.set({
@@ -543,6 +570,7 @@ export async function POST(req: NextRequest) {
           storagePath: zipStoragePath,
           fileType: 'zip',
           ...(thumbnailUrl ? { thumbnailUrl } : {}),
+          ...(previewVideoUrl ? { previewVideoPath, previewVideoUrl } : {}),
           createdAt: FirebaseFirestore.FieldValue.serverTimestamp(),
           updatedAt: FirebaseFirestore.FieldValue.serverTimestamp(),
         });

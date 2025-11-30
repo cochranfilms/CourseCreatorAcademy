@@ -5,7 +5,7 @@ type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets';
 type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
 
 interface AssetUploadZoneProps {
-  onFileSelect: (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory) => void;
+  onFileSelect: (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory, previewVideo?: File) => void;
   disabled?: boolean;
 }
 
@@ -15,8 +15,10 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
   const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategory>('Overlays');
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [previewVideoFile, setPreviewVideoFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const previewVideoInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -39,24 +41,25 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
     const files = Array.from(e.dataTransfer.files);
     const zipFile = files.find(f => f.name.endsWith('.zip'));
     const imageFile = files.find(f => /\.(jpg|jpeg|png|webp)$/i.test(f.name));
+    const videoFile = files.find(f => /\.(mp4)$/i.test(f.name));
 
     if (zipFile) {
       const subCategory = (selectedCategory === 'Overlays & Transitions' || selectedCategory === 'SFX & Plugins') ? selectedSubCategory : undefined;
-      onFileSelect(zipFile, selectedCategory, imageFile || thumbnailFile || undefined, subCategory);
+      onFileSelect(zipFile, selectedCategory, imageFile || thumbnailFile || undefined, subCategory, videoFile || previewVideoFile || undefined);
     } else {
       alert('Please upload a ZIP file');
     }
-  }, [disabled, selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile]);
+  }, [disabled, selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile, previewVideoFile]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.zip')) {
       const subCategory = (selectedCategory === 'Overlays & Transitions' || selectedCategory === 'SFX & Plugins') ? selectedSubCategory : undefined;
-      onFileSelect(file, selectedCategory, thumbnailFile || undefined, subCategory);
+      onFileSelect(file, selectedCategory, thumbnailFile || undefined, subCategory, previewVideoFile || undefined);
     } else {
       alert('Please upload a ZIP file');
     }
-  }, [selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile]);
+  }, [selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile, previewVideoFile]);
 
   const handleThumbnailInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -80,6 +83,24 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
     setThumbnailPreview(null);
     if (thumbnailInputRef.current) {
       thumbnailInputRef.current.value = '';
+    }
+  }, []);
+
+  const handlePreviewVideoInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (/\.(mp4)$/i.test(file.name)) {
+        setPreviewVideoFile(file);
+      } else {
+        alert('Please upload a valid MP4 video file');
+      }
+    }
+  }, []);
+
+  const handleRemovePreviewVideo = useCallback(() => {
+    setPreviewVideoFile(null);
+    if (previewVideoInputRef.current) {
+      previewVideoInputRef.current.value = '';
     }
   }, []);
 
@@ -203,6 +224,52 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
           Upload a custom thumbnail image for the "All" category (JPG, PNG, or WebP)
         </p>
       </div>
+
+      {/* Preview Video Upload for Plugins */}
+      {selectedCategory === 'SFX & Plugins' && selectedSubCategory === 'Plugins' && (
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-2">
+            Preview Video (Optional)
+          </label>
+          <div className="flex items-center gap-4">
+            {previewVideoFile ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-neutral-400">
+                  {previewVideoFile.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRemovePreviewVideo}
+                  disabled={disabled}
+                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => !disabled && previewVideoInputRef.current?.click()}
+                disabled={disabled}
+                className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-neutral-300 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Select Preview Video
+              </button>
+            )}
+            <input
+              ref={previewVideoInputRef}
+              type="file"
+              accept="video/mp4"
+              onChange={handlePreviewVideoInput}
+              className="hidden"
+              disabled={disabled}
+            />
+          </div>
+          <p className="text-xs text-neutral-500 mt-1">
+            Upload an MP4 preview video that will play on hover in the Plugins tab
+          </p>
+        </div>
+      )}
 
       {/* ZIP Upload Zone */}
       <div>

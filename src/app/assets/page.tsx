@@ -20,6 +20,8 @@ interface Asset {
   description?: string;
   beforeVideoPath?: string; // Path to "before" video in Firebase Storage
   afterVideoPath?: string; // Path to "after" video in Firebase Storage
+  previewVideoPath?: string; // Path to preview video in Firebase Storage (for Plugins)
+  previewVideoUrl?: string; // Signed URL for preview video (for Plugins)
 }
 
 interface SoundEffect {
@@ -954,6 +956,142 @@ function OverlayPlayer({ overlay }: { overlay: Overlay }) {
 }
 
 /**
+ * Plugin Card Component - Shows thumbnail with hover preview video
+ */
+function PluginCard({ asset, onDownload, downloading, favorited, onFavorite }: { 
+  asset: Asset; 
+  onDownload: () => void;
+  downloading: boolean;
+  favorited: boolean;
+  onFavorite: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isHovering, setIsHovering] = useState(false);
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
+
+  // Get preview video URL
+  useEffect(() => {
+    if (asset.previewVideoUrl) {
+      setPreviewVideoUrl(asset.previewVideoUrl);
+    } else if (asset.previewVideoPath) {
+      // Generate public URL from storage path
+      const url = getPublicStorageUrl(asset.previewVideoPath);
+      setPreviewVideoUrl(url);
+    }
+  }, [asset]);
+
+  // Handle video play/pause on hover
+  useEffect(() => {
+    if (videoRef.current) {
+      if (isHovering && previewVideoUrl) {
+        videoRef.current.play().catch(() => {
+          // Video play failed, ignore
+        });
+      } else {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+      }
+    }
+  }, [isHovering, previewVideoUrl]);
+
+  return (
+    <div 
+      className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group"
+      onClick={onDownload}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      <div className="aspect-square bg-neutral-900 relative overflow-hidden">
+        {/* Preview Video (shown on hover) */}
+        {previewVideoUrl && (
+          <video
+            ref={videoRef}
+            src={previewVideoUrl}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+              isHovering ? 'opacity-100 z-10' : 'opacity-0 z-0'
+            }`}
+            playsInline
+            muted
+            loop
+            preload="metadata"
+          />
+        )}
+        
+        {/* Thumbnail Image (shown when not hovering or no preview video) */}
+        {asset.thumbnailUrl && 
+         asset.thumbnailUrl.startsWith('https://') && 
+         !asset.thumbnailUrl.includes('via.placeholder.com') &&
+         (asset.thumbnailUrl.includes('firebasestorage.googleapis.com') || 
+          asset.thumbnailUrl.includes('firebasestorage.app')) ? (
+          <img 
+            src={asset.thumbnailUrl} 
+            alt={asset.title}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+              isHovering && previewVideoUrl ? 'opacity-0' : 'opacity-100'
+            }`}
+            onError={(e) => {
+              console.error('Failed to load thumbnail:', asset.title, asset.thumbnailUrl);
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : null}
+        
+        {/* Fallback icon */}
+        {(!asset.thumbnailUrl || (!asset.thumbnailUrl.startsWith('https://') || asset.thumbnailUrl.includes('via.placeholder.com'))) && !previewVideoUrl && (
+          <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-900 to-black">
+            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </div>
+        )}
+        
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center pointer-events-none">
+          {downloading ? (
+            <div className="text-white text-sm">Downloading...</div>
+          ) : (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium">
+              Click to Download
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="p-3 bg-black">
+        <div className="font-semibold text-white text-sm">{asset.title}</div>
+        <div className="text-xs text-neutral-400 mt-1">{asset.category}</div>
+        {asset.description && (
+          <div className="text-xs text-neutral-500 mt-2 line-clamp-2">{asset.description}</div>
+        )}
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end mt-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFavorite();
+            }}
+            className={`w-8 h-8 flex items-center justify-center transition-colors ${
+              favorited
+                ? 'text-pink-500 hover:text-pink-400' 
+                : 'text-neutral-400 hover:text-pink-500'
+            }`}
+            title={favorited ? 'Unfavorite' : 'Favorite'}
+          >
+            <svg 
+              className={`w-4 h-4 ${favorited ? 'fill-current' : ''}`} 
+              fill={favorited ? 'currentColor' : 'none'} 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Sound Effect Player Component
  */
 function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; asset: Asset }) {
@@ -1806,6 +1944,43 @@ export default function AssetsPage() {
               // Use side-by-side slider for LUTs with video previews (legacy support for direct asset videos)
               if (showLUTs && asset.beforeVideoPath && asset.afterVideoPath) {
                 return <SideBySideVideoSlider key={asset.id} asset={asset} />;
+              }
+              
+              // Use PluginCard for Plugins with preview video support
+              const isPlugin = getSubCategory(asset) === 'Plugins';
+              if (isPlugin) {
+                return (
+                  <PluginCard
+                    key={asset.id}
+                    asset={asset}
+                    onDownload={() => handleDownload(asset)}
+                    downloading={downloading === asset.id}
+                    favorited={favoritedAssets.has(asset.id)}
+                    onFavorite={async () => {
+                      if (!user) {
+                        alert('Please sign in to favorite assets');
+                        return;
+                      }
+                      const assetSubCategory = getSubCategory(asset);
+                      const nowFavorited = await toggleSaved(user.uid, 'asset', asset.id, {
+                        assetId: asset.id,
+                        title: asset.title,
+                        category: asset.category,
+                        thumbnailUrl: asset.thumbnailUrl || undefined,
+                        subCategory: assetSubCategory || undefined,
+                      });
+                      setFavoritedAssets(prev => {
+                        const newSet = new Set(prev);
+                        if (nowFavorited) {
+                          newSet.add(asset.id);
+                        } else {
+                          newSet.delete(asset.id);
+                        }
+                        return newSet;
+                      });
+                    }}
+                  />
+                );
               }
               
               // Default asset card
