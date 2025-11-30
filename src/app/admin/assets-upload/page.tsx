@@ -191,7 +191,6 @@ export default function AdminAssetsUploadPage() {
       }
 
       // Step 3: Call API to process the file from Storage
-      const hasThumbnail = !!thumbnail;
       const hasPreviewVideo = !!previewVideo;
       setProcessingState(prev => ({
         ...prev,
