@@ -1247,12 +1247,12 @@ function PluginCard({ asset, onDownload, downloading, favorited, onFavorite }: {
 
   return (
     <div 
-      className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group flex flex-col"
+      className="rounded-lg overflow-hidden border border-neutral-700 bg-neutral-900 hover:border-neutral-500 transition-colors cursor-pointer group flex flex-col"
       onClick={onDownload}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <div className="aspect-square bg-neutral-900 relative overflow-hidden">
+      <div className="h-64 bg-neutral-900 relative overflow-hidden">
         {/* Preview Video (shown on hover) */}
         {previewVideoUrl && (
           <video
@@ -1307,7 +1307,7 @@ function PluginCard({ asset, onDownload, downloading, favorited, onFavorite }: {
           )}
         </div>
       </div>
-      <div className="p-3 bg-black flex flex-col flex-1">
+      <div className="p-3 bg-neutral-900 flex flex-col flex-1">
         <div className="font-semibold text-white text-sm line-clamp-2 leading-tight h-[2.5rem]">{asset.title}</div>
         <div className="text-xs text-neutral-400 mt-1 leading-none h-4">{asset.category}</div>
         <div className="text-xs text-neutral-500 mt-2 line-clamp-2 leading-tight h-[2.75rem]">
@@ -2417,7 +2417,7 @@ export default function AssetsPage() {
               return (
                 <div 
                   key={asset.id} 
-                  className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group flex flex-col"
+                  className="rounded-lg overflow-hidden border border-neutral-700 bg-neutral-900 hover:border-neutral-500 transition-colors cursor-pointer group flex flex-col"
                   onClick={() => {
                     if (isTemplate) {
                       setSelectedTemplate(asset);
@@ -2426,7 +2426,7 @@ export default function AssetsPage() {
                     }
                   }}
                 >
-                  <div className={`${isTemplate ? 'aspect-video' : 'aspect-square'} bg-neutral-900 relative overflow-hidden flex items-center justify-center`}>
+                  <div className="h-64 bg-neutral-900 relative overflow-hidden flex items-center justify-center">
                     {asset.thumbnailUrl && 
                      asset.thumbnailUrl.startsWith('https://') && 
                      !asset.thumbnailUrl.includes('via.placeholder.com') &&
@@ -2462,7 +2462,7 @@ export default function AssetsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="p-3 bg-black flex flex-col flex-1">
+                  <div className="p-3 bg-neutral-900 flex flex-col flex-1">
                     <div className="font-semibold text-white text-sm line-clamp-2 leading-tight h-[2.5rem]">{asset.title}</div>
                     <div className="text-xs text-neutral-400 mt-1 leading-none h-4">{asset.category}</div>
                     <div className="text-xs text-neutral-500 mt-2 line-clamp-2 leading-tight h-[2.75rem]">
