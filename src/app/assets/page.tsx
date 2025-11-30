@@ -1057,14 +1057,14 @@ function PluginCard({ asset, onDownload, downloading, favorited, onFavorite }: {
           )}
         </div>
       </div>
-      <div className="p-3 bg-black">
-        <div className="font-semibold text-white text-sm">{asset.title}</div>
-        <div className="text-xs text-neutral-400 mt-1">{asset.category}</div>
-        {asset.description && (
-          <div className="text-xs text-neutral-500 mt-2 line-clamp-2">{asset.description}</div>
-        )}
+      <div className="p-3 bg-black flex flex-col h-full">
+        <div className="font-semibold text-white text-sm line-clamp-2 min-h-[2.5rem]">{asset.title}</div>
+        <div className="text-xs text-neutral-400 mt-1 min-h-[1rem]">{asset.category}</div>
+        <div className="text-xs text-neutral-500 mt-2 line-clamp-2 min-h-[2.5rem]">
+          {asset.description || '\u00A0'}
+        </div>
         {/* Action Buttons */}
-        <div className="flex items-center justify-end mt-3">
+        <div className="flex items-center justify-end mt-3 mt-auto">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -2003,7 +2003,7 @@ export default function AssetsPage() {
               return (
                 <div 
                   key={asset.id} 
-                  className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group"
+                  className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group flex flex-col"
                   onClick={() => {
                     if (isTemplate) {
                       setSelectedTemplate(asset);
@@ -2043,14 +2043,14 @@ export default function AssetsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="p-3 bg-black">
-                    <div className="font-semibold text-white text-sm">{asset.title}</div>
-                    <div className="text-xs text-neutral-400 mt-1">{asset.category}</div>
-                    {asset.description && (
-                      <div className="text-xs text-neutral-500 mt-2 line-clamp-2">{asset.description}</div>
-                    )}
+                  <div className="p-3 bg-black flex flex-col h-full">
+                    <div className="font-semibold text-white text-sm line-clamp-2 min-h-[2.5rem]">{asset.title}</div>
+                    <div className="text-xs text-neutral-400 mt-1 min-h-[1rem]">{asset.category}</div>
+                    <div className="text-xs text-neutral-500 mt-2 line-clamp-2 min-h-[2.5rem]">
+                      {asset.description || '\u00A0'}
+                    </div>
                     {/* Action Buttons */}
-                    <div className="flex items-center justify-end mt-3">
+                    <div className="flex items-center justify-end mt-3 mt-auto">
                       <button
                         onClick={async (e) => {
                           e.stopPropagation();
