@@ -259,17 +259,57 @@ export default function WaitlistPage() {
           <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-neutral-300 mb-6 sm:mb-8 max-w-3xl mx-auto px-3 leading-relaxed" itemProp="description">
             Course Creator Academy is launching soon! Join our waitlist to be the first to access our creator-powered platform where you can learn from 800+ expert-led videos, land high-paying gigs through our job board, sell assets in our marketplace, access exclusive discounts, and connect with 50,000+ creators. Take your video production and filmmaking skills to the next level.
           </p>
+        </div>
+      </section>
 
+      {/* How Creators Earn Section */}
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16 w-full">
+        <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
+          <div className="inline-block px-4 py-2 rounded-full bg-green-500/20 border border-green-500/50 text-green-400 text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
+            MULTIPLE WAYS TO EARN
+          </div>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">
+            THIS ISN'T JUST LEARNING.<br />
+            <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent">THIS IS REAL MONEY.</span>
+          </h2>
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 max-w-3xl mx-auto leading-relaxed">
+            This platform isn't about passive learning—it's about active earning. Here's how our members turn opportunity into income.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8 px-2">
+          {earningWays.map((way, idx) => (
+            <div
+              key={idx}
+              className={`bg-gradient-to-br ${way.gradient} rounded-xl sm:rounded-2xl border-2 ${way.borderColor} p-6 sm:p-8 md:p-10 hover:shadow-xl hover:shadow-${way.borderColor.split('/')[0]}/20 transition-all duration-300 hover:-translate-y-1`}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="text-4xl sm:text-5xl">{way.icon}</div>
+                <div className="text-right">
+                  <div className="text-2xl sm:text-3xl font-bold text-white">{way.stat}</div>
+                  <div className="text-xs sm:text-sm text-neutral-300">{way.statLabel}</div>
+                </div>
+              </div>
+              <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-3">{way.title}</h3>
+              <p className="text-sm sm:text-base text-neutral-200 leading-relaxed">{way.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Waitlist Form Section */}
+      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16 w-full">
+        <div className="relative z-10 text-center max-w-5xl mx-auto">
           {/* Success Message */}
           {success && (
-            <div className="mt-6 sm:mt-8 mb-4 sm:mb-6 px-4 py-4 rounded-xl bg-green-500/20 border border-green-500/50 text-green-300 max-w-2xl mx-auto">
+            <div className="mb-6 sm:mb-8 px-4 py-4 rounded-xl bg-green-500/20 border border-green-500/50 text-green-300 max-w-2xl mx-auto">
               <p className="font-semibold mb-1">You're on the list! 🎉</p>
               <p className="text-sm">Check your email for confirmation. We'll notify you as soon as we launch.</p>
             </div>
           )}
 
           {/* Waitlist Form */}
-          <div className="mt-8 sm:mt-12 mb-6 sm:mb-8 w-full max-w-2xl mx-auto px-2">
+          <div className="w-full max-w-2xl mx-auto px-2">
             <form onSubmit={handleSubmit} className="bg-gradient-to-br from-neutral-950 to-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-800 p-4 sm:p-6 md:p-8" itemScope itemType="https://schema.org/ContactPage">
               {error && (
                 <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/20 border border-red-500/50 text-red-300 text-sm">
@@ -428,41 +468,6 @@ export default function WaitlistPage() {
               Ready to level up? <span className="font-bold text-black">Join the waitlist above!</span>
             </p>
           </div>
-        </div>
-      </section>
-
-      {/* How Creators Earn Section */}
-      <section className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16 w-full">
-        <div className="text-center mb-8 sm:mb-12 md:mb-16 px-2">
-          <div className="inline-block px-4 py-2 rounded-full bg-green-500/20 border border-green-500/50 text-green-400 text-xs sm:text-sm font-semibold mb-6 sm:mb-8">
-            MULTIPLE WAYS TO EARN
-          </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold mb-3 sm:mb-4 text-white drop-shadow-lg leading-tight">
-            THIS ISN'T JUST LEARNING.<br />
-            <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent">THIS IS REAL MONEY.</span>
-          </h2>
-          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 max-w-3xl mx-auto leading-relaxed">
-            This platform isn't about passive learning—it's about active earning. Here's how our members turn opportunity into income.
-          </p>
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8 px-2">
-          {earningWays.map((way, idx) => (
-            <div
-              key={idx}
-              className={`bg-gradient-to-br ${way.gradient} rounded-xl sm:rounded-2xl border-2 ${way.borderColor} p-6 sm:p-8 md:p-10 hover:shadow-xl hover:shadow-${way.borderColor.split('/')[0]}/20 transition-all duration-300 hover:-translate-y-1`}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="text-4xl sm:text-5xl">{way.icon}</div>
-                <div className="text-right">
-                  <div className="text-2xl sm:text-3xl font-bold text-white">{way.stat}</div>
-                  <div className="text-xs sm:text-sm text-neutral-300">{way.statLabel}</div>
-                </div>
-              </div>
-              <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-3">{way.title}</h3>
-              <p className="text-sm sm:text-base text-neutral-200 leading-relaxed">{way.description}</p>
-            </div>
-          ))}
         </div>
       </section>
     </main>
