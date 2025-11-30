@@ -94,16 +94,19 @@ function SavedItemCard({
     }
   }, [item, isVideo, videoUrl]);
   
-  // Determine aspect ratio based on item type
-  // Templates, Overlays, Transitions, SFX, Plugins, Courses, and Marketplace items use aspect-video (16:9)
-  // Regular assets use aspect-square
+  // Determine aspect ratio based on item type - matches assets page logic
+  // Templates use aspect-video (16:9) - they display as video previews
+  // Overlays/Transitions with video previews use aspect-video (16:9)
+  // LUTs with video previews use aspect-video (16:9)
+  // Everything else (SFX, Plugins, regular assets) uses aspect-square (1:1)
+  // Courses and Marketplace items use aspect-video (16:9)
   const isTemplate = item.type === 'asset' && item.category === 'Templates';
-  const isOverlay = item.type === 'asset' && (item.subCategory === 'Overlays' || item.subCategory === 'Transitions' || item.previewStoragePath);
-  const isPlugin = item.type === 'asset' && item.subCategory === 'Plugins';
-  const isSFX = item.type === 'asset' && item.subCategory === 'SFX';
+  const hasVideoPreview = isVideoAsset(item); // Assets with video previews (overlays, transitions, LUTs)
   const isCourse = item.type === 'course';
   const isMarketplace = item.type === 'market';
-  const aspectClass = (isTemplate || isOverlay || isPlugin || isSFX || isCourse || isMarketplace) ? 'aspect-video' : 'aspect-square';
+  // Templates, video preview assets (overlays/transitions/LUTs), courses, and marketplace use 16:9
+  // Everything else (SFX, Plugins, regular assets) uses 1:1 square
+  const aspectClass = (isTemplate || hasVideoPreview || isCourse || isMarketplace) ? 'aspect-video' : 'aspect-square';
 
   // Intersection Observer for video playback
   useEffect(() => {
@@ -201,7 +204,7 @@ function SavedItemCard({
               <img
                 src={getItemImage(item)!}
                 alt={getItemTitle(item)}
-                className={`absolute inset-0 ${(isTemplate || isCourse || isPlugin) ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover group-hover:scale-105'} transition-transform duration-300`}
+                className={`absolute inset-0 ${(isTemplate || isCourse) ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover group-hover:scale-105'} transition-transform duration-300`}
                 loading="lazy"
                 decoding="async"
                 onError={(e) => {
@@ -253,7 +256,7 @@ function SavedItemCard({
 
 export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'all' | 'market' | 'video' | 'job' | 'asset' | 'course'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'market' | 'job' | 'asset' | 'course'>('all');
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -639,7 +642,7 @@ export function SavedItems({ isOpen, onClose }: SavedItemsProps) {
 
           {/* Tabs */}
           <div className="flex items-center gap-1 px-6 pt-4 border-b border-neutral-800 bg-neutral-900/50 overflow-x-auto">
-            {(['all', 'market', 'video', 'job', 'asset', 'course'] as const).map((tab) => (
+            {(['all', 'market', 'job', 'asset', 'course'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
