@@ -9,7 +9,7 @@ import { ProcessingStatus } from '@/components/admin/ProcessingStatus';
 import { AssetCategoryManager } from '@/components/admin/AssetCategoryManager';
 
 type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets' | 'Templates';
-type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
+type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | 'LUTs' | 'Presets' | null;
 
 type ProcessingState = {
   status: 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
@@ -37,7 +37,7 @@ export default function AdminAssetsUploadPage() {
   });
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleFileSelect = useCallback(async (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory, previewVideo?: File, description?: string) => {
+  const handleFileSelect = useCallback(async (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory, previewVideo?: File, description?: string, beforeImage?: File, afterImage?: File) => {
     if (!user || !firebaseReady || !storage) {
       setProcessingState({
         status: 'error',
@@ -190,11 +190,95 @@ export default function AdminAssetsUploadPage() {
         previewVideoStoragePath = previewVideoPath;
       }
 
-      // Step 3: Call API to process the file from Storage
+      // Step 2.6: Upload before/after images if provided (for Presets)
+      let beforeImageStoragePath: string | undefined;
+      let afterImageStoragePath: string | undefined;
       const hasPreviewVideo = !!previewVideo;
+      
+      if (beforeImage) {
+        setProcessingState(prev => ({
+          ...prev,
+          progress: hasThumbnail && hasPreviewVideo ? 35 : hasThumbnail || hasPreviewVideo ? 30 : 25,
+          currentStep: 'Uploading before image...',
+        }));
+
+        const beforeImageFileName = beforeImage.name;
+        const beforeImagePath = `admin-assets-uploads/${user.uid}/${timestamp}_${beforeImageFileName.replace(/\s+/g, '_')}`;
+        const beforeImageStorageRef = ref(storage, beforeImagePath);
+        
+        const beforeImageUploadTask = uploadBytesResumable(beforeImageStorageRef, beforeImage, {
+          contentType: beforeImage.type || 'image/png',
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          beforeImageUploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const uploadProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              const baseProgress = hasThumbnail && hasPreviewVideo ? 35 : hasThumbnail || hasPreviewVideo ? 30 : 25;
+              setProcessingState(prev => ({
+                ...prev,
+                progress: baseProgress + Math.min(uploadProgress * 0.025, 2.5), // Before image upload is 2.5% of total progress
+                currentStep: `Uploading before image... ${Math.round(uploadProgress)}%`,
+              }));
+            },
+            (error) => {
+              reject(error);
+            },
+            async () => {
+              resolve();
+            }
+          );
+        });
+
+        beforeImageStoragePath = beforeImagePath;
+      }
+
+      if (afterImage) {
+        const baseProgress = hasThumbnail && hasPreviewVideo ? 37.5 : hasThumbnail || hasPreviewVideo ? 32.5 : 27.5;
+        setProcessingState(prev => ({
+          ...prev,
+          progress: baseProgress,
+          currentStep: 'Uploading after image...',
+        }));
+
+        const afterImageFileName = afterImage.name;
+        const afterImagePath = `admin-assets-uploads/${user.uid}/${timestamp}_${afterImageFileName.replace(/\s+/g, '_')}`;
+        const afterImageStorageRef = ref(storage, afterImagePath);
+        
+        const afterImageUploadTask = uploadBytesResumable(afterImageStorageRef, afterImage, {
+          contentType: afterImage.type || 'image/png',
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          afterImageUploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const uploadProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setProcessingState(prev => ({
+                ...prev,
+                progress: baseProgress + Math.min(uploadProgress * 0.025, 2.5), // After image upload is 2.5% of total progress
+                currentStep: `Uploading after image... ${Math.round(uploadProgress)}%`,
+              }));
+            },
+            (error) => {
+              reject(error);
+            },
+            async () => {
+              resolve();
+            }
+          );
+        });
+
+        afterImageStoragePath = afterImagePath;
+      }
+
+      // Step 3: Call API to process the file from Storage
+      const hasBeforeAfterImages = !!(beforeImage || afterImage);
+      const finalBaseProgress = hasThumbnail && hasPreviewVideo ? (hasBeforeAfterImages ? 40 : 35) : hasThumbnail || hasPreviewVideo ? (hasBeforeAfterImages ? 35 : 30) : (hasBeforeAfterImages ? 30 : 25);
       setProcessingState(prev => ({
         ...prev,
-        progress: hasThumbnail && hasPreviewVideo ? 35 : hasThumbnail || hasPreviewVideo ? 30 : 25,
+        progress: finalBaseProgress,
         currentStep: 'Processing ZIP file...',
         status: 'processing',
       }));
@@ -213,6 +297,8 @@ export default function AdminAssetsUploadPage() {
           thumbnailStoragePath,
           thumbnailDownloadURL,
           previewVideoStoragePath,
+          beforeImageStoragePath,
+          afterImageStoragePath,
           subCategory: subCategory || undefined,
           description: description || undefined,
         }),
@@ -249,9 +335,9 @@ export default function AdminAssetsUploadPage() {
                 const data = JSON.parse(line.slice(6));
                 
                 if (data.progress !== undefined) {
-                  // Server progress starts after ZIP + optional thumbnail + optional preview video upload
+                  // Server progress starts after ZIP + optional thumbnail + optional preview video + optional before/after images upload
                   // Map server progress to overall progress
-                  const baseProgress = hasThumbnail && hasPreviewVideo ? 35 : hasThumbnail || hasPreviewVideo ? 30 : 25;
+                  const baseProgress = hasThumbnail && hasPreviewVideo ? (hasBeforeAfterImages ? 40 : 35) : hasThumbnail || hasPreviewVideo ? (hasBeforeAfterImages ? 35 : 30) : (hasBeforeAfterImages ? 30 : 25);
                   const serverProgress = Math.max(baseProgress, Math.min(100, data.progress));
                   setProcessingState(prev => ({
                     ...prev,

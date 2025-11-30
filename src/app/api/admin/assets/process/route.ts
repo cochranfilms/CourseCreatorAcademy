@@ -21,6 +21,7 @@ const CATEGORY_MAP: Record<string, string> = {
 // File extensions
 const OVERLAY_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.tiff', '.tif', '.mov', '.mp4', '.avi', '.mkv', '.webm', '.m4v'];
 const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.aiff', '.m4a', '.ogg', '.flac'];
+const PRESET_EXTENSIONS = ['.prf', '.prfset', '.xml', '.xmp', '.aep', '.mogrt', '.fcpxml', '.dpx', '.drp', '.cat', '.look', '.cub', '.cube', '.3dl', '.cc', '.ccc', '.clf', '.itx', '.vf'];
 
 /**
  * Verify user is authorized (info@cochranfilms.com)
@@ -74,6 +75,8 @@ function getContentType(extension: string): string {
     '.ogg': 'audio/ogg',
     '.flac': 'audio/flac',
     '.cube': 'application/octet-stream',
+    '.xmp': 'application/xml',
+    '.xml': 'application/xml',
   };
   return map[extension.toLowerCase()] || 'application/octet-stream';
 }
@@ -437,7 +440,7 @@ export async function POST(req: NextRequest) {
       try {
         // Parse request body (JSON with storage path)
         const body = await req.json();
-        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL, previewVideoStoragePath, subCategory, description } = body;
+        const { storagePath, category, fileName, thumbnailStoragePath, thumbnailDownloadURL, previewVideoStoragePath, beforeImageStoragePath, afterImageStoragePath, subCategory, description } = body;
 
         if (!storagePath || !category || !fileName) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Missing storagePath, category, or fileName' })}\n\n`));
@@ -458,6 +461,10 @@ export async function POST(req: NextRequest) {
           categoryFolder = 'plugins';
         } else if (category === 'SFX & Plugins') {
           categoryFolder = 'sfx'; // Default to sfx if no subcategory or SFX selected
+        } else if (category === 'LUTs & Presets' && subCategory === 'Presets') {
+          categoryFolder = 'presets';
+        } else if (category === 'LUTs & Presets') {
+          categoryFolder = 'luts'; // Default to luts if no subcategory or LUTs selected
         }
         const packName = fileName.replace(/\.zip$/i, '');
         const zipStoragePath = `assets/${categoryFolder}/${fileName}`;
@@ -481,6 +488,8 @@ export async function POST(req: NextRequest) {
         const thumbnailFolderPath = `assets/${categoryFolder}/${packName}`;
         const thumbnailPath = `${thumbnailFolderPath}/preview.png`;
         const previewVideoPath = `${thumbnailFolderPath}/preview.mp4`;
+        const beforeImagePath = `${thumbnailFolderPath}/before.png`;
+        const afterImagePath = `${thumbnailFolderPath}/after.png`;
 
         // Create thumbnail folder structure (by creating a .keep file)
         try {
@@ -563,6 +572,53 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Handle before/after images upload if provided (for Presets)
+        let beforeImageUrl: string | null = null;
+        let afterImageUrl: string | null = null;
+        if (beforeImageStoragePath || afterImageStoragePath) {
+          try {
+            if (beforeImageStoragePath) {
+              // Copy before image to final location
+              const beforeImageSourceFile = bucket.file(beforeImageStoragePath);
+              const beforeImageDestFile = bucket.file(beforeImagePath);
+              await beforeImageSourceFile.copy(beforeImageDestFile);
+              
+              // Delete temporary before image file
+              await beforeImageSourceFile.delete().catch(() => {});
+
+              // Generate signed URL for before image
+              const expiresAt = new Date();
+              expiresAt.setFullYear(expiresAt.getFullYear() + 10);
+              [beforeImageUrl] = await beforeImageDestFile.getSignedUrl({
+                action: 'read',
+                expires: expiresAt,
+              });
+            }
+
+            if (afterImageStoragePath) {
+              // Copy after image to final location
+              const afterImageSourceFile = bucket.file(afterImageStoragePath);
+              const afterImageDestFile = bucket.file(afterImagePath);
+              await afterImageSourceFile.copy(afterImageDestFile);
+              
+              // Delete temporary after image file
+              await afterImageSourceFile.delete().catch(() => {});
+
+              // Generate signed URL for after image
+              const expiresAt = new Date();
+              expiresAt.setFullYear(expiresAt.getFullYear() + 10);
+              [afterImageUrl] = await afterImageDestFile.getSignedUrl({
+                action: 'read',
+                expires: expiresAt,
+              });
+            }
+          } catch (error: any) {
+            console.error('Failed to process before/after images:', error);
+            // Don't fail the entire process if images fail
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ step: `Warning: Failed to process before/after images: ${error.message}` })}\n\n`));
+          }
+        }
+
         sendProgress(controller, 40, 'Creating main asset document...', 'processing');
 
         await assetRef.set({
@@ -572,6 +628,8 @@ export async function POST(req: NextRequest) {
           fileType: 'zip',
           ...(thumbnailUrl ? { thumbnailUrl } : {}),
           ...(previewVideoUrl ? { previewVideoPath, previewVideoUrl } : {}),
+          ...(beforeImageUrl ? { beforeImagePath, beforeImageUrl } : {}),
+          ...(afterImageUrl ? { afterImagePath, afterImageUrl } : {}),
           ...(description ? { description } : {}),
           createdAt: FirebaseFirestore.FieldValue.serverTimestamp(),
           updatedAt: FirebaseFirestore.FieldValue.serverTimestamp(),
@@ -757,100 +815,174 @@ export async function POST(req: NextRequest) {
           results.documentsCreated = processed;
 
         } else if (category === 'LUTs & Presets') {
-          sendProgress(controller, 50, 'Processing LUT files...', 'processing');
+          const isPreset = subCategory === 'Presets';
           
-          const batch = adminDb.batch();
-          let processed = 0;
-          let fileCount = 0;
+          if (isPreset) {
+            // Handle Presets: Extract all preset files and create folder structure
+            sendProgress(controller, 50, 'Processing preset files...', 'processing');
+            
+            const batch = adminDb.batch();
+            let processed = 0;
+            let fileCount = 0;
 
-          // Stream ZIP directly from Firebase Storage and process .cube files
-          await new Promise<void>((resolve, reject) => {
-            const file = bucket.file(zipStoragePath);
-            const readStream = file.createReadStream();
-
-            readStream
-              .pipe(unzipper.Parse())
-              .on('entry', async (entry: unzipper.Entry) => {
-                const entryPath = entry.path;
+            // Process preset files using streaming
+            const processPresetFile = async (presetFile: { fileName: string; localPath: string; extension: string; relativePath: string }) => {
+              fileCount++;
+              try {
+                // Preserve folder structure from ZIP, but store in presets folder
+                // Remove leading slashes and normalize path separators
+                let relativePath = presetFile.relativePath.replace(/^\/+/, '').replace(/\\/g, '/');
                 
-                // Skip directories and macOS metadata
-                if (entry.type === 'Directory' || entryPath.includes('/._') || path.basename(entryPath).startsWith('._')) {
-                  entry.autodrain();
-                  return;
+                // Extract folder structure (everything except the filename)
+                let folderPath = '';
+                if (relativePath && relativePath !== presetFile.fileName) {
+                  // Get directory path (remove filename)
+                  const dirPath = path.dirname(relativePath).replace(/\\/g, '/');
+                  if (dirPath && dirPath !== '.' && dirPath !== relativePath) {
+                    folderPath = dirPath;
+                  }
                 }
+                
+                // Build storage path preserving folder structure
+                const storagePath = folderPath 
+                  ? `assets/presets/${packName}/${folderPath}/${presetFile.fileName}`
+                  : `assets/presets/${packName}/${presetFile.fileName}`;
+                
+                // Upload preset file
+                const contentType = getContentType(presetFile.extension);
+                await uploadFile(bucket, presetFile.localPath, storagePath, contentType);
+                
+                // Delete file immediately to free disk space
+                await fs.remove(presetFile.localPath).catch(() => {});
 
-                // Look for .cube files in CUBE folder
-                if (entryPath.toLowerCase().includes('/cube/') && entryPath.toLowerCase().endsWith('.cube')) {
-                  const fileName = path.basename(entryPath);
-                  const lutName = path.basename(fileName, '.cube');
-                  const extractPath = path.join(extractDir, `temp_${Date.now()}_${fileName}`);
+                // Create preset document
+                const presetRef = adminDb.collection('assets').doc(assetId).collection('presets').doc();
+                batch.set(presetRef, {
+                  assetId,
+                  assetTitle: title,
+                  fileName: presetFile.fileName,
+                  storagePath,
+                  fileType: presetFile.extension.replace('.', ''),
+                  ...(folderPath ? { relativePath: folderPath } : {}),
+                  createdAt: FirebaseFirestore.FieldValue.serverTimestamp(),
+                });
 
-                  fs.ensureDirSync(path.dirname(extractPath));
-                  const writeStream = fs.createWriteStream(extractPath);
-                  entry.pipe(writeStream);
+                processed++;
+                sendProgress(controller, 50 + Math.min(30, (processed / Math.max(1, fileCount)) * 30), `Processing preset ${processed}...`, 'processing');
+              } catch (error: any) {
+                results.errors.push(`Error processing ${presetFile.fileName}: ${error.message}`);
+              }
+            };
 
-                  writeStream.on('close', async () => {
-                    try {
-                      fileCount++;
-                      const cubeStoragePath = `assets/luts/${packName}/CUBE/${fileName}`;
-                      
-                      // Upload .cube file
-                      await uploadFile(bucket, extractPath, cubeStoragePath, 'application/octet-stream');
-                      
-                      // Delete .cube file immediately to free disk space
-                      await fs.remove(extractPath).catch(() => {});
+            // Stream ZIP directly from Firebase Storage (no download needed)
+            results.filesProcessed = await processZipFromStorageStreaming(
+              bucket,
+              zipStoragePath,
+              extractDir,
+              PRESET_EXTENSIONS,
+              processPresetFile
+            );
 
-                      // Try to find matching videos (they should be in Storage already)
-                      const beforePath = `assets/luts/${packName}/${lutName}/before.mp4`;
-                      const afterPath = `assets/luts/${packName}/${lutName}/after.mp4`;
+            await batch.commit();
+            results.documentsCreated = processed;
 
-                      let beforeExists = false;
-                      let afterExists = false;
+          } else {
+            // Handle LUTs: Extract .cube files from CUBE folder
+            sendProgress(controller, 50, 'Processing LUT files...', 'processing');
+            
+            const batch = adminDb.batch();
+            let processed = 0;
+            let fileCount = 0;
 
+            // Stream ZIP directly from Firebase Storage and process .cube files
+            await new Promise<void>((resolve, reject) => {
+              const file = bucket.file(zipStoragePath);
+              const readStream = file.createReadStream();
+
+              readStream
+                .pipe(unzipper.Parse())
+                .on('entry', async (entry: unzipper.Entry) => {
+                  const entryPath = entry.path;
+                  
+                  // Skip directories and macOS metadata
+                  if (entry.type === 'Directory' || entryPath.includes('/._') || path.basename(entryPath).startsWith('._')) {
+                    entry.autodrain();
+                    return;
+                  }
+
+                  // Look for .cube files in CUBE folder
+                  if (entryPath.toLowerCase().includes('/cube/') && entryPath.toLowerCase().endsWith('.cube')) {
+                    const fileName = path.basename(entryPath);
+                    const lutName = path.basename(fileName, '.cube');
+                    const extractPath = path.join(extractDir, `temp_${Date.now()}_${fileName}`);
+
+                    fs.ensureDirSync(path.dirname(extractPath));
+                    const writeStream = fs.createWriteStream(extractPath);
+                    entry.pipe(writeStream);
+
+                    writeStream.on('close', async () => {
                       try {
-                        const [beforeFile] = await bucket.file(beforePath).exists();
-                        const [afterFile] = await bucket.file(afterPath).exists();
-                        beforeExists = beforeFile;
-                        afterExists = afterFile;
-                      } catch {}
+                        fileCount++;
+                        const cubeStoragePath = `assets/luts/${packName}/CUBE/${fileName}`;
+                        
+                        // Upload .cube file
+                        await uploadFile(bucket, extractPath, cubeStoragePath, 'application/octet-stream');
+                        
+                        // Delete .cube file immediately to free disk space
+                        await fs.remove(extractPath).catch(() => {});
 
-                      // Create LUT preview document
-                      const lutRef = adminDb.collection('assets').doc(assetId).collection('lutPreviews').doc();
-                      batch.set(lutRef, {
-                        assetId,
-                        assetTitle: title,
-                        lutName,
-                        ...(beforeExists ? { beforeVideoPath: beforePath } : {}),
-                        ...(afterExists ? { afterVideoPath: afterPath } : {}),
-                        lutFilePath: cubeStoragePath,
-                        fileName: fileName,
-                        createdAt: FirebaseFirestore.FieldValue.serverTimestamp(),
-                      });
-                      processed++;
-                      sendProgress(controller, 50 + Math.min(30, (processed / Math.max(1, fileCount)) * 30), `Processing LUT ${processed}...`, 'processing');
-                    } catch (error: any) {
-                      results.errors.push(`Error processing ${fileName}: ${error.message}`);
+                        // Try to find matching videos (they should be in Storage already)
+                        const beforePath = `assets/luts/${packName}/${lutName}/before.mp4`;
+                        const afterPath = `assets/luts/${packName}/${lutName}/after.mp4`;
+
+                        let beforeExists = false;
+                        let afterExists = false;
+
+                        try {
+                          const [beforeFile] = await bucket.file(beforePath).exists();
+                          const [afterFile] = await bucket.file(afterPath).exists();
+                          beforeExists = beforeFile;
+                          afterExists = afterFile;
+                        } catch {}
+
+                        // Create LUT preview document
+                        const lutRef = adminDb.collection('assets').doc(assetId).collection('lutPreviews').doc();
+                        batch.set(lutRef, {
+                          assetId,
+                          assetTitle: title,
+                          lutName,
+                          ...(beforeExists ? { beforeVideoPath: beforePath } : {}),
+                          ...(afterExists ? { afterVideoPath: afterPath } : {}),
+                          lutFilePath: cubeStoragePath,
+                          fileName: fileName,
+                          createdAt: FirebaseFirestore.FieldValue.serverTimestamp(),
+                        });
+                        processed++;
+                        sendProgress(controller, 50 + Math.min(30, (processed / Math.max(1, fileCount)) * 30), `Processing LUT ${processed}...`, 'processing');
+                      } catch (error: any) {
+                        results.errors.push(`Error processing ${fileName}: ${error.message}`);
+                        await fs.remove(extractPath).catch(() => {});
+                      }
+                    });
+
+                    writeStream.on('error', async (err) => {
+                      results.errors.push(`Error extracting ${fileName}: ${err.message}`);
                       await fs.remove(extractPath).catch(() => {});
-                    }
-                  });
-
-                  writeStream.on('error', async (err) => {
-                    results.errors.push(`Error extracting ${fileName}: ${err.message}`);
-                    await fs.remove(extractPath).catch(() => {});
-                  });
-                } else {
-                  entry.autodrain();
-                }
-              })
-              .on('close', async () => {
-                await batch.commit();
-                results.filesProcessed = fileCount;
-                results.lutPreviewsCreated = processed;
-                results.documentsCreated = processed;
-                resolve();
-              })
-              .on('error', reject);
-          });
+                    });
+                  } else {
+                    entry.autodrain();
+                  }
+                })
+                .on('close', async () => {
+                  await batch.commit();
+                  results.filesProcessed = fileCount;
+                  results.lutPreviewsCreated = processed;
+                  results.documentsCreated = processed;
+                  resolve();
+                })
+                .on('error', reject);
+            });
+          }
         }
 
         // Cleanup temp directory

@@ -2,10 +2,10 @@
 import { useState, useCallback, useRef } from 'react';
 
 type Category = 'Overlays & Transitions' | 'SFX & Plugins' | 'LUTs & Presets' | 'Templates';
-type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
+type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | 'LUTs' | 'Presets' | null;
 
 interface AssetUploadZoneProps {
-  onFileSelect: (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory, previewVideo?: File, description?: string) => void;
+  onFileSelect: (file: File, category: Category, thumbnail?: File, subCategory?: SubCategory, previewVideo?: File, description?: string, beforeImage?: File, afterImage?: File) => void;
   disabled?: boolean;
 }
 
@@ -16,10 +16,16 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [previewVideoFile, setPreviewVideoFile] = useState<File | null>(null);
+  const [beforeImageFile, setBeforeImageFile] = useState<File | null>(null);
+  const [beforeImagePreview, setBeforeImagePreview] = useState<string | null>(null);
+  const [afterImageFile, setAfterImageFile] = useState<File | null>(null);
+  const [afterImagePreview, setAfterImagePreview] = useState<string | null>(null);
   const [description, setDescription] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const previewVideoInputRef = useRef<HTMLInputElement>(null);
+  const beforeImageInputRef = useRef<HTMLInputElement>(null);
+  const afterImageInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -45,22 +51,42 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
     const videoFile = files.find(f => /\.(mp4)$/i.test(f.name));
 
     if (zipFile) {
-      const subCategory = (selectedCategory === 'Overlays & Transitions' || selectedCategory === 'SFX & Plugins') ? selectedSubCategory : undefined;
-      onFileSelect(zipFile, selectedCategory, imageFile || thumbnailFile || undefined, subCategory, videoFile || previewVideoFile || undefined, description || undefined);
+      const subCategory = (selectedCategory === 'Overlays & Transitions' || selectedCategory === 'SFX & Plugins' || selectedCategory === 'LUTs & Presets') ? selectedSubCategory : undefined;
+      const beforeImg = files.find(f => /\.(jpg|jpeg|png|webp)$/i.test(f.name) && (f.name.toLowerCase().includes('before') || f.name.toLowerCase().includes('original')));
+      const afterImg = files.find(f => /\.(jpg|jpeg|png|webp)$/i.test(f.name) && (f.name.toLowerCase().includes('after') || f.name.toLowerCase().includes('applied')));
+      onFileSelect(
+        zipFile, 
+        selectedCategory, 
+        imageFile || thumbnailFile || undefined, 
+        subCategory, 
+        videoFile || previewVideoFile || undefined, 
+        description || undefined,
+        beforeImg || beforeImageFile || undefined,
+        afterImg || afterImageFile || undefined
+      );
     } else {
       alert('Please upload a ZIP file');
     }
-  }, [disabled, selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile, previewVideoFile, description]);
+  }, [disabled, selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile, previewVideoFile, beforeImageFile, afterImageFile, description]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.zip')) {
-      const subCategory = (selectedCategory === 'Overlays & Transitions' || selectedCategory === 'SFX & Plugins') ? selectedSubCategory : undefined;
-      onFileSelect(file, selectedCategory, thumbnailFile || undefined, subCategory, previewVideoFile || undefined, description || undefined);
+      const subCategory = (selectedCategory === 'Overlays & Transitions' || selectedCategory === 'SFX & Plugins' || selectedCategory === 'LUTs & Presets') ? selectedSubCategory : undefined;
+      onFileSelect(
+        file, 
+        selectedCategory, 
+        thumbnailFile || undefined, 
+        subCategory, 
+        previewVideoFile || undefined, 
+        description || undefined,
+        beforeImageFile || undefined,
+        afterImageFile || undefined
+      );
     } else {
       alert('Please upload a ZIP file');
     }
-  }, [selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile, previewVideoFile, description]);
+  }, [selectedCategory, selectedSubCategory, onFileSelect, thumbnailFile, previewVideoFile, beforeImageFile, afterImageFile, description]);
 
   const handleThumbnailInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -105,6 +131,56 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
     }
   }, []);
 
+  const handleBeforeImageInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (/\.(jpg|jpeg|png|webp)$/i.test(file.name)) {
+        setBeforeImageFile(file);
+        // Create preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setBeforeImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        alert('Please upload a valid image file (JPG, PNG, or WebP)');
+      }
+    }
+  }, []);
+
+  const handleRemoveBeforeImage = useCallback(() => {
+    setBeforeImageFile(null);
+    setBeforeImagePreview(null);
+    if (beforeImageInputRef.current) {
+      beforeImageInputRef.current.value = '';
+    }
+  }, []);
+
+  const handleAfterImageInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (/\.(jpg|jpeg|png|webp)$/i.test(file.name)) {
+        setAfterImageFile(file);
+        // Create preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAfterImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        alert('Please upload a valid image file (JPG, PNG, or WebP)');
+      }
+    }
+  }, []);
+
+  const handleRemoveAfterImage = useCallback(() => {
+    setAfterImageFile(null);
+    setAfterImagePreview(null);
+    if (afterImageInputRef.current) {
+      afterImageInputRef.current.value = '';
+    }
+  }, []);
+
   const handleClick = useCallback(() => {
     if (!disabled) {
       fileInputRef.current?.click();
@@ -128,6 +204,10 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
               setSelectedSubCategory('Overlays');
             } else if (newCategory === 'SFX & Plugins') {
               setSelectedSubCategory('SFX');
+            } else if (newCategory === 'LUTs & Presets') {
+              setSelectedSubCategory('LUTs');
+            } else {
+              setSelectedSubCategory(null);
             }
           }}
           disabled={disabled}
@@ -172,6 +252,24 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
           >
             <option value="SFX">SFX</option>
             <option value="Plugins">Plugins</option>
+          </select>
+        </div>
+      )}
+
+      {/* Subcategory Selector for LUTs & Presets */}
+      {selectedCategory === 'LUTs & Presets' && (
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-2">
+            Subcategory
+          </label>
+          <select
+            value={selectedSubCategory || ''}
+            onChange={(e) => setSelectedSubCategory(e.target.value as SubCategory)}
+            disabled={disabled}
+            className="w-full px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="LUTs">LUTs</option>
+            <option value="Presets">Presets</option>
           </select>
         </div>
       )}
@@ -270,6 +368,111 @@ export function AssetUploadZone({ onFileSelect, disabled }: AssetUploadZoneProps
           <p className="text-xs text-neutral-500 mt-1">
             Upload an MP4 preview video that will play on hover in the Plugins tab
           </p>
+        </div>
+      )}
+
+      {/* Before/After Image Upload for Presets */}
+      {selectedCategory === 'LUTs & Presets' && selectedSubCategory === 'Presets' && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              Before Image (Optional)
+            </label>
+            <div className="flex items-center gap-4">
+              {beforeImagePreview ? (
+                <div className="relative">
+                  <img
+                    src={beforeImagePreview}
+                    alt="Before preview"
+                    className="w-32 h-32 object-cover rounded-lg border border-neutral-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveBeforeImage}
+                    disabled={disabled}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => !disabled && beforeImageInputRef.current?.click()}
+                  disabled={disabled}
+                  className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-neutral-300 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Select Before Image
+                </button>
+              )}
+              <input
+                ref={beforeImageInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleBeforeImageInput}
+                className="hidden"
+                disabled={disabled}
+              />
+              {beforeImageFile && (
+                <span className="text-sm text-neutral-400">
+                  {beforeImageFile.name}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-neutral-500 mt-1">
+              Upload the "before" image for the preset preview slider (JPG, PNG, or WebP)
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              After Image (Optional)
+            </label>
+            <div className="flex items-center gap-4">
+              {afterImagePreview ? (
+                <div className="relative">
+                  <img
+                    src={afterImagePreview}
+                    alt="After preview"
+                    className="w-32 h-32 object-cover rounded-lg border border-neutral-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveAfterImage}
+                    disabled={disabled}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => !disabled && afterImageInputRef.current?.click()}
+                  disabled={disabled}
+                  className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-neutral-300 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Select After Image
+                </button>
+              )}
+              <input
+                ref={afterImageInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleAfterImageInput}
+                className="hidden"
+                disabled={disabled}
+              />
+              {afterImageFile && (
+                <span className="text-sm text-neutral-400">
+                  {afterImageFile.name}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-neutral-500 mt-1">
+              Upload the "after" image for the preset preview slider (JPG, PNG, or WebP)
+            </p>
+          </div>
         </div>
       )}
 
