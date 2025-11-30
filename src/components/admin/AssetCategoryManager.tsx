@@ -697,7 +697,7 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
                         </div>
                       </div>
                     );
-                  }))
+                  })
                 )}
               </div>
             </div>
