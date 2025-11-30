@@ -782,6 +782,14 @@ export async function POST(req: NextRequest) {
                 // Remove leading slashes and normalize path separators
                 let relativePath = presetFile.relativePath.replace(/^\/+/, '').replace(/\\/g, '/');
                 
+                // Remove duplicate root folder if ZIP contains pack name folder
+                // e.g., "OVERLAY - Garden Glow Presets/preset.xmp" -> "preset.xmp"
+                // or "OVERLAY - Garden Glow Presets/Folder1/preset.xmp" -> "Folder1/preset.xmp"
+                const normalizedPackName = packName.replace(/\s+/g, ' ').trim();
+                if (relativePath.toLowerCase().startsWith(normalizedPackName.toLowerCase() + '/')) {
+                  relativePath = relativePath.substring(normalizedPackName.length + 1);
+                }
+                
                 // Extract folder structure (everything except the filename)
                 let folderPath = '';
                 if (relativePath && relativePath !== presetFile.fileName) {
@@ -792,7 +800,7 @@ export async function POST(req: NextRequest) {
                   }
                 }
                 
-                // Build storage path preserving folder structure
+                // Build storage path preserving folder structure (without duplicate pack name)
                 const storagePath = folderPath 
                   ? `assets/presets/${packName}/${folderPath}/${presetFile.fileName}`
                   : `assets/presets/${packName}/${presetFile.fileName}`;
