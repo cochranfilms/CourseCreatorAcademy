@@ -1479,32 +1479,46 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
       audio.pause();
       setIsPlaying(false);
     } else {
-      // Pause all other audio elements
+      // Pause all other audio elements first (this may cause AbortError which is fine)
       activeAudioRefs.forEach((otherAudio) => {
         if (otherAudio !== audio && !otherAudio.paused) {
-          otherAudio.pause();
+          try {
+            otherAudio.pause();
+          } catch (e) {
+            // Ignore errors when pausing other audio
+          }
         }
       });
 
       // Update state immediately for instant UI feedback
       setIsPlaying(true);
 
-      // Play audio (non-blocking)
+      // Play audio - handle AbortError gracefully (expected when switching sounds)
       const playPromise = audio.play();
       
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            // Already set to playing, just ensure state is correct
+            // Success - state already set to playing
           })
           .catch((error) => {
-            // If play fails, reset state and try once more
+            // AbortError is expected when switching between sounds - ignore it
+            if (error.name === 'AbortError') {
+              // Audio was interrupted, which is normal - don't change state
+              return;
+            }
+            
+            // For other errors, reset state
             setIsPlaying(false);
-            audio.load();
+            
+            // Try playing once more without load() to avoid interrupting
             audio.play()
               .then(() => setIsPlaying(true))
               .catch((retryError) => {
-                console.error('Error playing audio:', retryError);
+                // Ignore abort errors
+                if (retryError.name !== 'AbortError') {
+                  console.error('Error playing audio:', retryError);
+                }
                 setIsPlaying(false);
               });
           });
