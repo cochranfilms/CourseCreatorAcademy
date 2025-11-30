@@ -1360,11 +1360,9 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [isReady, setIsReady] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const waveformRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Load favorite status
   useEffect(() => {
@@ -1401,34 +1399,7 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
     loadAudioUrl();
   }, [soundEffect, prefetchedUrl]);
 
-  // Force audio to load immediately when URL is available
-  useEffect(() => {
-    if (audioUrl && audioRef.current) {
-      audioRef.current.load();
-    }
-  }, [audioUrl]);
-
-  // Intersection observer to preload audio when visible
-  useEffect(() => {
-    if (!containerRef.current || !audioUrl) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && audioRef.current && !isReady) {
-            // Preload audio when it comes into view
-            audioRef.current.load();
-          }
-        });
-      },
-      { rootMargin: '200px' } // Start loading 200px before it's visible
-    );
-
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, [audioUrl, isReady]);
-
-  // Smooth time update using requestAnimationFrame and handle audio ready state
+  // Smooth time update using requestAnimationFrame
   useEffect(() => {
     if (!audioRef.current || !audioUrl || isDragging) return;
 
@@ -1444,12 +1415,10 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
     };
     
     const updateDuration = () => {
-      setDuration(audio.duration || soundEffect.duration || 0);
-      setIsReady(audio.readyState >= 2); // HAVE_CURRENT_DATA or higher
-    };
-    
-    const handleCanPlay = () => {
-      setIsReady(true);
+      const newDuration = audio.duration || soundEffect.duration || 0;
+      if (newDuration > 0) {
+        setDuration(newDuration);
+      }
     };
     
     const handleEnded = () => {
@@ -1457,12 +1426,9 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
       setCurrentTime(0);
     };
 
-    // Preload audio immediately
-    audio.load();
-
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
-    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('durationchange', updateDuration);
     audio.addEventListener('ended', handleEnded);
 
     return () => {
@@ -1471,43 +1437,28 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
       }
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);
-      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('durationchange', updateDuration);
       audio.removeEventListener('ended', handleEnded);
     };
   }, [audioUrl, soundEffect.duration, isDragging]);
 
-  const togglePlay = useCallback(async () => {
+  const togglePlay = useCallback(() => {
     if (!audioRef.current || !audioUrl) return;
 
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      // Ensure audio is ready before playing
-      if (audioRef.current.readyState < 2) {
-        await new Promise((resolve) => {
-          const handleCanPlay = () => {
-            audioRef.current?.removeEventListener('canplay', handleCanPlay);
-            resolve(true);
-          };
-          audioRef.current?.addEventListener('canplay', handleCanPlay);
-          audioRef.current?.load();
-        });
-      }
-      
-      try {
-        await audioRef.current.play();
-        setIsPlaying(true);
-      } catch (error) {
-        console.error('Error playing audio:', error);
-        // If play fails, try loading again
-        audioRef.current.load();
-        try {
-          await audioRef.current.play();
-          setIsPlaying(true);
-        } catch (retryError) {
-          console.error('Retry play failed:', retryError);
-        }
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true);
+          })
+          .catch((error) => {
+            console.error('Error playing audio:', error);
+            setIsPlaying(false);
+          });
       }
     }
   }, [isPlaying, audioUrl]);
@@ -1581,7 +1532,7 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div ref={containerRef} className="border border-neutral-700 bg-black rounded-lg p-4 hover:border-neutral-500 transition-all duration-200">
+    <div className="border border-neutral-700 bg-black rounded-lg p-4 hover:border-neutral-500 transition-all duration-200">
       <div className="flex items-center gap-4">
         {/* Play Button */}
         <button
@@ -1737,15 +1688,12 @@ function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { so
         </span>
       </div>
 
-      {/* Hidden Audio Element - Preload immediately for instant playback */}
+      {/* Hidden Audio Element */}
       {audioUrl && (
         <audio 
           ref={audioRef} 
           src={audioUrl} 
           preload="auto"
-          onLoadedData={() => setIsReady(true)}
-          onCanPlay={() => setIsReady(true)}
-          onCanPlayThrough={() => setIsReady(true)}
         />
       )}
     </div>
@@ -1927,36 +1875,51 @@ export default function AssetsPage() {
 
       setSoundEffects(effectsMap);
 
-      // Prefetch all audio URLs in parallel for instant playback
+      // Prefetch audio URLs in batches for instant playback (limit concurrent requests)
       const allSoundEffects: SoundEffect[] = [];
       Object.values(effectsMap).forEach(effects => {
         allSoundEffects.push(...effects);
       });
 
       if (allSoundEffects.length > 0) {
-        // Prefetch all audio URLs in parallel
-        const urlPromises = allSoundEffects.map(async (effect) => {
-          try {
-            const response = await fetch(`/api/assets/sound-effect-download?assetId=${effect.assetId}&soundEffectId=${effect.id}`);
-            if (response.ok) {
-              const data = await response.json();
-              return { soundEffectId: effect.id, url: data.downloadUrl };
-            }
-          } catch (error) {
-            console.error(`Error prefetching audio URL for ${effect.id}:`, error);
-          }
-          return null;
-        });
-
-        const urlResults = await Promise.all(urlPromises);
+        // Prefetch audio URLs in batches of 5 to avoid overwhelming the server
+        const batchSize = 5;
         const urlMap: { [soundEffectId: string]: string } = {};
-        urlResults.forEach(result => {
-          if (result) {
-            urlMap[result.soundEffectId] = result.url;
-          }
-        });
+        
+        const prefetchBatch = async (batch: SoundEffect[]) => {
+          const promises = batch.map(async (effect) => {
+            try {
+              const response = await fetch(`/api/assets/sound-effect-download?assetId=${effect.assetId}&soundEffectId=${effect.id}`);
+              if (response.ok) {
+                const data = await response.json();
+                return { soundEffectId: effect.id, url: data.downloadUrl };
+              }
+            } catch (error) {
+              console.error(`Error prefetching audio URL for ${effect.id}:`, error);
+            }
+            return null;
+          });
+          
+          const results = await Promise.all(promises);
+          results.forEach(result => {
+            if (result) {
+              urlMap[result.soundEffectId] = result.url;
+            }
+          });
+          
+          // Update state after each batch
+          setSoundEffectAudioUrls(prev => ({ ...prev, ...urlMap }));
+        };
 
-        setSoundEffectAudioUrls(urlMap);
+        // Process in batches with a small delay between batches
+        for (let i = 0; i < allSoundEffects.length; i += batchSize) {
+          const batch = allSoundEffects.slice(i, i + batchSize);
+          await prefetchBatch(batch);
+          // Small delay between batches to avoid overwhelming
+          if (i + batchSize < allSoundEffects.length) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
       }
     };
 
