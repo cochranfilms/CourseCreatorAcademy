@@ -1714,12 +1714,25 @@ export default function AssetsPage() {
   const handleDownload = async (asset: Asset) => {
     if (downloading === asset.id) return;
     
+    if (!user) {
+      alert('Please sign in to download assets');
+      return;
+    }
+    
     setDownloading(asset.id);
     try {
       if (asset.storagePath) {
         // File asset - get signed URL from API
-        const response = await fetch(`/api/assets/download?assetId=${asset.id}`);
-        if (!response.ok) throw new Error('Failed to get download URL');
+        const idToken = await user.getIdToken();
+        const response = await fetch(`/api/assets/download?assetId=${asset.id}`, {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to get download URL');
+        }
         const data = await response.json();
         
         // Trigger download
