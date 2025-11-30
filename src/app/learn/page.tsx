@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 // Link removed; cards open a modal directly
@@ -171,6 +171,11 @@ export default function LearnPage() {
     computeSaved();
   }, [user, courses]);
 
+  // Compute featured course for hero (must be computed before useEffect that uses it)
+  const featuredCourse = useMemo(() => {
+    return courses.find(c => c.featured) || courses[0];
+  }, [courses]);
+
   // Smooth-scroll to Creator Kits when requested (must be declared before any early returns)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -240,9 +245,6 @@ export default function LearnPage() {
       </main>
     );
   }
-
-  // Compute featured course for hero
-  const featuredCourse = courses.find(c => c.featured) || courses[0];
 
   return (
     <>
