@@ -1350,19 +1350,21 @@ function PluginCard({ asset, onDownload, downloading, favorited, onFavorite }: {
 /**
  * Sound Effect Player Component
  */
-function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; asset: Asset }) {
+function SoundEffectPlayer({ soundEffect, asset, audioUrl: prefetchedUrl }: { soundEffect: SoundEffect; asset: Asset; audioUrl?: string | null }) {
   const { user } = useAuth();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(soundEffect.duration || 0);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(prefetchedUrl || null);
   const [downloading, setDownloading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const waveformRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Load favorite status
   useEffect(() => {
@@ -1377,7 +1379,13 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
     checkFavorite();
   }, [user, soundEffect.id]);
 
+  // Load audio URL if not prefetched
   useEffect(() => {
+    if (prefetchedUrl) {
+      setAudioUrl(prefetchedUrl);
+      return;
+    }
+    
     // Load audio URL when component mounts
     const loadAudioUrl = async () => {
       try {
@@ -1391,9 +1399,36 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
       }
     };
     loadAudioUrl();
-  }, [soundEffect]);
+  }, [soundEffect, prefetchedUrl]);
 
-  // Smooth time update using requestAnimationFrame
+  // Force audio to load immediately when URL is available
+  useEffect(() => {
+    if (audioUrl && audioRef.current) {
+      audioRef.current.load();
+    }
+  }, [audioUrl]);
+
+  // Intersection observer to preload audio when visible
+  useEffect(() => {
+    if (!containerRef.current || !audioUrl) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && audioRef.current && !isReady) {
+            // Preload audio when it comes into view
+            audioRef.current.load();
+          }
+        });
+      },
+      { rootMargin: '200px' } // Start loading 200px before it's visible
+    );
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [audioUrl, isReady]);
+
+  // Smooth time update using requestAnimationFrame and handle audio ready state
   useEffect(() => {
     if (!audioRef.current || !audioUrl || isDragging) return;
 
@@ -1408,14 +1443,26 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
       });
     };
     
-    const updateDuration = () => setDuration(audio.duration || soundEffect.duration || 0);
+    const updateDuration = () => {
+      setDuration(audio.duration || soundEffect.duration || 0);
+      setIsReady(audio.readyState >= 2); // HAVE_CURRENT_DATA or higher
+    };
+    
+    const handleCanPlay = () => {
+      setIsReady(true);
+    };
+    
     const handleEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
     };
 
+    // Preload audio immediately
+    audio.load();
+
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('ended', handleEnded);
 
     return () => {
@@ -1424,19 +1471,44 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
       }
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('ended', handleEnded);
     };
   }, [audioUrl, soundEffect.duration, isDragging]);
 
-  const togglePlay = useCallback(() => {
+  const togglePlay = useCallback(async () => {
     if (!audioRef.current || !audioUrl) return;
 
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play();
-      setIsPlaying(true);
+      // Ensure audio is ready before playing
+      if (audioRef.current.readyState < 2) {
+        await new Promise((resolve) => {
+          const handleCanPlay = () => {
+            audioRef.current?.removeEventListener('canplay', handleCanPlay);
+            resolve(true);
+          };
+          audioRef.current?.addEventListener('canplay', handleCanPlay);
+          audioRef.current?.load();
+        });
+      }
+      
+      try {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      } catch (error) {
+        console.error('Error playing audio:', error);
+        // If play fails, try loading again
+        audioRef.current.load();
+        try {
+          await audioRef.current.play();
+          setIsPlaying(true);
+        } catch (retryError) {
+          console.error('Retry play failed:', retryError);
+        }
+      }
     }
   }, [isPlaying, audioUrl]);
 
@@ -1509,7 +1581,7 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="border border-neutral-700 bg-black rounded-lg p-4 hover:border-neutral-500 transition-all duration-200">
+    <div ref={containerRef} className="border border-neutral-700 bg-black rounded-lg p-4 hover:border-neutral-500 transition-all duration-200">
       <div className="flex items-center gap-4">
         {/* Play Button */}
         <button
@@ -1665,9 +1737,16 @@ function SoundEffectPlayer({ soundEffect, asset }: { soundEffect: SoundEffect; a
         </span>
       </div>
 
-      {/* Hidden Audio Element */}
+      {/* Hidden Audio Element - Preload immediately for instant playback */}
       {audioUrl && (
-        <audio ref={audioRef} src={audioUrl} preload="metadata" />
+        <audio 
+          ref={audioRef} 
+          src={audioUrl} 
+          preload="auto"
+          onLoadedData={() => setIsReady(true)}
+          onCanPlay={() => setIsReady(true)}
+          onCanPlayThrough={() => setIsReady(true)}
+        />
       )}
     </div>
   );
@@ -1679,6 +1758,7 @@ export default function AssetsPage() {
   const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategory>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [soundEffects, setSoundEffects] = useState<{ [assetId: string]: SoundEffect[] }>({});
+  const [soundEffectAudioUrls, setSoundEffectAudioUrls] = useState<{ [soundEffectId: string]: string }>({});
   const [overlays, setOverlays] = useState<Overlay[]>([]);
   const [lutPreviews, setLutPreviews] = useState<{ [assetId: string]: LUTPreview[] }>({});
   const [loadingLutPreviews, setLoadingLutPreviews] = useState(false);
@@ -1846,6 +1926,38 @@ export default function AssetsPage() {
       });
 
       setSoundEffects(effectsMap);
+
+      // Prefetch all audio URLs in parallel for instant playback
+      const allSoundEffects: SoundEffect[] = [];
+      Object.values(effectsMap).forEach(effects => {
+        allSoundEffects.push(...effects);
+      });
+
+      if (allSoundEffects.length > 0) {
+        // Prefetch all audio URLs in parallel
+        const urlPromises = allSoundEffects.map(async (effect) => {
+          try {
+            const response = await fetch(`/api/assets/sound-effect-download?assetId=${effect.assetId}&soundEffectId=${effect.id}`);
+            if (response.ok) {
+              const data = await response.json();
+              return { soundEffectId: effect.id, url: data.downloadUrl };
+            }
+          } catch (error) {
+            console.error(`Error prefetching audio URL for ${effect.id}:`, error);
+          }
+          return null;
+        });
+
+        const urlResults = await Promise.all(urlPromises);
+        const urlMap: { [soundEffectId: string]: string } = {};
+        urlResults.forEach(result => {
+          if (result) {
+            urlMap[result.soundEffectId] = result.url;
+          }
+        });
+
+        setSoundEffectAudioUrls(urlMap);
+      }
     };
 
     if (assets.length > 0) {
@@ -2217,7 +2329,12 @@ export default function AssetsPage() {
         ) : showSoundEffects && allSoundEffects.length > 0 ? (
           <div className="mt-6 space-y-2">
             {allSoundEffects.map(({ soundEffect, asset }) => (
-              <SoundEffectPlayer key={soundEffect.id} soundEffect={soundEffect} asset={asset} />
+              <SoundEffectPlayer 
+                key={soundEffect.id} 
+                soundEffect={soundEffect} 
+                asset={asset}
+                audioUrl={soundEffectAudioUrls[soundEffect.id]}
+              />
             ))}
           </div>
         ) : showLUTs ? (
