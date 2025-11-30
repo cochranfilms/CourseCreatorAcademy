@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface OverlayFile {
@@ -10,6 +10,17 @@ interface OverlayFile {
   storagePath: string;
   previewStoragePath?: string;
   fileType?: string;
+}
+
+interface LUTFile {
+  id: string;
+  assetId: string;
+  assetTitle: string;
+  lutName: string;
+  beforeVideoPath?: string;
+  afterVideoPath?: string;
+  lutFilePath?: string;
+  fileName?: string;
 }
 
 type SubCategory = 'Overlays' | 'Transitions' | 'SFX' | 'Plugins' | null;
@@ -36,10 +47,17 @@ interface AssetCategoryManagerProps {
 export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerProps) {
   const { user } = useAuth();
   const [overlayFiles, setOverlayFiles] = useState<OverlayFile[]>([]);
+  const [lutFiles, setLutFiles] = useState<LUTFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lutLoading, setLutLoading] = useState(true);
   const [draggedFile, setDraggedFile] = useState<OverlayFile | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<SubCategory | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [uploadingLUT, setUploadingLUT] = useState<string | null>(null);
+  const [expandedLUT, setExpandedLUT] = useState<string | null>(null);
+  
+  const beforeVideoInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const afterVideoInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   // Group overlay files by subcategory
   const groupedFiles = {
@@ -79,6 +97,38 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
     };
 
     loadOverlayFiles();
+  }, [user]);
+
+  // Load LUT files via API
+  useEffect(() => {
+    const loadLUTFiles = async () => {
+      if (!user) {
+        setLutLoading(false);
+        return;
+      }
+
+      try {
+        const idToken = await user.getIdToken();
+        const response = await fetch('/api/admin/assets/lut-files', {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch LUT files');
+        }
+
+        const data = await response.json();
+        setLutFiles(data.luts || []);
+      } catch (error) {
+        console.error('Error loading LUT files:', error);
+      } finally {
+        setLutLoading(false);
+      }
+    };
+
+    loadLUTFiles();
   }, [user]);
 
   const handleDragStart = useCallback((e: React.DragEvent, file: OverlayFile) => {
@@ -171,6 +221,98 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
     setDraggedFile(null);
     setDragOverCategory(null);
   }, []);
+
+  const handleLUTVideoUpload = useCallback(async (
+    lut: LUTFile,
+    videoType: 'before' | 'after',
+    file: File
+  ) => {
+    if (!user) return;
+
+    setUploadingLUT(`${lut.id}-${videoType}`);
+
+    try {
+      const idToken = await user.getIdToken();
+      
+      // Step 1: Upload video file
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('assetId', lut.assetId);
+      formData.append('lutPreviewId', lut.id);
+      formData.append('videoType', videoType);
+
+      const uploadResponse = await fetch('/api/admin/assets/update-lut-videos', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const error = await uploadResponse.json();
+        throw new Error(error.error || 'Failed to upload video');
+      }
+
+      const { storagePath } = await uploadResponse.json();
+
+      // Step 2: Update LUT preview document
+      const updateResponse = await fetch('/api/admin/assets/update-lut-videos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          assetId: lut.assetId,
+          lutPreviewId: lut.id,
+          [videoType === 'before' ? 'beforeVideoPath' : 'afterVideoPath']: storagePath,
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        const error = await updateResponse.json();
+        throw new Error(error.error || 'Failed to update LUT preview');
+      }
+
+      // Reload LUT files
+      const reloadResponse = await fetch('/api/admin/assets/lut-files', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (reloadResponse.ok) {
+        const reloadData = await reloadResponse.json();
+        setLutFiles(reloadData.luts || []);
+      }
+
+      if (onCategoryChange) {
+        onCategoryChange();
+      }
+    } catch (error: unknown) {
+      console.error('Error uploading LUT video:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload video';
+      alert(`Failed to upload video: ${errorMessage}`);
+    } finally {
+      setUploadingLUT(null);
+    }
+  }, [user, onCategoryChange]);
+
+  const handleVideoFileSelect = useCallback((
+    lut: LUTFile,
+    videoType: 'before' | 'after',
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('video/')) {
+      handleLUTVideoUpload(lut, videoType, file);
+    } else {
+      alert('Please select a video file');
+    }
+    // Reset input
+    e.target.value = '';
+  }, [handleLUTVideoUpload]);
 
   if (loading) {
     return (
@@ -267,6 +409,138 @@ export function AssetCategoryManager({ onCategoryChange }: AssetCategoryManagerP
             </div>
           );
         })}
+      </div>
+
+      {/* LUTs File Manager Section */}
+      <div className="mt-12">
+        <h2 className="text-2xl font-bold mb-4">LUTs File Manager</h2>
+        <p className="text-neutral-400 mb-6">
+          Upload before and after video previews for each LUT. These videos will be used in the side-by-side slider on the assets page.
+        </p>
+
+        {lutLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-ccaBlue"></div>
+          </div>
+        ) : (
+          <div className="space-y-4 max-h-[800px] overflow-y-auto">
+            {lutFiles.length === 0 ? (
+              <p className="text-neutral-500 text-sm py-8 text-center">
+                No LUT previews found
+              </p>
+            ) : (
+              lutFiles.map((lut) => {
+                const isExpanded = expandedLUT === lut.id;
+                const isUploadingBefore = uploadingLUT === `${lut.id}-before`;
+                const isUploadingAfter = uploadingLUT === `${lut.id}-after`;
+
+                return (
+                  <div
+                    key={lut.id}
+                    className="border border-neutral-700 bg-neutral-800 rounded-lg p-4"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold truncate">{lut.lutName}</h3>
+                        <p className="text-sm text-neutral-400 truncate mt-1">
+                          From: {lut.assetTitle}
+                        </p>
+                        <div className="flex gap-4 mt-2 text-xs text-neutral-500">
+                          <span>
+                            Before: {lut.beforeVideoPath ? '✓ Set' : '✗ Not set'}
+                          </span>
+                          <span>
+                            After: {lut.afterVideoPath ? '✓ Set' : '✗ Not set'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setExpandedLUT(isExpanded ? null : lut.id)}
+                        className="ml-4 px-4 py-2 bg-ccaBlue hover:bg-ccaBlue/80 text-white rounded text-sm transition-colors"
+                      >
+                        {isExpanded ? 'Collapse' : 'Edit Videos'}
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-neutral-700 space-y-4">
+                        {/* Before Video Upload */}
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            Before Video {lut.beforeVideoPath && '(✓ Uploaded)'}
+                          </label>
+                          {lut.beforeVideoPath && (
+                            <p className="text-xs text-neutral-400 mb-2 truncate">
+                              {lut.beforeVideoPath}
+                            </p>
+                          )}
+                          <input
+                            ref={(el) => {
+                              beforeVideoInputRefs.current[`${lut.id}-before`] = el;
+                            }}
+                            type="file"
+                            accept="video/*"
+                            onChange={(e) => handleVideoFileSelect(lut, 'before', e)}
+                            disabled={isUploadingBefore}
+                            className="hidden"
+                            id={`before-${lut.id}`}
+                          />
+                          <label
+                            htmlFor={`before-${lut.id}`}
+                            className={`
+                              inline-block px-4 py-2 rounded cursor-pointer transition-colors
+                              ${isUploadingBefore
+                                ? 'bg-neutral-600 text-neutral-400 cursor-not-allowed'
+                                : 'bg-neutral-700 hover:bg-neutral-600 text-white'
+                              }
+                            `}
+                          >
+                            {isUploadingBefore ? 'Uploading...' : lut.beforeVideoPath ? 'Replace Before Video' : 'Upload Before Video'}
+                          </label>
+                        </div>
+
+                        {/* After Video Upload */}
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            After Video {lut.afterVideoPath && '(✓ Uploaded)'}
+                          </label>
+                          {lut.afterVideoPath && (
+                            <p className="text-xs text-neutral-400 mb-2 truncate">
+                              {lut.afterVideoPath}
+                            </p>
+                          )}
+                          <input
+                            ref={(el) => {
+                              afterVideoInputRefs.current[`${lut.id}-after`] = el;
+                            }}
+                            type="file"
+                            accept="video/*"
+                            onChange={(e) => handleVideoFileSelect(lut, 'after', e)}
+                            disabled={isUploadingAfter}
+                            className="hidden"
+                            id={`after-${lut.id}`}
+                          />
+                          <label
+                            htmlFor={`after-${lut.id}`}
+                            className={`
+                              inline-block px-4 py-2 rounded cursor-pointer transition-colors
+                              ${isUploadingAfter
+                                ? 'bg-neutral-600 text-neutral-400 cursor-not-allowed'
+                                : 'bg-neutral-700 hover:bg-neutral-600 text-white'
+                              }
+                            `}
+                          >
+                            {isUploadingAfter ? 'Uploading...' : lut.afterVideoPath ? 'Replace After Video' : 'Upload After Video'}
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
