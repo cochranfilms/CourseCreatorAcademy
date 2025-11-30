@@ -997,7 +997,7 @@ function PluginCard({ asset, onDownload, downloading, favorited, onFavorite }: {
 
   return (
     <div 
-      className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group"
+      className="rounded-lg overflow-hidden border border-neutral-700 bg-black hover:border-neutral-500 transition-colors cursor-pointer group flex flex-col"
       onClick={onDownload}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
