@@ -66,6 +66,8 @@ type LegacyCreator = {
   avatarUrl?: string;
   bannerUrl?: string;
   kitSlug: string;
+  contentCount?: number;
+  lastActivity?: any;
 };
 
 type Asset = {
@@ -406,14 +408,46 @@ export default function HomePage() {
           });
         }
 
-        // Process Garrett King (progressive rendering)
+        // Process Featured Creator - select creator with most content, fallback to most active
         if (creatorsResponse.status === 'fulfilled' && creatorsResponse.value) {
-          const garrett = creatorsResponse.value.creators?.find(
-            (c: LegacyCreator) => c.handle === 'SHORT' || c.kitSlug === 'garrett-king'
-          );
-          if (garrett) {
+          const creators = creatorsResponse.value.creators || [];
+          
+          if (creators.length > 0) {
+            // Find creator with most content
+            let featuredCreator = creators[0];
+            let maxContentCount = featuredCreator.contentCount || 0;
+            
+            for (const creator of creators) {
+              const contentCount = creator.contentCount || 0;
+              if (contentCount > maxContentCount) {
+                maxContentCount = contentCount;
+                featuredCreator = creator;
+              }
+            }
+            
+            // If multiple creators have the same max content count, find the most active one
+            const creatorsWithMaxContent = creators.filter(
+              (c: LegacyCreator) => (c.contentCount || 0) === maxContentCount
+            );
+            
+            if (creatorsWithMaxContent.length > 1) {
+              // Sort by lastActivity (most recent first), fallback to displayName for consistency
+              creatorsWithMaxContent.sort((a: LegacyCreator, b: LegacyCreator) => {
+                const aTime = a.lastActivity?.toMillis?.() || a.lastActivity?.seconds || 0;
+                const bTime = b.lastActivity?.toMillis?.() || b.lastActivity?.seconds || 0;
+                
+                if (bTime !== aTime) {
+                  return bTime - aTime; // Most recent first
+                }
+                // If timestamps are equal, sort alphabetically by displayName for consistency
+                return (a.displayName || '').localeCompare(b.displayName || '');
+              });
+              
+              featuredCreator = creatorsWithMaxContent[0];
+            }
+            
             startTransition(() => {
-              setGarrettKing(garrett);
+              setGarrettKing(featuredCreator);
             });
           }
         }
