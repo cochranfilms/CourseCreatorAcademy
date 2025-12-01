@@ -338,14 +338,26 @@ export default function OrdersTab() {
                             </div>
                           )}
                           <div className="text-sm text-neutral-400 mt-1">
-                            {order.amount && order.amount > 0 
-                              ? `Amount: ${formatAmount(order.amount, order.currency)}`
-                              : order.amount === 0 
-                                ? 'No charge'
-                                : order.amount !== undefined
-                                  ? `Credit: ${formatAmount(Math.abs(order.amount), order.currency)}`
-                                  : 'No charge'
-                            }
+                            {(() => {
+                              // Determine if this is a downgrade (credit) or upgrade (charge)
+                              const planPrices: Record<string, number> = {
+                                cca_monthly_37: 3700,
+                                cca_no_fees_60: 6000,
+                                cca_membership_87: 8700,
+                              };
+                              const isDowngrade = order.currentPlanType && order.newPlanType && 
+                                (planPrices[order.currentPlanType] || 0) > (planPrices[order.newPlanType] || 0);
+                              
+                              if (order.amount === 0 || order.amount === undefined) {
+                                return 'No charge';
+                              } else if (isDowngrade || order.listingTitle?.includes('Downgrade')) {
+                                // Downgrade = credit (stored as positive amount)
+                                return `Credit: ${formatAmount(order.amount, order.currency)}`;
+                              } else {
+                                // Upgrade = charge
+                                return `Amount: ${formatAmount(order.amount, order.currency)}`;
+                              }
+                            })()}
                           </div>
                           <div className="text-sm text-green-400 mt-1">Status: Completed</div>
                         </>

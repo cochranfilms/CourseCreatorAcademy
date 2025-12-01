@@ -73,6 +73,19 @@ async function main() {
 
   console.log(`Found ${ordersSnapshot.size} orders without sellerId`);
   
+  // Also check for orders with negative amounts (credits) that might be downgrades
+  // Note: Firestore doesn't support range queries on null, so we'll filter in memory
+  let ordersWithCredits = 0;
+  ordersSnapshot.docs.forEach(doc => {
+    const order = doc.data();
+    if (order.amount && order.amount < 0 && order.orderType !== 'subscription_change') {
+      ordersWithCredits++;
+    }
+  });
+  if (ordersWithCredits > 0) {
+    console.log(`Found ${ordersWithCredits} orders with negative amounts (potential credits)`);
+  }
+  
   // Build a map of subscription IDs to user IDs for faster lookup
   const subscriptionMap = new Map();
   try {
@@ -251,37 +264,241 @@ async function main() {
         }
       }
 
-      // If we still don't have info, try to infer from order data
-      if (!orderTitle && !order.checkoutSessionId) {
-        // Check if order matches subscription patterns
-        const subscriptionAmounts = [3700, 6000, 8700]; // Monthly, No-Fees, All-Access
-        const orderAmount = Math.abs(order.amount || 0);
-        const isSubscriptionAmount = subscriptionAmounts.some(amt => 
-          Math.abs(orderAmount - amt) < 500 // Within $5 tolerance for proration
-        );
-
-        // Also check if listingTitle suggests subscription
-        const hasSubscriptionTitle = order.listingTitle && (
-          order.listingTitle.includes('Subscription') ||
-          order.listingTitle === 'Listing -' ||
-          order.listingTitle.startsWith('Listing ')
-        );
-
-        if ((isSubscriptionAmount || hasSubscriptionTitle) && !order.listingId) {
-          // Likely a subscription change but we can't determine plan types
-          orderTitle = order.listingTitle && order.listingTitle.includes('Subscription')
-            ? order.listingTitle
-            : (order.amount && order.amount < 0 ? 'Subscription Downgrade (Credit)' : 'Subscription Change');
-          
-          // Try to get buyerId from order
-          if (!buyerId && order.customerEmail) {
-            const userQuery = await db.collection('users')
-              .where('email', '==', order.customerEmail)
-              .limit(1)
-              .get();
-            if (!userQuery.empty) {
-              buyerId = userQuery.docs[0].id;
+      // Check for negative amounts (credits) - these are likely downgrades
+      if (!orderTitle && order.amount && order.amount < 0) {
+        // Negative amount = credit = likely a downgrade
+        if (!buyerId && order.customerEmail) {
+          const userQuery = await db.collection('users')
+            .where('email', '==', order.customerEmail)
+            .limit(1)
+            .get();
+          if (!userQuery.empty) {
+            buyerId = userQuery.docs[0].id;
+            const userData = userQuery.docs[0].data();
+            if (userData.membershipSubscriptionId) {
+              subscriptionId = userData.membershipSubscriptionId;
             }
+          }
+        }
+
+        // Try to find matching credit invoice
+        if (subscriptionId && !orderTitle) {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            const invoices = await stripe.invoices.list({
+              subscription: subscriptionId,
+              limit: 20,
+            });
+
+            const orderTime = order.createdAt?.toMillis?.() || order.createdAt?.seconds * 1000 || Date.now();
+            const orderAmount = Math.abs(order.amount);
+
+            for (const invoice of invoices.data) {
+              if ((invoice.total < 0 || invoice.amount_due < 0)) {
+                const invoiceTime = invoice.created * 1000;
+                const timeDiff = Math.abs(invoiceTime - orderTime);
+                const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+                const invoiceCreditAmount = Math.abs(invoice.total || invoice.amount_due || 0);
+
+                if (daysDiff < 7 && Math.abs(invoiceCreditAmount - orderAmount) < 1000) {
+                  const hasProration = invoice.lines?.data.some(line => line.proration);
+                  if (hasProration) {
+                    let oldPlanPrice = 0;
+                    let newPlanPrice = 0;
+                    
+                    if (invoice.lines?.data) {
+                      for (const line of invoice.lines.data) {
+                        if (line.proration) {
+                          if (line.amount < 0) {
+                            oldPlanPrice = Math.abs(line.amount);
+                          } else if (line.amount > 0) {
+                            newPlanPrice = line.amount;
+                          }
+                        }
+                      }
+                    }
+
+                    const planPrices = {
+                      cca_monthly_37: 3700,
+                      cca_no_fees_60: 6000,
+                      cca_membership_87: 8700,
+                    };
+                    
+                    for (const [planType, price] of Object.entries(planPrices)) {
+                      if (Math.abs(oldPlanPrice - price) < 1000) {
+                        currentPlanType = planType;
+                      }
+                      if (Math.abs(newPlanPrice - price) < 1000) {
+                        newPlanType = planType;
+                      }
+                    }
+
+                    if (currentPlanType && newPlanType) {
+                      isUpgrade = false; // Negative amount = downgrade
+                      orderTitle = `Subscription Downgrade: ${planNames[currentPlanType]} → ${planNames[newPlanType]}`;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            // Continue
+          }
+        }
+
+        // If we still don't have plan types but have negative amount, mark as downgrade
+        if (!orderTitle && order.amount < 0) {
+          orderTitle = 'Subscription Downgrade (Credit)';
+        }
+      }
+
+      // If we still don't have info, try to infer from order data or check all users' subscriptions
+      if (!orderTitle && !order.checkoutSessionId) {
+        // First, try to get buyerId from order
+        if (!buyerId && order.customerEmail) {
+          const userQuery = await db.collection('users')
+            .where('email', '==', order.customerEmail)
+            .limit(1)
+            .get();
+          if (!userQuery.empty) {
+            buyerId = userQuery.docs[0].id;
+            const userData = userQuery.docs[0].data();
+            if (userData.membershipSubscriptionId) {
+              subscriptionId = userData.membershipSubscriptionId;
+            }
+          }
+        }
+
+        // If we have buyerId but no subscriptionId, try to find it
+        if (buyerId && !subscriptionId) {
+          const userDoc = await db.collection('users').doc(buyerId).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            if (userData.membershipSubscriptionId) {
+              subscriptionId = userData.membershipSubscriptionId;
+            }
+          }
+        }
+
+        // If we have subscriptionId, check invoices for credit invoices matching this order
+        if (subscriptionId && !orderTitle) {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            const invoices = await stripe.invoices.list({
+              subscription: subscriptionId,
+              limit: 20,
+            });
+
+            // Get order creation time (approximate)
+            const orderTime = order.createdAt?.toMillis?.() || order.createdAt?.seconds * 1000 || Date.now();
+            const orderDate = new Date(orderTime);
+            const orderAmount = Math.abs(order.amount || 0);
+
+            for (const invoice of invoices.data) {
+              // Check if invoice is a credit invoice (negative) and matches order timing/amount
+              const invoiceTime = invoice.created * 1000;
+              const timeDiff = Math.abs(invoiceTime - orderTime);
+              const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+
+              // Match if within 7 days and amount is close
+              if ((invoice.total < 0 || invoice.amount_due < 0) && daysDiff < 7) {
+                const invoiceCreditAmount = Math.abs(invoice.total || invoice.amount_due || 0);
+                
+                // Check if amounts match (within $10 tolerance for proration differences)
+                if (Math.abs(invoiceCreditAmount - orderAmount) < 1000) {
+                  // This invoice likely matches this order
+                  const hasProration = invoice.lines?.data.some(line => line.proration);
+                  if (hasProration) {
+                    // Calculate plan types from proration line items
+                    let oldPlanPrice = 0;
+                    let newPlanPrice = 0;
+                    
+                    if (invoice.lines?.data) {
+                      for (const line of invoice.lines.data) {
+                        if (line.proration) {
+                          if (line.amount < 0) {
+                            oldPlanPrice = Math.abs(line.amount);
+                          } else if (line.amount > 0) {
+                            newPlanPrice = line.amount;
+                          }
+                        }
+                      }
+                    }
+
+                    const planPrices = {
+                      cca_monthly_37: 3700,
+                      cca_no_fees_60: 6000,
+                      cca_membership_87: 8700,
+                    };
+                    
+                    // Find closest matching plans
+                    for (const [planType, price] of Object.entries(planPrices)) {
+                      if (Math.abs(oldPlanPrice - price) < 1000) {
+                        currentPlanType = planType;
+                      }
+                      if (Math.abs(newPlanPrice - price) < 1000) {
+                        newPlanType = planType;
+                      }
+                    }
+
+                    // Also check subscription metadata
+                    if (!currentPlanType || !newPlanType) {
+                      // Try to get from subscription history
+                      const subscriptionHistory = await stripe.subscriptionItems.list({
+                        subscription: subscriptionId,
+                        limit: 10,
+                      });
+                      
+                      // Check if we can infer from subscription items
+                      if (subscriptionHistory.data.length > 0) {
+                        const currentItem = subscriptionHistory.data[0];
+                        if (currentItem.price?.metadata?.planType) {
+                          newPlanType = currentItem.price.metadata.planType;
+                        }
+                      }
+                    }
+
+                    if (currentPlanType && newPlanType) {
+                      isUpgrade = planPrices[newPlanType] > planPrices[currentPlanType];
+                      orderTitle = isUpgrade
+                        ? `Subscription Upgrade: ${planNames[currentPlanType]} → ${planNames[newPlanType]}`
+                        : `Subscription Downgrade: ${planNames[currentPlanType]} → ${planNames[newPlanType]}`;
+                      break;
+                    } else if (newPlanType) {
+                      // We have new plan but not old plan - still mark as subscription change
+                      orderTitle = `Subscription Change to ${planNames[newPlanType]}`;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (subErr) {
+            // Subscription might not exist
+          }
+        }
+
+        // If still no title, check if order matches subscription patterns
+        if (!orderTitle) {
+          const subscriptionAmounts = [3700, 6000, 8700]; // Monthly, No-Fees, All-Access
+          const orderAmount = Math.abs(order.amount || 0);
+          const isSubscriptionAmount = subscriptionAmounts.some(amt => 
+            Math.abs(orderAmount - amt) < 500 // Within $5 tolerance for proration
+          );
+
+          // Also check if listingTitle suggests subscription
+          const hasSubscriptionTitle = order.listingTitle && (
+            order.listingTitle.includes('Subscription') ||
+            order.listingTitle === 'Listing -' ||
+            order.listingTitle.startsWith('Listing ')
+          );
+
+          if ((isSubscriptionAmount || hasSubscriptionTitle) && !order.listingId) {
+            // Likely a subscription change but we can't determine plan types
+            orderTitle = order.listingTitle && order.listingTitle.includes('Subscription')
+              ? order.listingTitle
+              : (order.amount && order.amount < 0 ? 'Subscription Downgrade (Credit)' : 'Subscription Change');
           }
         }
       }
@@ -322,8 +539,21 @@ async function main() {
         skipped++;
         skippedReasons.notSubscriptionChange++;
         if (dryRun) {
-          const reason = !order.checkoutSessionId ? 'No checkoutSessionId and no subscription indicators' 
-            : 'Not a subscription change';
+          let reason = 'Not a subscription change';
+          if (!order.checkoutSessionId) {
+            reason = `No checkoutSessionId`;
+            if (order.listingTitle) {
+              reason += `, listingTitle: "${order.listingTitle}"`;
+            }
+            if (order.amount !== undefined) {
+              reason += `, amount: ${order.amount}`;
+            }
+            if (order.listingId) {
+              reason += `, has listingId: ${order.listingId}`;
+            }
+          } else {
+            reason += ` (checkoutSessionId exists but no subscription metadata)`;
+          }
           console.log(`  [SKIP] Order ${order.id}: ${reason}`);
         }
       }
