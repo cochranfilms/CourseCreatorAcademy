@@ -342,7 +342,9 @@ export default function OrdersTab() {
                               ? `Amount: ${formatAmount(order.amount, order.currency)}`
                               : order.amount === 0 
                                 ? 'No charge'
-                                : `Credit: ${formatAmount(Math.abs(order.amount), order.currency)}`
+                                : order.amount !== undefined
+                                  ? `Credit: ${formatAmount(Math.abs(order.amount), order.currency)}`
+                                  : 'No charge'
                             }
                           </div>
                           <div className="text-sm text-green-400 mt-1">Status: Completed</div>
