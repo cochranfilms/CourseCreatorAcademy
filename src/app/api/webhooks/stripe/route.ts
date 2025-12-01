@@ -10,6 +10,7 @@ import {
   createPayoutNotification,
   createMembershipNotification,
   createNotification,
+  createSubscriptionChangeNotification,
 } from '@/lib/notifications';
 
 export async function POST(req: NextRequest) {
@@ -255,10 +256,12 @@ export async function POST(req: NextRequest) {
         try {
           const subscriptionId = session.metadata.subscriptionId;
           const newPlanType = session.metadata.newPlanType;
+          const currentPlanType = session.metadata.currentPlanType;
           const buyerId = session.metadata.buyerId || session.client_reference_id;
 
           console.log('[checkout.session.completed] Processing plan upgrade:', {
             subscriptionId,
+            currentPlanType,
             newPlanType,
             buyerId,
             paymentIntent: session.payment_intent,
@@ -348,6 +351,52 @@ export async function POST(req: NextRequest) {
               console.error('[checkout.session.completed] Failed to update Firebase after upgrade:', firebaseErr);
             }
           }
+
+          // Create subscription_change order record
+          const planNames: Record<string, string> = {
+            cca_monthly_37: 'Monthly Membership',
+            cca_no_fees_60: 'No-Fees Membership',
+            cca_membership_87: 'All-Access Membership',
+          };
+          const orderTitle = `Subscription Upgrade: ${planNames[currentPlanType] || currentPlanType} → ${planNames[newPlanType] || newPlanType}`;
+          
+          const subscriptionOrder = {
+            orderType: 'subscription_change',
+            checkoutSessionId: session.id,
+            paymentIntentId: session.payment_intent || null,
+            amount: session.amount_total || 0,
+            currency: session.currency || 'usd',
+            buyerId: buyerId || null,
+            sellerId: null, // No seller for subscription changes
+            sellerAccountId: null,
+            subscriptionId: subscriptionId,
+            currentPlanType: currentPlanType,
+            newPlanType: newPlanType,
+            listingTitle: orderTitle,
+            status: 'completed', // Subscription changes are immediately completed
+            customerId: session.customer || null,
+            customerEmail: (session.customer_details && session.customer_details.email) || session.customer_email || null,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          };
+          const subscriptionOrderRef = await adminDb.collection('orders').add(subscriptionOrder);
+
+          // Create notification for subscription upgrade
+          if (buyerId) {
+            try {
+              await createSubscriptionChangeNotification(String(buyerId), 'subscription_upgraded', {
+                orderId: subscriptionOrderRef.id,
+                currentPlan: currentPlanType,
+                newPlan: newPlanType,
+                amount: session.amount_total || 0,
+              });
+            } catch (notifErr) {
+              console.error('Error creating subscription upgrade notification:', notifErr);
+            }
+          }
+
+          // Skip marketplace order creation for subscription changes
+          break;
         } catch (err: any) {
           console.error('[checkout.session.completed] Failed to process plan upgrade:', err);
           // Don't break - let payment_intent.succeeded handle it as backup
@@ -465,6 +514,12 @@ export async function POST(req: NextRequest) {
             console.error('Failed to send welcome email:', e);
           }
         } else {
+          // Check if this is a subscription change (should have been handled above, but double-check)
+          if (session.metadata?.action === 'upgrade_plan') {
+            // Already handled above, skip marketplace order creation
+            break;
+          }
+
           // Marketplace order (existing)
           // Since checkout is created on platform account, get seller account ID from metadata or payment intent transfer
           let sellerAccountId = event.account || session.metadata?.sellerAccountId || null;
@@ -480,6 +535,7 @@ export async function POST(req: NextRequest) {
           const now = Date.now();
           const deadlineMs = 72 * 60 * 60 * 1000; // 72h
           const order = {
+            orderType: 'marketplace', // Explicitly mark as marketplace order
             checkoutSessionId: session.id,
             paymentIntentId: session.payment_intent || null,
             amount: session.amount_total || 0,

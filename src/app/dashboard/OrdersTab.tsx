@@ -7,6 +7,7 @@ import { db, firebaseReady } from '@/lib/firebaseClient';
 
 type Order = {
   id: string;
+  orderType?: 'marketplace' | 'subscription_change';
   listingId?: string | null;
   listingTitle?: string | null;
   buyerId?: string | null;
@@ -22,6 +23,9 @@ type Order = {
   trackingUrl?: string;
   trackingDeadlineAtMs?: number;
   deliveredAt?: any;
+  currentPlanType?: string;
+  newPlanType?: string;
+  createdAt?: any;
 };
 
 export default function OrdersTab() {
@@ -33,7 +37,7 @@ export default function OrdersTab() {
   useEffect(() => {
     if (!firebaseReady || !db || !user) { setSold([]); setBought([]); return; }
 
-    // Sold orders (as seller)
+    // Sold orders (as seller) - only marketplace orders, exclude subscription changes
     const qSold = query(
       collection(db, 'orders'),
       where('sellerId', '==', user.uid),
@@ -41,19 +45,26 @@ export default function OrdersTab() {
     );
     const unsub1 = onSnapshot(
       qSold,
-      (snap) => setSold(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))),
+      (snap) => {
+        const orders = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Order[];
+        // Filter out subscription changes (they have no seller)
+        const marketplaceOrders = orders.filter(o => o.orderType !== 'subscription_change');
+        setSold(marketplaceOrders);
+      },
       () => {
         // Fallback without orderBy if composite index missing
         const fallback = query(collection(db, 'orders'), where('sellerId', '==', user.uid));
         onSnapshot(fallback, (snap) => {
           const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Order[];
-          const sorted = rows.sort((a, b) => (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0));
+          const marketplaceOrders = rows.filter(o => o.orderType !== 'subscription_change');
+          const sorted = marketplaceOrders.sort((a, b) => (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0));
           setSold(sorted);
         });
       }
     );
 
     // Bought orders (as buyer) – try by userId, then also by customerEmail
+    // Includes both marketplace and subscription changes
     const qBought = query(
       collection(db, 'orders'),
       where('buyerId', '==', user.uid),
@@ -72,7 +83,17 @@ export default function OrdersTab() {
               const byEmail = snap2.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Order[];
               const map = new Map<string, Order>();
               [...byId, ...byEmail].forEach((o) => map.set(o.id, o));
-              setBought(Array.from(map.values()));
+              const allOrders = Array.from(map.values());
+              // Sort: subscription changes by createdAt, marketplace by trackingDeadlineAtMs
+              const sorted = allOrders.sort((a, b) => {
+                if (a.orderType === 'subscription_change' && b.orderType === 'subscription_change') {
+                  const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+                  const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+                  return bTime - aTime;
+                }
+                return (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0);
+              });
+              setBought(sorted);
             },
             () => {
               // Email fallback without orderBy
@@ -81,13 +102,29 @@ export default function OrdersTab() {
                 const byEmail = snap3.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Order[];
                 const map = new Map<string, Order>();
                 [...byId, ...byEmail].forEach((o) => map.set(o.id, o));
-                const merged = Array.from(map.values()).sort((a, b) => (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0));
-                setBought(merged);
+                const allOrders = Array.from(map.values());
+                const sorted = allOrders.sort((a, b) => {
+                  if (a.orderType === 'subscription_change' && b.orderType === 'subscription_change') {
+                    const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+                    const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+                    return bTime - aTime;
+                  }
+                  return (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0);
+                });
+                setBought(sorted);
               });
             }
           );
         } else {
-          setBought(byId);
+          const sorted = byId.sort((a, b) => {
+            if (a.orderType === 'subscription_change' && b.orderType === 'subscription_change') {
+              const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+              const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+              return bTime - aTime;
+            }
+            return (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0);
+          });
+          setBought(sorted);
         }
       },
       () => {
@@ -101,11 +138,26 @@ export default function OrdersTab() {
               const byEmail = snap2.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Order[];
               const map = new Map<string, Order>();
               [...byId, ...byEmail].forEach((o) => map.set(o.id, o));
-              const merged = Array.from(map.values()).sort((a, b) => (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0));
-              setBought(merged);
+              const allOrders = Array.from(map.values());
+              const sorted = allOrders.sort((a, b) => {
+                if (a.orderType === 'subscription_change' && b.orderType === 'subscription_change') {
+                  const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+                  const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+                  return bTime - aTime;
+                }
+                return (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0);
+              });
+              setBought(sorted);
             });
           } else {
-            const sorted = byId.sort((a, b) => (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0));
+            const sorted = byId.sort((a, b) => {
+              if (a.orderType === 'subscription_change' && b.orderType === 'subscription_change') {
+                const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+                const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+                return bTime - aTime;
+              }
+              return (b.trackingDeadlineAtMs || 0) - (a.trackingDeadlineAtMs || 0);
+            });
             setBought(sorted);
           }
         });
@@ -189,10 +241,20 @@ export default function OrdersTab() {
   };
 
   const OverdueBadge = ({ order }: { order: Order }) => {
+    if (order.orderType === 'subscription_change') return null; // No overdue for subscription changes
     const now = Date.now();
     const overdue = order.status === 'awaiting_tracking' && (order.trackingDeadlineAtMs || 0) < now;
     if (!overdue) return null;
     return <span className="ml-2 text-xs text-red-400">Overdue</span>;
+  };
+
+  const getPlanName = (planType?: string) => {
+    const planNames: Record<string, string> = {
+      cca_monthly_37: 'Monthly Membership',
+      cca_no_fees_60: 'No-Fees Membership',
+      cca_membership_87: 'All-Access Membership',
+    };
+    return planNames[planType || ''] || planType || 'Unknown Plan';
   };
 
   return (
@@ -261,35 +323,60 @@ export default function OrdersTab() {
           <p className="text-neutral-400">No purchases yet.</p>
         ) : (
           <div className="space-y-3">
-            {bought.map(order => (
-              <div key={order.id} className="border border-neutral-800 p-3 bg-neutral-900">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{order.listingTitle || `Listing ${order.listingId || '-'}`}</div>
-                    <div className="text-sm text-neutral-400">{formatAmount(order.amount, order.currency)}</div>
-                    <div className="text-sm text-neutral-400">Status: {order.status}</div>
+            {bought.map(order => {
+              const isSubscriptionChange = order.orderType === 'subscription_change';
+              return (
+                <div key={order.id} className={`border p-3 ${isSubscriptionChange ? 'border-blue-600 bg-blue-950/20' : 'border-neutral-800 bg-neutral-900'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      {isSubscriptionChange ? (
+                        <>
+                          <div className="font-medium text-blue-300">{order.listingTitle || 'Subscription Change'}</div>
+                          {order.currentPlanType && order.newPlanType && (
+                            <div className="text-xs text-neutral-400 mt-1">
+                              {getPlanName(order.currentPlanType)} → {getPlanName(order.newPlanType)}
+                            </div>
+                          )}
+                          <div className="text-sm text-neutral-400 mt-1">
+                            {order.amount && order.amount > 0 
+                              ? `Amount: ${formatAmount(order.amount, order.currency)}`
+                              : order.amount === 0 
+                                ? 'No charge'
+                                : `Credit: ${formatAmount(Math.abs(order.amount), order.currency)}`
+                            }
+                          </div>
+                          <div className="text-sm text-green-400 mt-1">Status: Completed</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-medium">{order.listingTitle || `Listing ${order.listingId || '-'}`}</div>
+                          <div className="text-sm text-neutral-400">{formatAmount(order.amount, order.currency)}</div>
+                          <div className="text-sm text-neutral-400">Status: {order.status}</div>
+                        </>
+                      )}
+                    </div>
                   </div>
+                  {!isSubscriptionChange && order.status === 'shipped' && user && order.buyerId === user.uid && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => markDelivered(order)}
+                        className="px-4 py-2 bg-white text-black border-2 border-ccaBlue"
+                      >
+                        Mark as Delivered
+                      </button>
+                    </div>
+                  )}
+                  {!isSubscriptionChange && order.trackingNumber && (
+                    <div className="mt-2 text-sm text-neutral-300">
+                      Tracking: {order.trackingCarrier ? `${order.trackingCarrier} ` : ''}{order.trackingNumber}
+                      {order.trackingUrl && (
+                        <a className="ml-2 text-ccaBlue underline" href={order.trackingUrl} target="_blank">View</a>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {order.status === 'shipped' && user && order.buyerId === user.uid && (
-                  <div className="mt-3">
-                    <button
-                      onClick={() => markDelivered(order)}
-                      className="px-4 py-2 bg-white text-black border-2 border-ccaBlue"
-                    >
-                      Mark as Delivered
-                    </button>
-                  </div>
-                )}
-                {order.trackingNumber && (
-                  <div className="mt-2 text-sm text-neutral-300">
-                    Tracking: {order.trackingCarrier ? `${order.trackingCarrier} ` : ''}{order.trackingNumber}
-                    {order.trackingUrl && (
-                      <a className="ml-2 text-ccaBlue underline" href={order.trackingUrl} target="_blank">View</a>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

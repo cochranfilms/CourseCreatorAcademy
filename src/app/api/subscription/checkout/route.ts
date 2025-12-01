@@ -270,6 +270,48 @@ export async function POST(req: NextRequest) {
         // Use calculated credit amount from upcoming invoice as fallback
       }
 
+      // Create subscription_change order record for downgrade
+      try {
+        const planNames: Record<string, string> = {
+          cca_monthly_37: 'Monthly Membership',
+          cca_no_fees_60: 'No-Fees Membership',
+          cca_membership_87: 'All-Access Membership',
+        };
+        const orderTitle = `Subscription Downgrade: ${planNames[currentPlanType] || currentPlanType} → ${planNames[newPlanType] || newPlanType}`;
+        
+        const subscriptionOrder = {
+          orderType: 'subscription_change',
+          paymentIntentId: null, // No payment intent for downgrades
+          amount: actualCreditAmount, // Credit amount (negative value would be stored as positive)
+          currency: 'usd',
+          buyerId: userId,
+          sellerId: null, // No seller for subscription changes
+          sellerAccountId: null,
+          subscriptionId: subscriptionId,
+          currentPlanType: currentPlanType,
+          newPlanType: newPlanType,
+          listingTitle: orderTitle,
+          status: 'completed', // Subscription changes are immediately completed
+          customerId: subscription.customer as string || null,
+          customerEmail: customerEmail || null,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        const subscriptionOrderRef = await adminDb.collection('orders').add(subscriptionOrder);
+
+        // Create notification for subscription downgrade
+        const { createSubscriptionChangeNotification } = await import('@/lib/notifications');
+        await createSubscriptionChangeNotification(userId, 'subscription_downgraded', {
+          orderId: subscriptionOrderRef.id,
+          currentPlan: currentPlanType,
+          newPlan: newPlanType,
+          amount: actualCreditAmount,
+        });
+      } catch (orderErr: any) {
+        console.error('Error creating subscription downgrade order:', orderErr);
+        // Don't fail the request if order creation fails
+      }
+
       return NextResponse.json({
         success: true,
         requiresPayment: false,

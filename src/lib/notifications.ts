@@ -12,6 +12,8 @@ export type NotificationType =
   | 'order_placed'                    // Seller: new order
   | 'order_delivered'                 // Buyer: order ready
   | 'order_dispute'                   // Seller/Buyer: dispute created
+  | 'subscription_upgraded'           // User: subscription upgraded
+  | 'subscription_downgraded'         // User: subscription downgraded
   | 'payout_processed'                 // Seller: payout sent
   | 'message_received'                // User: new message
   | 'membership_expiring'             // Member: subscription expiring soon
@@ -223,6 +225,53 @@ export async function createOrderNotification(
       actionUrl: '/orders',
       actionLabel: 'View Dispute',
       metadata: { orderId: orderData.orderId, listingTitle: orderData.listingTitle },
+    },
+  };
+
+  const notificationData = notifications[type];
+  if (!notificationData) return null;
+
+  return createNotification(userId, notificationData);
+}
+
+/**
+ * Helper function to create subscription change notifications
+ */
+export async function createSubscriptionChangeNotification(
+  userId: string,
+  type: 'subscription_upgraded' | 'subscription_downgraded',
+  subscriptionData: {
+    orderId: string;
+    currentPlan: string;
+    newPlan: string;
+    amount?: number;
+  }
+): Promise<string | null> {
+  const planNames: Record<string, string> = {
+    cca_monthly_37: 'Monthly Membership',
+    cca_no_fees_60: 'No-Fees Membership',
+    cca_membership_87: 'All-Access Membership',
+  };
+
+  const currentPlanName = planNames[subscriptionData.currentPlan] || subscriptionData.currentPlan;
+  const newPlanName = planNames[subscriptionData.newPlan] || subscriptionData.newPlan;
+
+  const notifications: Record<string, NotificationData> = {
+    subscription_upgraded: {
+      type: 'subscription_upgraded',
+      title: 'Subscription Upgraded',
+      message: `Your subscription has been upgraded from ${currentPlanName} to ${newPlanName}${subscriptionData.amount ? ` for $${(subscriptionData.amount / 100).toFixed(2)}` : ''}.`,
+      actionUrl: '/orders',
+      actionLabel: 'View Order',
+      metadata: { orderId: subscriptionData.orderId, currentPlan: subscriptionData.currentPlan, newPlan: subscriptionData.newPlan },
+    },
+    subscription_downgraded: {
+      type: 'subscription_downgraded',
+      title: 'Subscription Downgraded',
+      message: `Your subscription has been downgraded from ${currentPlanName} to ${newPlanName}${subscriptionData.amount ? `. A credit of $${(subscriptionData.amount / 100).toFixed(2)} has been applied to your account.` : '.'}`,
+      actionUrl: '/orders',
+      actionLabel: 'View Order',
+      metadata: { orderId: subscriptionData.orderId, currentPlan: subscriptionData.currentPlan, newPlan: subscriptionData.newPlan },
     },
   };
 

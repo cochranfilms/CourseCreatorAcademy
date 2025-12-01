@@ -16,6 +16,8 @@ export type NotificationType =
   | 'order_placed'
   | 'order_delivered'
   | 'order_dispute'
+  | 'subscription_upgraded'
+  | 'subscription_downgraded'
   | 'payout_processed'
   | 'message_received'
   | 'membership_expiring'
