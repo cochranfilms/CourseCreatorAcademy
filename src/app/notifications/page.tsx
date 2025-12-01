@@ -138,6 +138,8 @@ export default function NotificationsPage() {
       order_placed: 'Orders',
       order_delivered: 'Orders',
       order_dispute: 'Orders',
+      subscription_upgraded: 'Subscriptions',
+      subscription_downgraded: 'Subscriptions',
       payout_processed: 'Payouts',
       message_received: 'Messages',
       membership_expiring: 'Membership',
