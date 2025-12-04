@@ -535,7 +535,7 @@ export function MessageBoardPost({ post }: { post: MessageBoardPostData }) {
                 onClick={handleFollow}
                 className={`px-2 py-0.5 rounded text-xs font-medium transition ${
                   isFollowing
-                    ? 'bg-ccaBlue/20 text-ccaBlue border border-ccaBlue'
+                    ? 'bg-ccaBlue/20 text-white border border-ccaBlue'
                     : 'bg-neutral-800 text-neutral-300 border border-neutral-700 hover:border-neutral-600'
                 }`}
               >
