@@ -101,7 +101,7 @@ export function markdownToHtml(markdown: string): string {
 /**
  * Apply formatting command to contentEditable element
  */
-export function applyFormatting(command: 'bold' | 'italic' | 'code', editorRef: React.RefObject<HTMLDivElement>) {
+export function applyFormatting(command: 'bold' | 'italic' | 'code', editorRef: React.RefObject<HTMLDivElement | null>) {
   if (!editorRef.current) return;
   
   const editor = editorRef.current;
