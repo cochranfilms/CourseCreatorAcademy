@@ -655,6 +655,90 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {/* Following/Followers Section */}
+      <div className="bg-transparent backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 rounded-lg">
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <div className="text-2xl font-bold text-white">{followingCount}</div>
+            <div className="text-sm text-neutral-400">Following</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-white">{followersCount}</div>
+            <div className="text-sm text-neutral-400">Followers</div>
+          </div>
+        </div>
+        
+        {/* Show preview of following/followers */}
+        {(following.length > 0 || followers.length > 0) && (
+          <div className="space-y-4">
+            {following.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-neutral-300 mb-2">Following</h3>
+                <div className="flex flex-wrap gap-2">
+                  {following.slice(0, 10).map((user) => (
+                    <Link
+                      key={user.id}
+                      href={`/profile/${user.id}`}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/50 rounded-lg border border-neutral-700 hover:border-neutral-600 transition"
+                    >
+                      {user.photoURL ? (
+                        <img
+                          src={user.photoURL}
+                          alt={user.displayName}
+                          className="w-6 h-6 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-ccaBlue flex items-center justify-center text-white text-xs font-semibold">
+                          {user.displayName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-sm text-white">{user.displayName}</span>
+                    </Link>
+                  ))}
+                  {followingCount > 10 && (
+                    <span className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/50 rounded-lg border border-neutral-700 text-sm text-neutral-400">
+                      +{followingCount - 10} more
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            {followers.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-neutral-300 mb-2">Followers</h3>
+                <div className="flex flex-wrap gap-2">
+                  {followers.slice(0, 10).map((user) => (
+                    <Link
+                      key={user.id}
+                      href={`/profile/${user.id}`}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/50 rounded-lg border border-neutral-700 hover:border-neutral-600 transition"
+                    >
+                      {user.photoURL ? (
+                        <img
+                          src={user.photoURL}
+                          alt={user.displayName}
+                          className="w-6 h-6 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-ccaBlue flex items-center justify-center text-white text-xs font-semibold">
+                          {user.displayName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-sm text-white">{user.displayName}</span>
+                    </Link>
+                  ))}
+                  {followersCount > 10 && (
+                    <span className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/50 rounded-lg border border-neutral-700 text-sm text-neutral-400">
+                      +{followersCount - 10} more
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Projects Section */}
       {projects.length > 0 && (
         <div className="mb-6">
