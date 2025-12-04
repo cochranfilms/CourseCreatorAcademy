@@ -356,6 +356,62 @@ service cloud.firestore {
       allow write: if false;
     }
     
+    // Message Board Posts collection
+    match /messageBoardPosts/{postId} {
+      // Anyone authenticated can read posts
+      allow read: if isAuthenticated();
+      
+      // Only authenticated users can create posts
+      // Author ID must match the authenticated user
+      allow create: if isAuthenticated()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.keys().hasAll(['authorId', 'content', 'createdAt']);
+      
+      // Only the author can update/delete their post
+      allow update: if isAuthenticated()
+        && resource.data.authorId == request.auth.uid
+        && request.resource.data.authorId == request.auth.uid;
+      
+      allow delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+      
+      // Comments subcollection
+      match /comments/{commentId} {
+        // Anyone authenticated can read comments
+        allow read: if isAuthenticated();
+        
+        // Only authenticated users can create comments
+        // Author ID must match the authenticated user
+        allow create: if isAuthenticated()
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.keys().hasAll(['authorId', 'content', 'createdAt']);
+        
+        // Only the author can update/delete their comment
+        allow update: if isAuthenticated()
+          && resource.data.authorId == request.auth.uid
+          && request.resource.data.authorId == request.auth.uid;
+        
+        allow delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+      }
+      
+      // Reactions subcollection
+      match /reactions/{reactionId} {
+        // Anyone authenticated can read reactions
+        allow read: if isAuthenticated();
+        
+        // Only authenticated users can create reactions
+        // User ID must match the authenticated user
+        allow create: if isAuthenticated()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.keys().hasAll(['userId', 'emoji', 'createdAt']);
+        
+        // Users can delete their own reactions
+        allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+        
+        // Reactions cannot be updated (only created/deleted)
+        allow update: if false;
+      }
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

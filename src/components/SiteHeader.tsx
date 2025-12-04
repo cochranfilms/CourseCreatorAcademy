@@ -23,7 +23,8 @@ const links = [
   { href: '/opportunities', label: 'Opportunities' },
   { href: '/assets', label: 'Assets' },
   { href: '/marketplace', label: 'Marketplace' },
-  { href: '/discounts', label: 'Discounts' }
+  { href: '/discounts', label: 'Discounts' },
+  { href: '/message-board', label: 'Message Board' }
 ];
 
 type UserProfile = {
