@@ -54,8 +54,8 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
   const [selectedListingId, setSelectedListingId] = useState<string>('');
   const [mentionQuery, setMentionQuery] = useState('');
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
-  const [mentionSuggestions, setMentionSuggestions] = useState<Array<{ id: string; displayName: string; handle?: string }>>([]);
-  const [mentionCursorPosition, setMentionCursorPosition] = useState(0);
+  const [mentionSuggestions, setMentionSuggestions] = useState<Array<{ id: string; displayName: string; handle?: string; photoURL?: string }>>([]);
+  const [mentionStartPosition, setMentionStartPosition] = useState<{ node: Node; offset: number } | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
@@ -177,33 +177,47 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     }
   };
 
-  // Handle mention autocomplete
+  // Handle mention autocomplete - show ALL users when @ is pressed
   useEffect(() => {
-    if (!mentionQuery || !db || !firebaseReady || !user) {
+    if (!db || !firebaseReady || !user) {
+      setShowMentionSuggestions(false);
+      return;
+    }
+
+    // Show suggestions when mentionQuery is set (even if empty, meaning just "@" was pressed)
+    if (mentionQuery === null || mentionQuery === undefined) {
       setShowMentionSuggestions(false);
       return;
     }
 
     const searchUsers = async () => {
       try {
-        // Search users by handle or displayName
+        // Get ALL users
         const usersSnapshot = await getDocs(collection(db, 'users'));
-        const matches = usersSnapshot.docs
+        let allUsers = usersSnapshot.docs
           .map(doc => {
             const data = doc.data();
             return {
               id: doc.id,
               displayName: data.displayName || data.handle || 'Unknown User',
               handle: data.handle,
+              photoURL: data.photoURL,
             };
           })
-          .filter((u) => {
+          .filter((u) => u.id !== user.uid); // Exclude current user
+        
+        // If there's a query, filter users; otherwise show all
+        if (mentionQuery.trim()) {
+          const query = mentionQuery.toLowerCase();
+          allUsers = allUsers.filter((u) => {
             const handle = (u.handle || '').toLowerCase();
             const displayName = (u.displayName || '').toLowerCase();
-            const query = mentionQuery.toLowerCase();
-            return (handle.includes(query) || displayName.includes(query)) && u.id !== user.uid;
-          })
-          .slice(0, 5);
+            return handle.includes(query) || displayName.includes(query);
+          });
+        }
+        
+        // Limit to 20 users max for performance
+        const matches = allUsers.slice(0, 20);
         
         setMentionSuggestions(matches);
         setShowMentionSuggestions(matches.length > 0);
@@ -212,7 +226,7 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
       }
     };
 
-    const timeoutId = setTimeout(searchUsers, 300);
+    const timeoutId = setTimeout(searchUsers, mentionQuery.trim() ? 300 : 0);
     return () => clearTimeout(timeoutId);
   }, [mentionQuery, user]);
 
@@ -250,15 +264,96 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
-    const range = selection.getRangeAt(0);
-    const mentionText = `@${handle || displayName} `;
-    const textNode = document.createTextNode(mentionText);
-    range.deleteContents();
-    range.insertNode(textNode);
-    range.setStartAfter(textNode);
-    range.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(range);
+    const currentRange = selection.getRangeAt(0);
+    const cursorNode = currentRange.startContainer;
+    const cursorOffset = currentRange.startOffset;
+    
+    // Get all text nodes and their positions
+    const walker = document.createTreeWalker(
+      editor,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    
+    const textNodes: Array<{ node: Text; text: string; startPos: number }> = [];
+    let totalPos = 0;
+    let node = walker.nextNode();
+    
+    while (node) {
+      const text = node.textContent || '';
+      textNodes.push({ node: node as Text, text, startPos: totalPos });
+      totalPos += text.length;
+      node = walker.nextNode();
+    }
+    
+    // Find cursor position in flat text
+    let cursorPos = 0;
+    for (const tn of textNodes) {
+      if (tn.node === cursorNode) {
+        cursorPos = tn.startPos + cursorOffset;
+        break;
+      }
+    }
+    
+    // Find @ symbol before cursor
+    let atNode: Text | null = null;
+    let atOffset = 0;
+    
+    for (const tn of textNodes) {
+      const nodeEnd = tn.startPos + tn.text.length;
+      if (nodeEnd <= cursorPos) {
+        // Check if @ is in this node
+        const relativeCursorPos = cursorPos - tn.startPos;
+        for (let i = relativeCursorPos - 1; i >= 0; i--) {
+          if (tn.text[i] === '@') {
+            atNode = tn.node;
+            atOffset = i;
+            break;
+          }
+          // Stop if we hit whitespace or another @
+          if (tn.text[i] === ' ' || tn.text[i] === '\n' || tn.text[i] === '@') {
+            break;
+          }
+        }
+        if (atNode) break;
+      }
+    }
+    
+    if (atNode) {
+      // Create range from @ to cursor
+      const deleteRange = document.createRange();
+      deleteRange.setStart(atNode, atOffset);
+      deleteRange.setEnd(cursorNode, cursorOffset);
+      
+      // Delete the @query text
+      deleteRange.deleteContents();
+      
+      // Insert mention - prefer handle, otherwise use lowercase displayName
+      // This matches how the notification API looks up users (by handle or displayName lowercase)
+      const mentionValue = handle || displayName.toLowerCase();
+      const mentionText = `@${mentionValue} `;
+      const mentionNode = document.createTextNode(mentionText);
+      deleteRange.insertNode(mentionNode);
+      
+      // Set cursor after mention
+      const newRange = document.createRange();
+      newRange.setStartAfter(mentionNode);
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+    } else {
+      // Fallback: insert at cursor
+      // Prefer handle, otherwise use lowercase displayName (matches notification API lookup)
+      const mentionValue = handle || displayName.toLowerCase();
+      const mentionText = `@${mentionValue} `;
+      const mentionNode = document.createTextNode(mentionText);
+      currentRange.deleteContents();
+      currentRange.insertNode(mentionNode);
+      currentRange.setStartAfter(mentionNode);
+      currentRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(currentRange);
+    }
     
     // Update content
     const html = editor.innerHTML;
@@ -268,6 +363,7 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     
     setShowMentionSuggestions(false);
     setMentionQuery('');
+    setMentionStartPosition(null);
     editor.focus();
   };
 
@@ -283,8 +379,8 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
-      const textContent = editorRef.current.textContent || '';
-      const cursorPos = range.startOffset;
+      const cursorNode = range.startContainer;
+      const cursorOffset = range.startOffset;
       
       // Get text before cursor position
       let textBeforeCursor = '';
@@ -296,13 +392,40 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
       
       let currentPos = 0;
       let node;
+      let atNode: Node | null = null;
+      let atOffset = 0;
+      
       while ((node = walker.nextNode())) {
         const nodeText = node.textContent || '';
         const nodeLength = nodeText.length;
         
-        if (currentPos + nodeLength >= cursorPos) {
+        if (node === cursorNode) {
           // Cursor is in this node
-          textBeforeCursor += nodeText.substring(0, cursorPos - currentPos);
+          const textUpToCursor = nodeText.substring(0, cursorOffset);
+          textBeforeCursor += textUpToCursor;
+          
+          // Check for @ in this text
+          const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+          if (lastAtIndex !== -1) {
+            // Find which node contains the @
+            let checkPos = 0;
+            walker.currentNode = editorRef.current;
+            let checkNode = walker.nextNode();
+            while (checkNode) {
+              const checkText = checkNode.textContent || '';
+              const checkLength = checkText.length;
+              
+              if (lastAtIndex >= checkPos && lastAtIndex < checkPos + checkLength) {
+                atNode = checkNode;
+                atOffset = lastAtIndex - checkPos;
+                break;
+              }
+              
+              checkPos += checkLength;
+              checkNode = walker.nextNode();
+            }
+          }
+          
           break;
         } else {
           textBeforeCursor += nodeText;
@@ -313,9 +436,13 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
       const lastAtIndex = textBeforeCursor.lastIndexOf('@');
       if (lastAtIndex !== -1) {
         const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
-        // Check if we're still typing a mention (no space, newline, or @)
-        if (textAfterAt && !textAfterAt.match(/[\s\n@]/)) {
-          setMentionQuery(textAfterAt);
+        // Check if we're typing a mention (no space, newline, or @)
+        // Show suggestions even if just "@" is pressed (empty textAfterAt)
+        if (!textAfterAt.match(/[\s\n@]/)) {
+          setMentionQuery(textAfterAt || ''); // Empty string if just "@"
+          if (atNode) {
+            setMentionStartPosition({ node: atNode, offset: atOffset });
+          }
           return;
         }
       }
@@ -323,6 +450,7 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     
     setShowMentionSuggestions(false);
     setMentionQuery('');
+    setMentionStartPosition(null);
   };
 
   const loadProjects = async () => {
@@ -880,6 +1008,11 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
                     if (mentionSuggestions.length > 0) {
                       insertMention(mentionSuggestions[0].id, mentionSuggestions[0].displayName, mentionSuggestions[0].handle);
                     }
+                  } else if (showMentionSuggestions && e.key === 'Escape') {
+                    e.preventDefault();
+                    setShowMentionSuggestions(false);
+                    setMentionQuery('');
+                    setMentionStartPosition(null);
                   } else if (e.key === 'Enter' && !e.shiftKey) {
                     // Allow Enter to create new line
                     document.execCommand('insertLineBreak', false);
@@ -900,27 +1033,50 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
                 </div>
               )}
               
-              {/* Mention Suggestions */}
+              {/* Mention Suggestions - Appears directly below text box */}
               {showMentionSuggestions && mentionSuggestions.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                  {mentionSuggestions.map((suggestion) => (
-                    <button
-                      key={suggestion.id}
-                      type="button"
-                      onClick={() => insertMention(suggestion.id, suggestion.displayName, suggestion.handle)}
-                      className="w-full px-4 py-2 text-left hover:bg-neutral-800 transition flex items-center gap-2"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-ccaBlue flex items-center justify-center text-white text-xs font-semibold">
-                        {suggestion.displayName.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="text-white text-sm font-medium">{suggestion.displayName}</div>
-                        {suggestion.handle && (
-                          <div className="text-neutral-400 text-xs">@{suggestion.handle}</div>
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                <div className="absolute z-50 top-full left-0 right-0 mt-2 bg-neutral-900 border border-neutral-700 rounded-lg shadow-2xl max-h-64 overflow-y-auto">
+                  <div className="p-2 border-b border-neutral-800">
+                    <div className="text-xs text-neutral-400 font-medium">
+                      {mentionQuery.trim() ? `Searching for "${mentionQuery}"...` : 'All users - Select to mention'}
+                    </div>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto">
+                    {mentionSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.id}
+                        type="button"
+                        onClick={() => insertMention(suggestion.id, suggestion.displayName, suggestion.handle)}
+                        className="w-full px-4 py-2.5 text-left hover:bg-neutral-800 transition flex items-center gap-3 border-b border-neutral-800/50 last:border-b-0"
+                      >
+                        {suggestion.photoURL ? (
+                          <img
+                            src={suggestion.photoURL}
+                            alt={suggestion.displayName}
+                            className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-neutral-700"
+                            onError={(e) => {
+                              // Fallback to initials if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className={`w-10 h-10 rounded-full bg-ccaBlue flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 border border-neutral-700 ${suggestion.photoURL ? 'hidden' : ''}`}
+                        >
+                          {suggestion.displayName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white text-sm font-medium truncate">{suggestion.displayName}</div>
+                          {suggestion.handle && (
+                            <div className="text-neutral-400 text-xs truncate">@{suggestion.handle}</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

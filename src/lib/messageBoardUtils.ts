@@ -12,12 +12,19 @@ export function extractHashtags(text: string): string[] {
 
 /**
  * Extract mentions (@username) from text content
+ * Handles @handle, @displayName (with spaces), etc.
+ * Mentions are inserted as "@handle " or "@displayname " (lowercase, may contain spaces)
  */
 export function extractMentions(text: string): string[] {
-  const mentionRegex = /@(\w+)/g;
-  const matches = text.match(mentionRegex);
-  if (!matches) return [];
-  return [...new Set(matches.map(mention => mention.substring(1)))];
+  // Match @ followed by word characters, spaces, hyphens until punctuation or end
+  // This handles @handle, @cody-cochran, @cody cochran, etc.
+  // Stop at punctuation or when we hit something that's clearly not part of the mention
+  const mentionRegex = /@([\w\s-]+?)(?=[\s]*[.,!?;:]|[\s]*$|[\s]{2,})/g;
+  const matches = [...text.matchAll(mentionRegex)];
+  if (!matches || matches.length === 0) return [];
+  // Extract and normalize mentions (trim, lowercase)
+  const mentions = matches.map(match => match[1].trim().toLowerCase()).filter(m => m.length > 0);
+  return [...new Set(mentions)];
 }
 
 /**
