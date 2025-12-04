@@ -473,6 +473,10 @@ export function MessageBoardPost({ post }: { post: MessageBoardPostData }) {
                     setReplyingTo(commentId);
                     setReplyContent('');
                   }}
+                  onCancel={() => {
+                    setReplyingTo(null);
+                    setReplyContent('');
+                  }}
                   replyingTo={replyingTo}
                   replyContent={replyContent}
                   onReplyChange={setReplyContent}
@@ -493,6 +497,7 @@ function CommentItem({
   comment,
   postId,
   onReply,
+  onCancel,
   replyingTo,
   replyContent,
   onReplyChange,
@@ -503,6 +508,7 @@ function CommentItem({
   comment: Comment;
   postId: string;
   onReply: (commentId: string) => void;
+  onCancel: () => void;
   replyingTo: string | null;
   replyContent: string;
   onReplyChange: (content: string) => void;
@@ -580,7 +586,7 @@ function CommentItem({
             />
             <div className="flex items-center justify-end gap-2 mt-2">
               <button
-                onClick={() => onReplyChange('')}
+                onClick={onCancel}
                 className="px-3 py-1 text-neutral-400 hover:text-white transition text-xs"
               >
                 Cancel
