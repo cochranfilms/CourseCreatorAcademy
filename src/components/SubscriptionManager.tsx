@@ -207,10 +207,10 @@ export function SubscriptionManager({ isOpen, onClose, currentPlanType, membersh
   return (
     <>
       {/* Main Modal */}
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-neutral-950 border border-neutral-800 rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="bg-neutral-950 border border-neutral-800 rounded-lg max-w-5xl w-full max-h-[90vh] my-auto shadow-xl flex flex-col">
           {/* Header */}
-          <div className="sticky top-0 bg-neutral-950 border-b border-neutral-800 p-6 flex items-center justify-between z-10">
+          <div className="flex-shrink-0 bg-neutral-950 border-b border-neutral-800 p-6 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-semibold text-white mb-1">Change Subscription</h2>
               <p className="text-sm text-neutral-400">Select a plan to upgrade or downgrade</p>
@@ -226,7 +226,7 @@ export function SubscriptionManager({ isOpen, onClose, currentPlanType, membersh
           </div>
 
           {/* Plans Grid */}
-          <div className="p-6">
+          <div className="p-6 flex-1 overflow-y-auto">
             {error && (
               <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
                 <div className="flex items-center gap-2 text-red-400 text-sm">
@@ -245,7 +245,7 @@ export function SubscriptionManager({ isOpen, onClose, currentPlanType, membersh
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 items-stretch">
               {plans.map((plan) => {
                 const isCurrentPlan = plan.planType === currentPlanType;
                 const isSelected = selectedPlan === plan.planType;
@@ -255,7 +255,7 @@ export function SubscriptionManager({ isOpen, onClose, currentPlanType, membersh
                 return (
                   <div
                     key={plan.planType}
-                    className={`relative border-2 rounded-lg p-6 transition-all cursor-pointer ${
+                    className={`relative border-2 rounded-lg p-6 transition-all cursor-pointer flex flex-col h-full ${
                       isCurrentPlan
                         ? 'border-ccaBlue bg-ccaBlue/10'
                         : isSelected
@@ -288,7 +288,7 @@ export function SubscriptionManager({ isOpen, onClose, currentPlanType, membersh
                       </div>
                     </div>
 
-                    <div className="space-y-3 mb-6">
+                    <div className="space-y-3 mb-6 flex-grow">
                       <div className="text-sm font-semibold text-neutral-300">What's Included:</div>
                       <ul className="space-y-2">
                         {plan.features.map((feature, idx) => (
@@ -317,34 +317,36 @@ export function SubscriptionManager({ isOpen, onClose, currentPlanType, membersh
                       )}
                     </div>
 
-                    {isCurrentPlan ? (
-                      <button
-                        disabled
-                        className="w-full px-4 py-2 bg-neutral-800 text-neutral-500 rounded-lg text-sm font-medium cursor-not-allowed"
-                      >
-                        Current Plan
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handlePlanSelect(plan.planType)}
-                        disabled={loading}
-                        className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition ${
-                          isUpgrade
-                            ? 'bg-ccaBlue hover:bg-ccaBlue/90 text-white'
+                    <div className="mt-auto">
+                      {isCurrentPlan ? (
+                        <button
+                          disabled
+                          className="w-full px-4 py-2 bg-neutral-800 text-neutral-500 rounded-lg text-sm font-medium cursor-not-allowed"
+                        >
+                          Current Plan
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handlePlanSelect(plan.planType)}
+                          disabled={loading}
+                          className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition ${
+                            isUpgrade
+                              ? 'bg-ccaBlue hover:bg-ccaBlue/90 text-white'
+                              : isDowngrade
+                              ? 'bg-neutral-800 hover:bg-neutral-700 text-white'
+                              : 'bg-neutral-800 hover:bg-neutral-700 text-white'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {loading && selectedPlan === plan.planType
+                            ? 'Calculating...'
+                            : isUpgrade
+                            ? 'Upgrade'
                             : isDowngrade
-                            ? 'bg-neutral-800 hover:bg-neutral-700 text-white'
-                            : 'bg-neutral-800 hover:bg-neutral-700 text-white'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                      >
-                        {loading && selectedPlan === plan.planType
-                          ? 'Calculating...'
-                          : isUpgrade
-                          ? 'Upgrade'
-                          : isDowngrade
-                          ? 'Downgrade'
-                          : 'Select'}
-                      </button>
-                    )}
+                            ? 'Downgrade'
+                            : 'Select'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
