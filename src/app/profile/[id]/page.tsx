@@ -529,11 +529,11 @@ export default function ProfilePage() {
     .filter(Boolean);
 
   return (
-    <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-12">
+    <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-5 py-4 sm:py-5 md:py-6">
       {/* Profile Banner */}
-      <div className="mb-8 rounded-2xl overflow-hidden border border-neutral-800/60 shadow-2xl shadow-black/50 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950">
+      <div className="mb-5 sm:mb-6 rounded-xl overflow-hidden border border-neutral-800/60 shadow-xl shadow-black/50 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950">
         <div
-          className="h-40 sm:h-56 md:h-72 w-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 relative overflow-hidden"
+          className="h-24 sm:h-32 md:h-40 w-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 relative overflow-hidden"
           style={profile?.bannerUrl ? { backgroundImage: `url(${profile.bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
         >
           {!profile?.bannerUrl && (
@@ -541,11 +541,11 @@ export default function ProfilePage() {
           )}
         </div>
         {/* Profile Header */}
-        <div className="bg-gradient-to-b from-neutral-950/95 via-neutral-950/90 to-neutral-950 backdrop-blur-xl p-6 sm:p-8 md:p-10 border-t border-neutral-800/50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-6 sm:gap-8">
+        <div className="bg-gradient-to-b from-neutral-950/95 via-neutral-950/90 to-neutral-950 backdrop-blur-xl p-4 sm:p-5 md:p-6 border-t border-neutral-800/50">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-5">
           {/* Profile Photo */}
-          <div className="relative -mt-16 sm:-mt-20 md:-mt-24 flex-shrink-0">
-            <div className="relative w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 rounded-2xl overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900 flex-shrink-0 border-4 border-neutral-950 shadow-2xl shadow-black/50 ring-2 ring-neutral-700/50">
+          <div className="relative -mt-12 sm:-mt-14 md:-mt-16 flex-shrink-0">
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-xl overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900 flex-shrink-0 border-3 border-neutral-950 shadow-xl shadow-black/50 ring-1 ring-neutral-700/50">
               {photoURL ? (
                 <img
                   src={photoURL}
@@ -555,12 +555,12 @@ export default function ProfilePage() {
                     e.currentTarget.style.display = 'none';
                     const parent = e.currentTarget.parentElement;
                     if (parent) {
-                      parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-br from-ccaBlue to-blue-600 text-white">${displayName.charAt(0).toUpperCase()}</div>`;
+                      parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-xl sm:text-2xl font-bold bg-gradient-to-br from-ccaBlue to-blue-600 text-white">${displayName.charAt(0).toUpperCase()}</div>`;
                     }
                   }}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-br from-ccaBlue to-blue-600 text-white">
+                <div className="w-full h-full flex items-center justify-center text-xl sm:text-2xl font-bold bg-gradient-to-br from-ccaBlue to-blue-600 text-white">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -568,34 +568,34 @@ export default function ProfilePage() {
           </div>
 
             {/* Profile Info */}
-            <div className="flex-1 min-w-0 pt-4 sm:pt-0">
-              <div className="flex flex-col gap-4 mb-6">
+            <div className="flex-1 min-w-0 pt-2 sm:pt-0">
+              <div className="flex flex-col gap-3 mb-4">
                 <div className="min-w-0">
-                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-2 break-words tracking-tight leading-tight bg-gradient-to-r from-white via-neutral-100 to-neutral-300 bg-clip-text text-transparent">
+                  <h1 className="text-xl sm:text-2xl font-bold text-white mb-1 break-words tracking-tight leading-tight">
                     {displayName}
                   </h1>
                   {handle && (
-                    <p className="text-neutral-400 text-base sm:text-lg md:text-xl break-words font-medium mb-3">@{handle}</p>
+                    <p className="text-neutral-400 text-sm break-words font-medium mb-2">@{handle}</p>
                   )}
                   {profile?.title && (
-                    <p className="text-neutral-200 mt-2 text-lg sm:text-xl md:text-2xl break-words font-semibold leading-relaxed">{profile.title}</p>
+                    <p className="text-neutral-200 mt-1 text-sm sm:text-base break-words font-semibold leading-relaxed">{profile.title}</p>
                   )}
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div className="flex flex-col sm:flex-row gap-2">
                   {currentUser && currentUser.uid !== userId && (
                     <>
                       <button
                         onClick={handleFollow}
                         disabled={isFollowingLoading}
-                        className={`font-bold py-3 px-6 sm:px-8 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 touch-manipulation min-h-[48px] text-base sm:text-lg w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transform hover:scale-105 active:scale-95 ${
+                        className={`font-semibold py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 touch-manipulation min-h-[36px] text-xs sm:text-sm w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed shadow-md transform hover:scale-[1.02] active:scale-[0.98] ${
                           isFollowing
-                            ? 'bg-gradient-to-r from-ccaBlue/20 to-blue-500/20 text-white border-2 border-ccaBlue/50 hover:from-ccaBlue/30 hover:to-blue-500/30 hover:border-ccaBlue/70 backdrop-blur-sm'
+                            ? 'bg-gradient-to-r from-ccaBlue/20 to-blue-500/20 text-white border border-ccaBlue/50 hover:from-ccaBlue/30 hover:to-blue-500/30 hover:border-ccaBlue/70 backdrop-blur-sm'
                             : 'bg-gradient-to-r from-ccaBlue to-blue-600 hover:from-blue-600 hover:to-ccaBlue text-white shadow-ccaBlue/50'
                         }`}
                       >
                         {isFollowingLoading ? (
                           <>
-                            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
@@ -603,7 +603,7 @@ export default function ProfilePage() {
                           </>
                         ) : (
                           <>
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d={isFollowing ? "M5 13l4 4L19 7" : "M12 4v16m8-8H4"} />
                             </svg>
                             {isFollowing ? 'Following' : 'Follow'}
@@ -612,9 +612,9 @@ export default function ProfilePage() {
                       </button>
                       <button
                         onClick={() => setShowMessageModal(true)}
-                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 sm:px-8 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 touch-manipulation min-h-[48px] text-base sm:text-lg w-full sm:w-auto shadow-lg shadow-red-500/30 transform hover:scale-105 active:scale-95"
+                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 touch-manipulation min-h-[36px] text-xs sm:text-sm w-full sm:w-auto shadow-md shadow-red-500/30 transform hover:scale-[1.02] active:scale-[0.98]"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                         Message
@@ -626,16 +626,16 @@ export default function ProfilePage() {
                   {currentUser && currentUser.uid === userId && (
                     <button
                       onClick={() => setShowLegacyModal(true)}
-                      className="px-4 sm:px-6 py-3 bg-gradient-to-r from-orange-500 via-red-500 to-red-600 hover:from-orange-600 hover:via-red-600 hover:to-red-700 text-white font-bold rounded-xl transition-all duration-200 touch-manipulation min-h-[48px] text-sm sm:text-base md:text-lg w-full sm:w-auto whitespace-nowrap shadow-lg shadow-orange-500/30 transform hover:scale-105 active:scale-95"
+                      className="px-3 sm:px-4 py-2 bg-gradient-to-r from-orange-500 via-red-500 to-red-600 hover:from-orange-600 hover:via-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-200 touch-manipulation min-h-[36px] text-xs sm:text-sm w-full sm:w-auto whitespace-nowrap shadow-md shadow-orange-500/30 transform hover:scale-[1.02] active:scale-[0.98]"
                     >
                       {hasLegacySub ? (
                         <>
-                          <span className="hidden sm:inline">Legacy Subscriptions</span>
+                          <span className="hidden sm:inline">Legacy+</span>
                           <span className="sm:hidden">Legacy+</span>
                         </>
                       ) : (
                         <>
-                          <span className="hidden sm:inline">Upgrade to Legacy+</span>
+                          <span className="hidden sm:inline">Upgrade</span>
                           <span className="sm:hidden">Upgrade</span>
                         </>
                       )}
@@ -649,66 +649,66 @@ export default function ProfilePage() {
       </div>
 
       {/* Stats Section (Listings, Opportunities, Member Since) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
-        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 rounded-2xl text-center shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 transition-all duration-300 hover:border-neutral-700/60 hover:-translate-y-1">
-          <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-2 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-5 sm:mb-6">
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-4 rounded-xl text-center shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/50 transition-all duration-300 hover:border-neutral-700/60 hover:-translate-y-0.5">
+          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
             {listings.length}
           </div>
-          <div className="text-sm sm:text-base font-semibold text-neutral-400 uppercase tracking-wider">{listings.length === 1 ? 'Listing' : 'Listings'}</div>
+          <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{listings.length === 1 ? 'Listing' : 'Listings'}</div>
         </div>
-        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 rounded-2xl text-center shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 transition-all duration-300 hover:border-neutral-700/60 hover:-translate-y-1">
-          <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-2 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-4 rounded-xl text-center shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/50 transition-all duration-300 hover:border-neutral-700/60 hover:-translate-y-0.5">
+          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
             {opportunities.length}
           </div>
-          <div className="text-sm sm:text-base font-semibold text-neutral-400 uppercase tracking-wider">{opportunities.length === 1 ? 'Opportunity' : 'Opportunities'}</div>
+          <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{opportunities.length === 1 ? 'Opportunity' : 'Opportunities'}</div>
         </div>
-        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 rounded-2xl text-center shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 transition-all duration-300 hover:border-neutral-700/60 hover:-translate-y-1 col-span-2 sm:col-span-1">
-          <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-2 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-4 rounded-xl text-center shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/50 transition-all duration-300 hover:border-neutral-700/60 hover:-translate-y-0.5 col-span-2 sm:col-span-1">
+          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
             {memberSince ? memberSince.getFullYear() : '—'}
           </div>
-          <div className="text-sm sm:text-base font-semibold text-neutral-400 uppercase tracking-wider">Member Since</div>
+          <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Member Since</div>
         </div>
       </div>
 
       {/* About Section */}
       {(profile?.title || profile?.specialties || profile?.location || profile?.bio || (profile?.skills && profile.skills.length > 0)) && (
-        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 sm:p-8 md:p-10 mb-8 rounded-2xl shadow-xl shadow-black/30">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-ccaBlue/20 to-blue-500/20 border-2 border-ccaBlue/40 text-ccaBlue flex items-center justify-center shadow-lg shadow-ccaBlue/20">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-4 sm:p-5 md:p-6 mb-5 sm:mb-6 rounded-xl shadow-lg shadow-black/30">
+          <div className="flex items-center gap-2 mb-4 sm:mb-5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-ccaBlue/20 to-blue-500/20 border border-ccaBlue/40 text-ccaBlue flex items-center justify-center shadow-md shadow-ccaBlue/20">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12zm0 0c-4.97 0-9 2.239-9 5v1.5A1.5 1.5 0 004.5 20h15a1.5 1.5 0 001.5-1.5V17c0-2.761-4.03-5-9-5z" />
               </svg>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">About</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">About</h2>
           </div>
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-8">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 sm:gap-y-4">
             {profile?.title && (
-              <div className="flex items-start gap-4 p-4 rounded-xl bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200">
-                <div className="mt-1 text-ccaBlue flex-shrink-0">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200">
+                <div className="mt-0.5 text-ccaBlue flex-shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 7V5a2 2 0 012-2h8a2 2 0 012 2v2M6 7h12M6 7l-2 7h16l-2-7M6 21h12" />
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Title</dt>
-                  <dd className="text-white mt-1 text-lg font-semibold leading-relaxed">{profile.title}</dd>
+                  <dt className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Title</dt>
+                  <dd className="text-white mt-0.5 text-sm font-semibold leading-relaxed">{profile.title}</dd>
                 </div>
               </div>
             )}
 
             {(profile?.specialties && specialtyList.length > 0) && (
-              <div className="flex items-start gap-4 p-4 rounded-xl bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200">
-                <div className="mt-1 text-red-400 flex-shrink-0">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200">
+                <div className="mt-0.5 text-red-400 flex-shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L3 20l3-6.75M21 7l-6 6-4-4-8 8" />
                   </svg>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <dt className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Specialties</dt>
-                  <dd className="mt-1">
-                    <div className="flex flex-wrap gap-2.5">
+                  <dt className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Specialties</dt>
+                  <dd className="mt-0.5">
+                    <div className="flex flex-wrap gap-1.5">
                       {specialtyList.map((s, i) => (
-                        <span key={`${s}-${i}`} className="px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-300 border-2 border-red-500/40 hover:border-red-500/60 hover:from-red-500/30 hover:to-red-600/30 transition-all duration-200 shadow-lg shadow-red-500/10">
+                        <span key={`${s}-${i}`} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-300 border border-red-500/40 hover:border-red-500/60 hover:from-red-500/30 hover:to-red-600/30 transition-all duration-200 shadow-md shadow-red-500/10">
                           {s}
                         </span>
                       ))}
@@ -719,49 +719,49 @@ export default function ProfilePage() {
             )}
 
             {profile?.location && (
-              <div className="flex items-start gap-4 p-4 rounded-xl bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200">
-                <div className="mt-1 text-green-400 flex-shrink-0">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200">
+                <div className="mt-0.5 text-green-400 flex-shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Location</dt>
-                  <dd className="text-white mt-1 text-lg font-semibold leading-relaxed">{profile.location}</dd>
+                  <dt className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Location</dt>
+                  <dd className="text-white mt-0.5 text-sm font-semibold leading-relaxed">{profile.location}</dd>
                 </div>
               </div>
             )}
 
             {profile?.bio && (
-              <div className="flex items-start gap-4 p-6 rounded-xl bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200 sm:col-span-2">
-                <div className="mt-1 text-amber-400 flex-shrink-0">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200 sm:col-span-2">
+                <div className="mt-0.5 text-amber-400 flex-shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 16h8M8 12h8M8 8h8M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
                   </svg>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <dt className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Bio</dt>
-                  <dd className="text-neutral-200 mt-1 whitespace-pre-wrap leading-relaxed text-base sm:text-lg font-medium">{profile.bio}</dd>
+                  <dt className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Bio</dt>
+                  <dd className="text-neutral-200 mt-0.5 whitespace-pre-wrap leading-relaxed text-xs sm:text-sm font-medium">{profile.bio}</dd>
                 </div>
               </div>
             )}
 
             {profile?.skills && profile.skills.length > 0 && (
-              <div className="flex items-start gap-4 p-6 rounded-xl bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200 sm:col-span-2">
-                <div className="mt-1 text-purple-400 flex-shrink-0">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200 sm:col-span-2">
+                <div className="mt-0.5 text-purple-400 flex-shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6l3 6H9l3-6zm-7 9h14l-7 3-7-3z" />
                   </svg>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <dt className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Skills</dt>
+                  <dt className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Skills</dt>
                   <dd>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2">
                       {profile.skills.map((skill, index) => (
                         <span
                           key={index}
-                          className="px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-neutral-800/80 to-neutral-800/60 text-neutral-200 border-2 border-neutral-700/50 hover:border-neutral-600 hover:from-neutral-700/80 hover:to-neutral-700/60 transition-all duration-200 shadow-lg shadow-black/20"
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-neutral-800/80 to-neutral-800/60 text-neutral-200 border border-neutral-700/50 hover:border-neutral-600 hover:from-neutral-700/80 hover:to-neutral-700/60 transition-all duration-200 shadow-md shadow-black/20"
                         >
                           {skill}
                         </span>
@@ -776,15 +776,15 @@ export default function ProfilePage() {
       )}
 
       {/* Following/Followers Section */}
-      <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 sm:p-8 md:p-10 mb-8 rounded-2xl shadow-xl shadow-black/30">
-        <div className="grid grid-cols-2 gap-6 mb-8">
-          <div className="text-center p-6 rounded-xl bg-gradient-to-br from-neutral-800/40 to-neutral-800/20 border border-neutral-700/30 hover:border-neutral-600/50 transition-all duration-200">
-            <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-2 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">{followingCount}</div>
-            <div className="text-sm sm:text-base font-bold text-neutral-400 uppercase tracking-wider">Following</div>
+      <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-4 sm:p-5 md:p-6 mb-5 sm:mb-6 rounded-xl shadow-lg shadow-black/30">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5">
+          <div className="text-center p-4 rounded-lg bg-gradient-to-br from-neutral-800/40 to-neutral-800/20 border border-neutral-700/30 hover:border-neutral-600/50 transition-all duration-200">
+            <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{followingCount}</div>
+            <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Following</div>
           </div>
-          <div className="text-center p-6 rounded-xl bg-gradient-to-br from-neutral-800/40 to-neutral-800/20 border border-neutral-700/30 hover:border-neutral-600/50 transition-all duration-200">
-            <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-2 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">{followersCount}</div>
-            <div className="text-sm sm:text-base font-bold text-neutral-400 uppercase tracking-wider">Followers</div>
+          <div className="text-center p-4 rounded-lg bg-gradient-to-br from-neutral-800/40 to-neutral-800/20 border border-neutral-700/30 hover:border-neutral-600/50 transition-all duration-200">
+            <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{followersCount}</div>
+            <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Followers</div>
           </div>
         </div>
         
