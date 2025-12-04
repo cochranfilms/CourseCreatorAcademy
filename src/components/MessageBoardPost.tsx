@@ -6,12 +6,18 @@ import { db, firebaseReady } from '@/lib/firebaseClient';
 import Link from 'next/link';
 import { ReactionPicker } from './ReactionPicker';
 
+type MediaItem = {
+  url: string;
+  type: 'image' | 'video';
+};
+
 type MessageBoardPostData = {
   id: string;
   authorId: string;
   content: string;
   projectId?: string;
-  mediaUrls?: string[] | null;
+  mediaUrls?: string[] | null; // Legacy support
+  media?: MediaItem[] | null; // New format with types
   createdAt: any;
   updatedAt?: any;
   authorProfile?: {
@@ -364,65 +370,69 @@ export function MessageBoardPost({ post }: { post: MessageBoardPostData }) {
       )}
 
       {/* Media Display */}
-      {post.mediaUrls && post.mediaUrls.length > 0 && (
+      {((post.media && post.media.length > 0) || (post.mediaUrls && post.mediaUrls.length > 0)) && (
         <div className="mb-4">
-          <div className={`grid gap-3 ${
-            post.mediaUrls.length === 1 ? 'grid-cols-1' :
-            post.mediaUrls.length === 2 ? 'grid-cols-2' :
-            'grid-cols-2 sm:grid-cols-3'
-          }`}>
-            {post.mediaUrls.map((url, index) => {
-              // Detect media type from URL - check for file extensions or content type hints
-              const urlLower = url.toLowerCase();
-              const isImage = urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i) || 
-                             urlLower.includes('image') ||
-                             urlLower.includes('image%2F');
-              const isVideo = urlLower.match(/\.(mp4|webm|mov|avi|mkv|flv|wmv|m4v)$/i) || 
-                             urlLower.includes('video') ||
-                             urlLower.includes('video%2F');
-              
-              return (
-                <div key={index} className="relative group">
-                  {isImage ? (
-                    <div className="relative">
-                      <img
-                        src={url}
-                        alt={`Post image ${index + 1}`}
-                        className="w-full h-auto rounded-lg border border-neutral-700 cursor-pointer hover:opacity-90 transition max-h-96 object-contain bg-neutral-900"
-                        onClick={() => window.open(url, '_blank')}
-                        loading="lazy"
-                      />
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
-                        <div className="bg-black/50 rounded px-2 py-1 text-white text-xs">
-                          Click to view full size
+          {(() => {
+            // Use new format if available, otherwise fall back to legacy format
+            const mediaItems: MediaItem[] = post.media || 
+              (post.mediaUrls || []).map(url => {
+                // Try to detect type from URL for legacy posts
+                const urlLower = decodeURIComponent(url).toLowerCase();
+                const hasImageExt = urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/);
+                const hasVideoExt = urlLower.match(/\.(mp4|webm|mov|avi|mkv|flv|wmv|m4v)$/);
+                return {
+                  url,
+                  type: hasVideoExt ? 'video' : hasImageExt ? 'image' : 'image' // Default to image if unclear
+                } as MediaItem;
+              });
+            
+            return (
+              <div className={`grid gap-3 ${
+                mediaItems.length === 1 ? 'grid-cols-1' :
+                mediaItems.length === 2 ? 'grid-cols-2' :
+                'grid-cols-2 sm:grid-cols-3'
+              }`}>
+                {mediaItems.map((item, index) => (
+                  <div key={index} className="relative group">
+                    {item.type === 'image' ? (
+                      <div className="relative">
+                        <img
+                          src={item.url}
+                          alt={`Post image ${index + 1}`}
+                          className="w-full h-auto rounded-lg border border-neutral-700 cursor-pointer hover:opacity-90 transition max-h-96 object-contain bg-neutral-900"
+                          onClick={() => window.open(item.url, '_blank')}
+                          loading="lazy"
+                          onError={(e) => {
+                            // If image fails to load, try as video
+                            console.error('Image failed to load, trying as video:', item.url);
+                            const video = document.createElement('video');
+                            video.src = item.url;
+                            video.controls = true;
+                            video.className = 'w-full h-auto rounded-lg border border-neutral-700 max-h-96';
+                            e.currentTarget.parentElement?.replaceChild(video, e.currentTarget);
+                          }}
+                        />
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
+                          <div className="bg-black/50 rounded px-2 py-1 text-white text-xs">
+                            Click to view full size
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : isVideo ? (
-                    <video
-                      src={url}
-                      controls
-                      className="w-full h-auto rounded-lg border border-neutral-700 max-h-96"
-                      preload="metadata"
-                    >
-                      Your browser does not support the video tag.
-                    </video>
-                  ) : (
-                    <div className="w-full aspect-video bg-neutral-800 rounded-lg border border-neutral-700 flex items-center justify-center">
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-ccaBlue hover:text-ccaBlue/80 transition text-sm"
+                    ) : (
+                      <video
+                        src={item.url}
+                        controls
+                        className="w-full h-auto rounded-lg border border-neutral-700 max-h-96"
+                        preload="metadata"
                       >
-                        View media
-                      </a>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                        Your browser does not support the video tag.
+                      </video>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 

@@ -8,12 +8,18 @@ import Link from 'next/link';
 import { MessageBoardPost } from '@/components/MessageBoardPost';
 import { CreatePostModal } from '@/components/CreatePostModal';
 
+type MediaItem = {
+  url: string;
+  type: 'image' | 'video';
+};
+
 type MessageBoardPostData = {
   id: string;
   authorId: string;
   content: string;
   projectId?: string;
-  mediaUrls?: string[] | null;
+  mediaUrls?: string[] | null; // Legacy support
+  media?: MediaItem[] | null; // New format with types
   createdAt: any;
   updatedAt?: any;
   authorProfile?: {
@@ -60,7 +66,8 @@ export default function MessageBoardPage() {
             authorId: postData.authorId,
             content: postData.content,
             projectId: postData.projectId,
-            mediaUrls: postData.mediaUrls || null,
+            mediaUrls: postData.mediaUrls || null, // Legacy support
+            media: postData.media || null, // New format
             createdAt: postData.createdAt,
             updatedAt: postData.updatedAt,
           };

@@ -128,7 +128,7 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     setMediaFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadMediaFiles = async (): Promise<string[]> => {
+  const uploadMediaFiles = async (): Promise<Array<{ url: string; type: 'image' | 'video' }>> => {
     if (mediaFiles.length === 0) return [];
 
     if (!user || !firebaseReady || !storage) {
@@ -137,14 +137,16 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
 
     setUploadingMedia(true);
     const uploadPromises = mediaFiles.map(async (mediaFile, index) => {
-      // If already uploaded, return the URL
-      if (mediaFile.url) return mediaFile.url;
+      // If already uploaded, return the URL and type
+      if (mediaFile.url) {
+        return { url: mediaFile.url, type: mediaFile.type };
+      }
 
       const fileId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const storagePath = `message-board-media/${user.uid}/${fileId}_${mediaFile.file.name.replace(/\s+/g, '_')}`;
       const storageRef = ref(storage, storagePath);
 
-      return new Promise<string>((resolve, reject) => {
+      return new Promise<{ url: string; type: 'image' | 'video' }>((resolve, reject) => {
         const uploadTask = uploadBytesResumable(storageRef, mediaFile.file, {
           contentType: mediaFile.file.type,
         });
@@ -171,7 +173,7 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
                 updated[index] = { ...updated[index], url: downloadURL };
                 return updated;
               });
-              resolve(downloadURL);
+              resolve({ url: downloadURL, type: mediaFile.type });
             } catch (error) {
               reject(error);
             }
@@ -181,9 +183,9 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     });
 
     try {
-      const urls = await Promise.all(uploadPromises);
+      const media = await Promise.all(uploadPromises);
       setUploadingMedia(false);
-      return urls;
+      return media;
     } catch (error) {
       setUploadingMedia(false);
       throw error;
@@ -208,16 +210,16 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
 
     try {
       // Upload media files first
-      let mediaUrls: string[] = [];
+      let media: Array<{ url: string; type: 'image' | 'video' }> = [];
       if (mediaFiles.length > 0) {
-        mediaUrls = await uploadMediaFiles();
+        media = await uploadMediaFiles();
       }
 
       await addDoc(collection(db, 'messageBoardPosts'), {
         authorId: user.uid,
         content: content.trim() || '',
         projectId: selectedProjectId || null,
-        mediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
+        media: media.length > 0 ? media : null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
