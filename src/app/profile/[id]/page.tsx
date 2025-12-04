@@ -454,8 +454,8 @@ export default function ProfilePage() {
       <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="inline-block animate-spin h-12 w-12 border-b-2 border-ccaBlue mb-4"></div>
-            <p className="text-neutral-400">Loading profile...</p>
+            <div className="inline-block animate-spin h-16 w-16 border-4 border-ccaBlue/30 border-t-ccaBlue rounded-full mb-6"></div>
+            <p className="text-neutral-400 text-lg font-semibold">Loading profile...</p>
           </div>
         </div>
       </main>
@@ -466,10 +466,10 @@ export default function ProfilePage() {
     return (
       <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-white mb-2">Profile Not Found</h1>
-            <p className="text-neutral-400 mb-6">The user profile you're looking for doesn't exist.</p>
-            <Link href="/home" className="text-ccaBlue hover:underline">Return to Home</Link>
+          <div className="text-center bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border-2 border-neutral-800/60 p-12 rounded-2xl shadow-xl shadow-black/30 max-w-md">
+            <h1 className="text-3xl font-extrabold text-white mb-3 tracking-tight">Profile Not Found</h1>
+            <p className="text-neutral-400 mb-8 text-lg font-medium">The user profile you're looking for doesn't exist.</p>
+            <Link href="/home" className="inline-block px-6 py-3 bg-gradient-to-r from-ccaBlue to-blue-600 hover:from-blue-600 hover:to-ccaBlue text-white font-bold rounded-xl transition-all duration-200 shadow-lg shadow-ccaBlue/30 hover:shadow-xl hover:shadow-ccaBlue/50 transform hover:scale-105 active:scale-95">Return to Home</Link>
           </div>
         </div>
       </main>
@@ -480,14 +480,14 @@ export default function ProfilePage() {
     return (
       <main className="min-h-screen max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="w-20 h-20 rounded-full bg-neutral-800 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          <div className="text-center bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border-2 border-neutral-800/60 p-12 rounded-2xl shadow-xl shadow-black/30 max-w-md">
+            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center mx-auto mb-6 border-2 border-neutral-700 shadow-lg">
+              <svg className="w-12 h-12 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Private Profile</h1>
-            <p className="text-neutral-400">This profile is set to private.</p>
+            <h1 className="text-3xl font-extrabold text-white mb-3 tracking-tight">Private Profile</h1>
+            <p className="text-neutral-400 text-lg font-medium">This profile is set to private.</p>
           </div>
         </div>
       </main>
@@ -503,65 +503,73 @@ export default function ProfilePage() {
     .filter(Boolean);
 
   return (
-    <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+    <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-12">
       {/* Profile Banner */}
-      <div className="mb-6 rounded-lg overflow-hidden border border-neutral-800/50">
+      <div className="mb-8 rounded-2xl overflow-hidden border border-neutral-800/60 shadow-2xl shadow-black/50 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950">
         <div
-          className="h-32 sm:h-40 md:h-48 w-full bg-gradient-to-r from-neutral-900 to-neutral-800 relative"
+          className="h-40 sm:h-56 md:h-72 w-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 relative overflow-hidden"
           style={profile?.bannerUrl ? { backgroundImage: `url(${profile.bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-        />
+        >
+          {!profile?.bannerUrl && (
+            <div className="absolute inset-0 bg-gradient-to-br from-ccaBlue/10 via-transparent to-red-500/10" />
+          )}
+        </div>
         {/* Profile Header */}
-        <div className="bg-neutral-950/80 backdrop-blur-sm p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+        <div className="bg-gradient-to-b from-neutral-950/95 via-neutral-950/90 to-neutral-950 backdrop-blur-xl p-6 sm:p-8 md:p-10 border-t border-neutral-800/50">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-6 sm:gap-8">
           {/* Profile Photo */}
-          <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-neutral-800 flex-shrink-0 border-2 border-neutral-700">
-            {photoURL ? (
-              <img
-                src={photoURL}
-                alt={displayName}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  const parent = e.currentTarget.parentElement;
-                  if (parent) {
-                    parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-2xl sm:text-3xl font-semibold bg-ccaBlue text-white">${displayName.charAt(0).toUpperCase()}</div>`;
-                  }
-                }}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl sm:text-3xl font-semibold bg-ccaBlue text-white">
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-            )}
+          <div className="relative -mt-16 sm:-mt-20 md:-mt-24 flex-shrink-0">
+            <div className="relative w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 rounded-2xl overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900 flex-shrink-0 border-4 border-neutral-950 shadow-2xl shadow-black/50 ring-2 ring-neutral-700/50">
+              {photoURL ? (
+                <img
+                  src={photoURL}
+                  alt={displayName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-br from-ccaBlue to-blue-600 text-white">${displayName.charAt(0).toUpperCase()}</div>`;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-br from-ccaBlue to-blue-600 text-white">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
           </div>
 
             {/* Profile Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-col gap-2 sm:gap-3 mb-3">
+            <div className="flex-1 min-w-0 pt-4 sm:pt-0">
+              <div className="flex flex-col gap-4 mb-6">
                 <div className="min-w-0">
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1 break-words">{displayName}</h1>
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-2 break-words tracking-tight leading-tight bg-gradient-to-r from-white via-neutral-100 to-neutral-300 bg-clip-text text-transparent">
+                    {displayName}
+                  </h1>
                   {handle && (
-                    <p className="text-neutral-400 text-xs sm:text-sm md:text-base break-words">@{handle}</p>
+                    <p className="text-neutral-400 text-base sm:text-lg md:text-xl break-words font-medium mb-3">@{handle}</p>
                   )}
                   {profile?.title && (
-                    <p className="text-neutral-300 mt-1 text-sm sm:text-base break-words">{profile.title}</p>
+                    <p className="text-neutral-200 mt-2 text-lg sm:text-xl md:text-2xl break-words font-semibold leading-relaxed">{profile.title}</p>
                   )}
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   {currentUser && currentUser.uid !== userId && (
                     <>
                       <button
                         onClick={handleFollow}
                         disabled={isFollowingLoading}
-                        className={`font-semibold py-2 px-3 sm:px-4 md:px-6 rounded-lg transition flex items-center justify-center gap-2 touch-manipulation min-h-[44px] text-sm sm:text-base w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`font-bold py-3 px-6 sm:px-8 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 touch-manipulation min-h-[48px] text-base sm:text-lg w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transform hover:scale-105 active:scale-95 ${
                           isFollowing
-                            ? 'bg-ccaBlue/20 text-white border border-ccaBlue hover:bg-ccaBlue/30'
-                            : 'bg-ccaBlue hover:bg-ccaBlue/90 text-white'
+                            ? 'bg-gradient-to-r from-ccaBlue/20 to-blue-500/20 text-white border-2 border-ccaBlue/50 hover:from-ccaBlue/30 hover:to-blue-500/30 hover:border-ccaBlue/70 backdrop-blur-sm'
+                            : 'bg-gradient-to-r from-ccaBlue to-blue-600 hover:from-blue-600 hover:to-ccaBlue text-white shadow-ccaBlue/50'
                         }`}
                       >
                         {isFollowingLoading ? (
                           <>
-                            <svg className="animate-spin h-4 w-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24">
+                            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
@@ -569,8 +577,8 @@ export default function ProfilePage() {
                           </>
                         ) : (
                           <>
-                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isFollowing ? "M5 13l4 4L19 7" : "M12 4v16m8-8H4"} />
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d={isFollowing ? "M5 13l4 4L19 7" : "M12 4v16m8-8H4"} />
                             </svg>
                             {isFollowing ? 'Following' : 'Follow'}
                           </>
@@ -578,10 +586,10 @@ export default function ProfilePage() {
                       </button>
                       <button
                         onClick={() => setShowMessageModal(true)}
-                        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 sm:px-4 md:px-6 rounded-lg transition flex items-center justify-center gap-2 touch-manipulation min-h-[44px] text-sm sm:text-base w-full sm:w-auto"
+                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 sm:px-8 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 touch-manipulation min-h-[48px] text-base sm:text-lg w-full sm:w-auto shadow-lg shadow-red-500/30 transform hover:scale-105 active:scale-95"
                       >
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                         Message
                       </button>
@@ -592,7 +600,7 @@ export default function ProfilePage() {
                   {currentUser && currentUser.uid === userId && (
                     <button
                       onClick={() => setShowLegacyModal(true)}
-                      className="px-3 sm:px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 rounded-lg font-semibold transition touch-manipulation min-h-[44px] text-xs sm:text-sm md:text-base w-full sm:w-auto whitespace-nowrap"
+                      className="px-4 sm:px-6 py-3 bg-gradient-to-r from-orange-500 via-red-500 to-red-600 hover:from-orange-600 hover:via-red-600 hover:to-red-700 text-white font-bold rounded-xl transition-all duration-200 touch-manipulation min-h-[48px] text-sm sm:text-base md:text-lg w-full sm:w-auto whitespace-nowrap shadow-lg shadow-orange-500/30 transform hover:scale-105 active:scale-95"
                     >
                       {hasLegacySub ? (
                         <>
@@ -615,62 +623,66 @@ export default function ProfilePage() {
       </div>
 
       {/* Stats Section (Listings, Opportunities, Member Since) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-neutral-900 backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
-          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{listings.length}</div>
-          <div className="text-sm text-neutral-400">{listings.length === 1 ? 'Listing' : 'Listings'}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 rounded-2xl text-center shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 transition-all duration-300 hover:border-neutral-700/60 hover:-translate-y-1">
+          <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-2 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
+            {listings.length}
+          </div>
+          <div className="text-sm sm:text-base font-semibold text-neutral-400 uppercase tracking-wider">{listings.length === 1 ? 'Listing' : 'Listings'}</div>
         </div>
-        <div className="bg-neutral-900 backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
-          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{opportunities.length}</div>
-          <div className="text-sm text-neutral-400">{opportunities.length === 1 ? 'Opportunity' : 'Opportunities'}</div>
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 rounded-2xl text-center shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 transition-all duration-300 hover:border-neutral-700/60 hover:-translate-y-1">
+          <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-2 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
+            {opportunities.length}
+          </div>
+          <div className="text-sm sm:text-base font-semibold text-neutral-400 uppercase tracking-wider">{opportunities.length === 1 ? 'Opportunity' : 'Opportunities'}</div>
         </div>
-        <div className="bg-neutral-900 backdrop-blur-sm border border-neutral-800/50 p-4 rounded-lg text-center">
-          <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 rounded-2xl text-center shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 transition-all duration-300 hover:border-neutral-700/60 hover:-translate-y-1 col-span-2 sm:col-span-1">
+          <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-2 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
             {memberSince ? memberSince.getFullYear() : '—'}
           </div>
-          <div className="text-sm text-neutral-400">Member Since</div>
+          <div className="text-sm sm:text-base font-semibold text-neutral-400 uppercase tracking-wider">Member Since</div>
         </div>
       </div>
 
       {/* About Section */}
       {(profile?.title || profile?.specialties || profile?.location || profile?.bio || (profile?.skills && profile.skills.length > 0)) && (
-        <div className="bg-neutral-900 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 rounded-lg">
-          <div className="flex items-center gap-2 mb-5">
-            <div className="w-6 h-6 rounded-md bg-ccaBlue/20 border border-ccaBlue/30 text-ccaBlue flex items-center justify-center">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12zm0 0c-4.97 0-9 2.239-9 5v1.5A1.5 1.5 0 004.5 20h15a1.5 1.5 0 001.5-1.5V17c0-2.761-4.03-5-9-5z" />
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 sm:p-8 md:p-10 mb-8 rounded-2xl shadow-xl shadow-black/30">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-ccaBlue/20 to-blue-500/20 border-2 border-ccaBlue/40 text-ccaBlue flex items-center justify-center shadow-lg shadow-ccaBlue/20">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12zm0 0c-4.97 0-9 2.239-9 5v1.5A1.5 1.5 0 004.5 20h15a1.5 1.5 0 001.5-1.5V17c0-2.761-4.03-5-9-5z" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-white">About</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">About</h2>
           </div>
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-8">
             {profile?.title && (
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 text-neutral-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7V5a2 2 0 012-2h8a2 2 0 012 2v2M6 7h12M6 7l-2 7h16l-2-7M6 21h12" />
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200">
+                <div className="mt-1 text-ccaBlue flex-shrink-0">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 7V5a2 2 0 012-2h8a2 2 0 012 2v2M6 7h12M6 7l-2 7h16l-2-7M6 21h12" />
                   </svg>
                 </div>
-                <div>
-                  <dt className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Title</dt>
-                  <dd className="text-neutral-200 mt-1">{profile.title}</dd>
+                <div className="min-w-0">
+                  <dt className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Title</dt>
+                  <dd className="text-white mt-1 text-lg font-semibold leading-relaxed">{profile.title}</dd>
                 </div>
               </div>
             )}
 
             {(profile?.specialties && specialtyList.length > 0) && (
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 text-neutral-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L3 20l3-6.75M21 7l-6 6-4-4-8 8" />
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200">
+                <div className="mt-1 text-red-400 flex-shrink-0">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L3 20l3-6.75M21 7l-6 6-4-4-8 8" />
                   </svg>
                 </div>
-                <div className="min-w-0">
-                  <dt className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Specialties</dt>
+                <div className="min-w-0 flex-1">
+                  <dt className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Specialties</dt>
                   <dd className="mt-1">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2.5">
                       {specialtyList.map((s, i) => (
-                        <span key={`${s}-${i}`} className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-300 border border-red-500/30">
+                        <span key={`${s}-${i}`} className="px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-300 border-2 border-red-500/40 hover:border-red-500/60 hover:from-red-500/30 hover:to-red-600/30 transition-all duration-200 shadow-lg shadow-red-500/10">
                           {s}
                         </span>
                       ))}
@@ -681,49 +693,49 @@ export default function ProfilePage() {
             )}
 
             {profile?.location && (
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 text-neutral-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200">
+                <div className="mt-1 text-green-400 flex-shrink-0">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </div>
-                <div>
-                  <dt className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Location</dt>
-                  <dd className="text-neutral-200 mt-1">{profile.location}</dd>
+                <div className="min-w-0">
+                  <dt className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Location</dt>
+                  <dd className="text-white mt-1 text-lg font-semibold leading-relaxed">{profile.location}</dd>
                 </div>
               </div>
             )}
 
             {profile?.bio && (
-              <div className="flex items-start gap-3 sm:col-span-2">
-                <div className="mt-0.5 text-neutral-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8M8 12h8M8 8h8M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
+              <div className="flex items-start gap-4 p-6 rounded-xl bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200 sm:col-span-2">
+                <div className="mt-1 text-amber-400 flex-shrink-0">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16h8M8 12h8M8 8h8M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
                   </svg>
                 </div>
-                <div className="min-w-0">
-                  <dt className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Bio</dt>
-                  <dd className="text-neutral-300 mt-1 whitespace-pre-wrap leading-relaxed">{profile.bio}</dd>
+                <div className="min-w-0 flex-1">
+                  <dt className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Bio</dt>
+                  <dd className="text-neutral-200 mt-1 whitespace-pre-wrap leading-relaxed text-base sm:text-lg font-medium">{profile.bio}</dd>
                 </div>
               </div>
             )}
 
             {profile?.skills && profile.skills.length > 0 && (
-              <div className="flex items-start gap-3 sm:col-span-2">
-                <div className="mt-0.5 text-neutral-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6l3 6H9l3-6zm-7 9h14l-7 3-7-3z" />
+              <div className="flex items-start gap-4 p-6 rounded-xl bg-neutral-800/30 border border-neutral-700/30 hover:bg-neutral-800/50 hover:border-neutral-700/50 transition-all duration-200 sm:col-span-2">
+                <div className="mt-1 text-purple-400 flex-shrink-0">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6l3 6H9l3-6zm-7 9h14l-7 3-7-3z" />
                   </svg>
                 </div>
-                <div className="min-w-0">
-                  <dt className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">Skills</dt>
+                <div className="min-w-0 flex-1">
+                  <dt className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Skills</dt>
                   <dd>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-3">
                       {profile.skills.map((skill, index) => (
                         <span
                           key={index}
-                          className="px-3 py-1 rounded-full text-xs font-medium bg-neutral-800/70 text-neutral-200 border border-neutral-700 hover:border-neutral-600 transition"
+                          className="px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-neutral-800/80 to-neutral-800/60 text-neutral-200 border-2 border-neutral-700/50 hover:border-neutral-600 hover:from-neutral-700/80 hover:to-neutral-700/60 transition-all duration-200 shadow-lg shadow-black/20"
                         >
                           {skill}
                         </span>
@@ -738,47 +750,47 @@ export default function ProfilePage() {
       )}
 
       {/* Following/Followers Section */}
-      <div className="bg-neutral-900 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 rounded-lg">
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <div className="text-2xl font-bold text-white">{followingCount}</div>
-            <div className="text-sm text-neutral-400">Following</div>
+      <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 sm:p-8 md:p-10 mb-8 rounded-2xl shadow-xl shadow-black/30">
+        <div className="grid grid-cols-2 gap-6 mb-8">
+          <div className="text-center p-6 rounded-xl bg-gradient-to-br from-neutral-800/40 to-neutral-800/20 border border-neutral-700/30 hover:border-neutral-600/50 transition-all duration-200">
+            <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-2 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">{followingCount}</div>
+            <div className="text-sm sm:text-base font-bold text-neutral-400 uppercase tracking-wider">Following</div>
           </div>
-          <div>
-            <div className="text-2xl font-bold text-white">{followersCount}</div>
-            <div className="text-sm text-neutral-400">Followers</div>
+          <div className="text-center p-6 rounded-xl bg-gradient-to-br from-neutral-800/40 to-neutral-800/20 border border-neutral-700/30 hover:border-neutral-600/50 transition-all duration-200">
+            <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-2 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">{followersCount}</div>
+            <div className="text-sm sm:text-base font-bold text-neutral-400 uppercase tracking-wider">Followers</div>
           </div>
         </div>
         
         {/* Show preview of following/followers */}
         {(following.length > 0 || followers.length > 0) && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {following.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-neutral-300 mb-2">Following</h3>
-                <div className="flex flex-wrap gap-2">
+                <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-wider">Following</h3>
+                <div className="flex flex-wrap gap-3">
                   {following.slice(0, 10).map((user) => (
                     <Link
                       key={user.id}
                       href={`/profile/${user.id}`}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/50 rounded-lg border border-neutral-700 hover:border-neutral-600 transition"
+                      className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-neutral-800/60 to-neutral-800/40 rounded-xl border-2 border-neutral-700/50 hover:border-neutral-600 hover:from-neutral-700/60 hover:to-neutral-700/40 transition-all duration-200 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transform hover:-translate-y-0.5"
                     >
                       {user.photoURL ? (
                         <img
                           src={user.photoURL}
                           alt={user.displayName}
-                          className="w-6 h-6 rounded-full"
+                          className="w-8 h-8 rounded-full border-2 border-neutral-600"
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-ccaBlue flex items-center justify-center text-white text-xs font-semibold">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-ccaBlue to-blue-600 flex items-center justify-center text-white text-sm font-bold border-2 border-neutral-600">
                           {user.displayName.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <span className="text-sm text-white">{user.displayName}</span>
+                      <span className="text-sm font-semibold text-white">{user.displayName}</span>
                     </Link>
                   ))}
                   {followingCount > 10 && (
-                    <span className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/50 rounded-lg border border-neutral-700 text-sm text-neutral-400">
+                    <span className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-neutral-800/60 to-neutral-800/40 rounded-xl border-2 border-neutral-700/50 text-sm font-semibold text-neutral-400">
                       +{followingCount - 10} more
                     </span>
                   )}
@@ -787,30 +799,30 @@ export default function ProfilePage() {
             )}
             {followers.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-neutral-300 mb-2">Followers</h3>
-                <div className="flex flex-wrap gap-2">
+                <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-wider">Followers</h3>
+                <div className="flex flex-wrap gap-3">
                   {followers.slice(0, 10).map((user) => (
                     <Link
                       key={user.id}
                       href={`/profile/${user.id}`}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/50 rounded-lg border border-neutral-700 hover:border-neutral-600 transition"
+                      className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-neutral-800/60 to-neutral-800/40 rounded-xl border-2 border-neutral-700/50 hover:border-neutral-600 hover:from-neutral-700/60 hover:to-neutral-700/40 transition-all duration-200 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 transform hover:-translate-y-0.5"
                     >
                       {user.photoURL ? (
                         <img
                           src={user.photoURL}
                           alt={user.displayName}
-                          className="w-6 h-6 rounded-full"
+                          className="w-8 h-8 rounded-full border-2 border-neutral-600"
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-ccaBlue flex items-center justify-center text-white text-xs font-semibold">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-ccaBlue to-blue-600 flex items-center justify-center text-white text-sm font-bold border-2 border-neutral-600">
                           {user.displayName.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <span className="text-sm text-white">{user.displayName}</span>
+                      <span className="text-sm font-semibold text-white">{user.displayName}</span>
                     </Link>
                   ))}
                   {followersCount > 10 && (
-                    <span className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/50 rounded-lg border border-neutral-700 text-sm text-neutral-400">
+                    <span className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-neutral-800/60 to-neutral-800/40 rounded-xl border-2 border-neutral-700/50 text-sm font-semibold text-neutral-400">
                       +{followersCount - 10} more
                     </span>
                   )}
@@ -823,9 +835,9 @@ export default function ProfilePage() {
 
       {/* Projects Section */}
       {projects.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">Projects</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="mb-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-6 tracking-tight">Projects</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((p) => (
               <a
                 key={p.id}
@@ -833,39 +845,39 @@ export default function ProfilePage() {
                 target={p.url ? "_blank" : undefined}
                 rel={p.url ? "noopener noreferrer" : undefined}
                 onClick={(e) => { if (!p.url) e.preventDefault(); }}
-                className="bg-neutral-900 backdrop-blur-sm border border-neutral-800/50 rounded-lg overflow-hidden hover:border-neutral-700 transition group"
+                className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border-2 border-neutral-800/60 rounded-2xl overflow-hidden hover:border-neutral-700/60 transition-all duration-300 group shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 transform hover:-translate-y-1"
               >
-                <div className="aspect-video bg-neutral-900 relative overflow-hidden">
+                <div className="aspect-video bg-gradient-to-br from-neutral-900 to-neutral-800 relative overflow-hidden">
                   {p.imageUrl ? (
                     <img
                       src={p.imageUrl}
                       alt={p.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-neutral-600">
-                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-800 to-neutral-900">
+                      <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
                   )}
                 </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-white mb-1 line-clamp-2 group-hover:text-ccaBlue transition">
+                <div className="p-5 sm:p-6">
+                  <h3 className="font-bold text-lg text-white mb-2 line-clamp-2 group-hover:text-ccaBlue transition-colors duration-200">
                     {p.title}
                   </h3>
                   {(p.preview || p.description) && (
-                    <p className="text-sm text-neutral-400 line-clamp-2 mb-2">{p.preview || p.description}</p>
+                    <p className="text-sm text-neutral-400 line-clamp-2 mb-4 leading-relaxed">{p.preview || p.description}</p>
                   )}
                   {p.skills && p.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-3">
                       {p.skills.slice(0, 4).map((s, idx) => (
-                        <span key={idx} className="px-2 py-0.5 bg-neutral-800 text-neutral-300 text-xs border border-neutral-700">
+                        <span key={idx} className="px-3 py-1 bg-gradient-to-r from-neutral-800/80 to-neutral-800/60 text-neutral-300 text-xs font-semibold border border-neutral-700/50 rounded-lg">
                           {s}
                         </span>
                       ))}
                       {p.skills.length > 4 && (
-                        <span className="text-xs text-neutral-500">+{p.skills.length - 4} more</span>
+                        <span className="text-xs text-neutral-500 font-medium">+{p.skills.length - 4} more</span>
                       )}
                     </div>
                   )}
@@ -878,17 +890,17 @@ export default function ProfilePage() {
 
       {/* Social Links Section */}
       {(profile?.linkedin || profile?.instagram || profile?.youtube) && (
-        <div className="bg-neutral-900 backdrop-blur-sm border border-neutral-800/50 p-4 sm:p-6 mb-6 rounded-lg">
-          <h2 className="text-xl font-bold text-white mb-4">Connect</h2>
-          <div className="flex gap-4">
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-6 sm:p-8 md:p-10 mb-8 rounded-2xl shadow-xl shadow-black/30">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-6 tracking-tight">Connect</h2>
+          <div className="flex flex-wrap gap-4">
             {profile.linkedin && (
               <a
                 href={profile.linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-neutral-400 hover:text-white transition px-4 py-2 bg-neutral-800/50 rounded-lg border border-neutral-700 hover:border-neutral-600"
+                className="flex items-center gap-3 text-neutral-300 hover:text-white transition-all duration-200 px-6 py-3 bg-gradient-to-r from-neutral-800/60 to-neutral-800/40 rounded-xl border-2 border-neutral-700/50 hover:border-blue-500/50 hover:from-blue-500/20 hover:to-blue-600/20 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-blue-500/20 transform hover:-translate-y-0.5 font-semibold"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                 </svg>
                 <span>LinkedIn</span>
@@ -899,9 +911,9 @@ export default function ProfilePage() {
                 href={profile.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-neutral-400 hover:text-white transition px-4 py-2 bg-neutral-800/50 rounded-lg border border-neutral-700 hover:border-neutral-600"
+                className="flex items-center gap-3 text-neutral-300 hover:text-white transition-all duration-200 px-6 py-3 bg-gradient-to-r from-neutral-800/60 to-neutral-800/40 rounded-xl border-2 border-neutral-700/50 hover:border-pink-500/50 hover:from-pink-500/20 hover:to-purple-500/20 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-pink-500/20 transform hover:-translate-y-0.5 font-semibold"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                 </svg>
                 <span>Instagram</span>
@@ -912,9 +924,9 @@ export default function ProfilePage() {
                 href={profile.youtube}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-neutral-400 hover:text-white transition px-4 py-2 bg-neutral-800/50 rounded-lg border border-neutral-700 hover:border-neutral-600"
+                className="flex items-center gap-3 text-neutral-300 hover:text-white transition-all duration-200 px-6 py-3 bg-gradient-to-r from-neutral-800/60 to-neutral-800/40 rounded-xl border-2 border-neutral-700/50 hover:border-red-500/50 hover:from-red-500/20 hover:to-red-600/20 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-red-500/20 transform hover:-translate-y-0.5 font-semibold"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                 </svg>
                 <span>YouTube</span>
@@ -926,39 +938,39 @@ export default function ProfilePage() {
 
       {/* Opportunities Section */}
       {opportunities.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">Opportunities</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="mb-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-6 tracking-tight">Opportunities</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {opportunities.map((o) => {
               const isOwnOpportunity = currentUser && o.posterId === currentUser.uid;
               const hasApplied = appliedOpportunityIds.has(o.id);
               const canApply = currentUser && !isOwnOpportunity && !hasApplied;
               
               return (
-                <div key={o.id} className="bg-neutral-900 backdrop-blur-sm border border-neutral-800/50 rounded-lg p-4 flex flex-col">
-                  <div className="flex-1">
-                    <div className="text-sm text-neutral-500 mb-1">{o.company || 'Opportunity'}</div>
-                    <div className="font-semibold text-white">{o.title}</div>
-                    <div className="text-xs text-neutral-400 mt-1">
+                <div key={o.id} className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border-2 border-neutral-800/60 rounded-2xl p-6 flex flex-col shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 hover:border-neutral-700/60 transition-all duration-300 transform hover:-translate-y-1">
+                  <div className="flex-1 mb-4">
+                    <div className="text-xs font-bold text-neutral-500 mb-2 uppercase tracking-wider">{o.company || 'Opportunity'}</div>
+                    <div className="font-bold text-xl text-white mb-3 leading-tight">{o.title}</div>
+                    <div className="text-sm text-neutral-400 mb-2 font-medium">
                       {o.location || 'Remote'} {o.type ? `• ${o.type}` : ''}
                     </div>
                     {o.posted && (
-                      <div className="text-xs text-neutral-500 mt-1">Posted {formatDate(o.posted)}</div>
+                      <div className="text-xs text-neutral-500 font-semibold">Posted {formatDate(o.posted)}</div>
                     )}
                   </div>
                   {canApply && (
-                    <div className="mt-4 pt-4 border-t border-neutral-800">
+                    <div className="mt-auto pt-4 border-t-2 border-neutral-800/50">
                       <button
                         onClick={() => {
                           setSelectedOpportunity(o);
                           setShowApplicationModal(true);
                         }}
-                        className="w-full px-4 py-2 bg-white text-black hover:bg-neutral-100 border-2 border-ccaBlue font-medium transition-all text-sm"
+                        className="w-full px-6 py-3 bg-gradient-to-r from-white to-neutral-100 text-black hover:from-neutral-100 hover:to-white border-2 border-ccaBlue font-bold transition-all duration-200 text-base rounded-xl shadow-lg shadow-ccaBlue/20 hover:shadow-xl hover:shadow-ccaBlue/30 transform hover:scale-105 active:scale-95"
                       >
                         Apply Now
                       </button>
                       {o.amount && (
-                        <div className="text-xs text-neutral-400 mt-2 text-center">
+                        <div className="text-sm font-bold text-neutral-300 mt-3 text-center">
                           ${(o.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       )}
@@ -973,9 +985,9 @@ export default function ProfilePage() {
 
       {/* Marketplace Listings Section */}
       {listings.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">Marketplace Listings</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="mb-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-6 tracking-tight">Marketplace Listings</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {listings.map((listing) => (
               <Link
                 key={listing.id}
@@ -985,30 +997,30 @@ export default function ProfilePage() {
                   // You could open a modal or navigate to marketplace with listing ID
                   router.push(`/marketplace`);
                 }}
-                className="bg-neutral-900 backdrop-blur-sm border border-neutral-800/50 rounded-lg overflow-hidden hover:border-neutral-700 transition group"
+                className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border-2 border-neutral-800/60 rounded-2xl overflow-hidden hover:border-neutral-700/60 transition-all duration-300 group shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 transform hover:-translate-y-1"
               >
-                <div className="aspect-video bg-neutral-900 relative overflow-hidden">
+                <div className="aspect-video bg-gradient-to-br from-neutral-900 to-neutral-800 relative overflow-hidden">
                   {listing.images && listing.images.length > 0 ? (
                     <img
                       src={listing.images[0]}
                       alt={listing.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-neutral-600">
-                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-800 to-neutral-900">
+                      <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
                   )}
                 </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-white mb-1 line-clamp-2 group-hover:text-ccaBlue transition">
+                <div className="p-5 sm:p-6">
+                  <h3 className="font-bold text-lg text-white mb-3 line-clamp-2 group-hover:text-ccaBlue transition-colors duration-200">
                     {listing.title}
                   </h3>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-lg font-bold text-white">${listing.price.toFixed(2)}</span>
-                    <span className="text-xs text-neutral-500 bg-neutral-800 px-2 py-1 rounded">
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-800/50">
+                    <span className="text-2xl font-extrabold text-white bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">${listing.price.toFixed(2)}</span>
+                    <span className="text-xs font-bold text-neutral-400 bg-gradient-to-r from-neutral-800/80 to-neutral-800/60 px-3 py-1.5 rounded-lg border border-neutral-700/50 uppercase tracking-wider">
                       {listing.condition}
                     </span>
                   </div>
@@ -1023,12 +1035,12 @@ export default function ProfilePage() {
 
       {/* Empty State for Listings */}
       {listings.length === 0 && (
-        <div className="bg-neutral-900 backdrop-blur-sm border border-neutral-800/50 p-8 rounded-lg text-center">
-          <svg className="w-16 h-16 text-neutral-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border-2 border-neutral-800/60 p-12 rounded-2xl text-center shadow-xl shadow-black/30">
+          <svg className="w-20 h-20 text-neutral-600 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
-          <h3 className="text-lg font-semibold text-white mb-2">No Marketplace Listings</h3>
-          <p className="text-neutral-400">This creator hasn't posted any marketplace listings yet.</p>
+          <h3 className="text-2xl font-bold text-white mb-3">No Marketplace Listings</h3>
+          <p className="text-neutral-400 text-lg font-medium">This creator hasn't posted any marketplace listings yet.</p>
         </div>
       )}
 

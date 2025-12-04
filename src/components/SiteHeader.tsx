@@ -233,8 +233,9 @@ export function SiteHeader() {
   const handle = profile?.handle;
   const photoURL = profile?.photoURL || user?.photoURL;
   const isLegacyCreator = Boolean(profile?.isLegacyCreator);
-  const profileHref = isLegacyCreator ? '/creator/legacy/profile' : '/dashboard';
-  const profileLabel = isLegacyCreator ? 'Legacy Profile' : 'Your Profile';
+  const dashboardHref = isLegacyCreator ? '/creator/legacy/profile' : '/dashboard';
+  const dashboardLabel = isLegacyCreator ? 'Legacy Profile' : 'Dashboard';
+  const publicProfileHref = user?.uid ? `/profile/${user.uid}` : '/dashboard';
 
   // Hide header on waitlist page
   if (pathname === '/wait') {
@@ -419,11 +420,18 @@ export function SiteHeader() {
                           )}
                         </div>
                   <Link
-                    href={profileHref}
+                    href={dashboardHref}
                     className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
                     onClick={() => setShowDropdown(false)}
                   >
-                    {profileLabel}
+                    {dashboardLabel}
+                  </Link>
+                  <Link
+                    href={publicProfileHref}
+                    className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
+                    onClick={() => setShowDropdown(false)}
+                  >
+                    Your Profile
                   </Link>
                   {isLegacyCreator && (
                     <>
@@ -611,11 +619,20 @@ export function SiteHeader() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    router.push(profileHref);
+                    router.push(dashboardHref);
                   }}
                   className="w-full px-4 py-3 bg-neutral-900/50 text-white active:bg-neutral-800 hover:bg-neutral-800 rounded-lg transition text-left font-medium text-sm sm:text-base touch-manipulation"
                 >
-                  {profileLabel}
+                  {dashboardLabel}
+                </button>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    router.push(publicProfileHref);
+                  }}
+                  className="w-full px-4 py-3 bg-neutral-900/50 text-white active:bg-neutral-800 hover:bg-neutral-800 rounded-lg transition text-left font-medium text-sm sm:text-base touch-manipulation"
+                >
+                  Your Profile
                 </button>
                 {isLegacyCreator && (
                   <>
