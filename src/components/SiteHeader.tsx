@@ -24,7 +24,7 @@ const links = [
   { href: '/assets', label: 'Assets' },
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/discounts', label: 'Discounts' },
-  { href: '/message-board', label: 'Message Board' }
+  { href: '/message-board', label: 'Community' }
 ];
 
 type UserProfile = {
