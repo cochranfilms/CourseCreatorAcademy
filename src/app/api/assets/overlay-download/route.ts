@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getUserIdFromAuthHeader } from '@/lib/api/auth';
+import { logDownloadActivity } from '@/lib/activityLogger';
 
 // GET /api/assets/overlay-download?assetId=xxx&overlayId=xxx
 // Returns a signed download URL for an individual overlay
@@ -98,6 +100,23 @@ export async function GET(req: NextRequest) {
         action: 'read',
         expires: expiresAt,
       });
+
+      // Log download activity (non-blocking)
+      try {
+        const uid = await getUserIdFromAuthHeader(req);
+        if (uid) {
+          const assetDoc = await adminDb.collection('assets').doc(assetId).get();
+          if (assetDoc.exists) {
+            const assetData = assetDoc.data();
+            const assetTitle = assetData?.title || 'Overlay';
+            logDownloadActivity(uid, assetId, assetTitle, 'overlay').catch(err => 
+              console.error('Failed to log overlay download activity:', err)
+            );
+          }
+        }
+      } catch (logError) {
+        console.error('Error logging overlay download activity:', logError);
+      }
 
       return NextResponse.json({ downloadUrl: signedUrl });
     } catch (signError: any) {

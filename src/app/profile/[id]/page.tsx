@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { Messages } from '@/components/Messages';
 import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
 import { JobApplicationModal } from '@/components/JobApplicationModal';
+import { ActivityFeed } from '@/components/ActivityFeed';
 
 type UserProfile = {
   displayName?: string;
@@ -155,6 +156,14 @@ export default function ProfilePage() {
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [myConnectAccountId, setMyConnectAccountId] = useState<string | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [profileRemoved, setProfileRemoved] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // If this is a legacy creator, redirect to their public legacy kit page
   useEffect(() => {
@@ -193,6 +202,37 @@ export default function ProfilePage() {
 
         const data = userDoc.data() as UserProfile;
         
+        // Check if profile is removed
+        if (data.profileRemoved && currentUser?.uid !== userId) {
+          // Check if current user is admin
+          try {
+            if (currentUser) {
+              const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
+              if (currentUserDoc.exists()) {
+                const currentUserData = currentUserDoc.data();
+                const adminRole = Boolean(currentUserData?.roles?.admin || currentUserData?.isAdmin);
+                const adminEmail = currentUser.email === 'info@cochranfilms.com';
+                const admin = adminRole || adminEmail;
+                setIsAdmin(admin);
+                if (!admin) {
+                  setProfileRemoved(true);
+                  setLoading(false);
+                  return;
+                }
+              }
+            } else {
+              setProfileRemoved(true);
+              setLoading(false);
+              return;
+            }
+          } catch (err) {
+            console.error('Error checking admin status:', err);
+            setProfileRemoved(true);
+            setLoading(false);
+            return;
+          }
+        }
+        
         // Check if profile is public (unless viewing own profile)
         if (data.profilePublic === false && currentUser?.uid !== userId) {
           setProfile({ profilePublic: false });
@@ -202,14 +242,39 @@ export default function ProfilePage() {
 
         setProfile(data);
         
+        // Check if current user has blocked this user
+        if (currentUser && currentUser.uid !== userId) {
+          try {
+            const blockedDoc = await getDoc(doc(db, 'users', currentUser.uid, 'blocked', userId));
+            setIsBlocked(blockedDoc.exists());
+          } catch (err) {
+            console.error('Error checking block status:', err);
+          }
+        }
+        
         // Get member since date if available
         const userData = userDoc.data();
         if (userData.createdAt) {
           const createdAt = (userData.createdAt as any).toDate ? (userData.createdAt as any).toDate() : new Date(userData.createdAt);
           setMemberSince(createdAt);
         } else {
-          // Use document creation time as fallback
-          setMemberSince(null);
+          // Fallback: fetch from Firebase Auth via API
+          try {
+            const response = await fetch(`/api/users/${userId}/creation-time`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.creationTime) {
+                setMemberSince(new Date(data.creationTime));
+              } else {
+                setMemberSince(null);
+              }
+            } else {
+              setMemberSince(null);
+            }
+          } catch (error) {
+            console.error('Error fetching creation time:', error);
+            setMemberSince(null);
+          }
         }
 
         // Fetch user's marketplace listings
@@ -427,6 +492,37 @@ export default function ProfilePage() {
 
     fetchProfile();
   }, [userId, currentUser]);
+
+  // Handle block/unblock
+  const handleBlock = async () => {
+    if (!currentUser || !auth || currentUser.uid === userId) return;
+    
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+
+      const method = isBlocked ? 'DELETE' : 'POST';
+      const response = await fetch(`/api/users/${userId}/block`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setIsBlocked(!isBlocked);
+        setShowMenu(false);
+      } else {
+        const error = await response.json();
+        console.error('Error toggling block:', error);
+        alert(error.error || 'Failed to update block status');
+      }
+    } catch (error) {
+      console.error('Error toggling block:', error);
+      alert('Failed to update block status');
+    }
+  };
 
   // Handle follow/unfollow
   const handleFollow = async () => {
@@ -671,6 +767,35 @@ export default function ProfilePage() {
                         </svg>
                         Message
                       </button>
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowMenu(!showMenu)}
+                          className="bg-gradient-to-r from-neutral-700 to-neutral-800 hover:from-neutral-600 hover:to-neutral-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center touch-manipulation min-h-[36px] text-xs sm:text-sm w-full sm:w-auto shadow-md transform hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+                        {showMenu && (
+                          <div className="absolute right-0 mt-2 w-48 bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 rounded-lg shadow-xl z-50">
+                            <button
+                              onClick={handleBlock}
+                              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-neutral-800 transition-colors first:rounded-t-lg"
+                            >
+                              {isBlocked ? 'Unblock User' : 'Block User'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowReportModal(true);
+                                setShowMenu(false);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-neutral-800 transition-colors last:rounded-b-lg"
+                            >
+                              Report User
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </>
                   )}
 
@@ -720,6 +845,19 @@ export default function ProfilePage() {
           </div>
           <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Member Since</div>
         </div>
+      </div>
+
+      {/* Badges Section */}
+      <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-4 sm:p-5 md:p-6 mb-5 sm:mb-6 rounded-xl shadow-lg shadow-black/30">
+        <div className="flex items-center gap-2 mb-4 sm:mb-5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-ccaBlue/20 to-blue-500/20 border border-ccaBlue/40 text-ccaBlue flex items-center justify-center shadow-md shadow-ccaBlue/20">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+            </svg>
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Badges</h2>
+        </div>
+        <UserBadges userId={userId} />
       </div>
 
       {/* About Section */}
@@ -909,6 +1047,19 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Recent Activity Section */}
+      <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-4 sm:p-5 md:p-6 mb-5 sm:mb-6 rounded-xl shadow-lg shadow-black/30">
+        <div className="flex items-center gap-2 mb-4 sm:mb-5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-ccaBlue/20 to-blue-500/20 border border-ccaBlue/40 text-ccaBlue flex items-center justify-center shadow-md shadow-ccaBlue/20">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Recent Activity</h2>
+        </div>
+        <ActivityFeed userId={userId} limitCount={20} />
       </div>
 
       {/* Projects Section */}
@@ -1223,6 +1374,19 @@ export default function ProfilePage() {
                 setAppliedOpportunityIds(appliedIds);
               });
             }
+          }}
+        />
+      )}
+
+      {/* Report User Modal */}
+      {showReportModal && (
+        <ReportUserModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          userId={userId}
+          userName={displayName}
+          onSuccess={() => {
+            alert('Report submitted successfully. Thank you for helping keep our community safe.');
           }}
         />
       )}

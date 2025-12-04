@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
 import { getUserIdFromAuthHeader } from '@/lib/api/auth';
 import { hasGlobalMembership } from '@/lib/entitlements';
+import { logDownloadActivity } from '@/lib/activityLogger';
 
 // GET /api/assets/download?assetId=xxx
 // Returns a signed download URL for the asset file
@@ -88,6 +89,22 @@ export async function GET(req: NextRequest) {
       action: 'read',
       expires: expiresAt,
     });
+
+    // Log download activity (non-blocking)
+    try {
+      const assetDoc = await adminDb.collection('assets').doc(assetId).get();
+      if (assetDoc.exists) {
+        const assetData = assetDoc.data();
+        const assetTitle = assetData?.title || 'Asset';
+        const assetType = assetData?.category || 'asset';
+        logDownloadActivity(uid, assetId, assetTitle, assetType).catch(err => 
+          console.error('Failed to log download activity:', err)
+        );
+      }
+    } catch (logError) {
+      // Don't fail the download if logging fails
+      console.error('Error logging download activity:', logError);
+    }
 
     return NextResponse.json({ downloadUrl: signedUrl });
   } catch (err: any) {

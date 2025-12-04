@@ -12,6 +12,8 @@ import {
   createNotification,
   createSubscriptionChangeNotification,
 } from '@/lib/notifications';
+import { logPurchaseActivity } from '@/lib/activityLogger';
+import { checkAndAwardBadges } from '@/lib/badges';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -554,6 +556,28 @@ export async function POST(req: NextRequest) {
             trackingDeadlineAtMs: now + deadlineMs,
           };
           const orderRef = await adminDb.collection('orders').add(order);
+          
+          // Log purchase activity for buyer (non-blocking)
+          if (order.buyerId && order.listingId && order.listingTitle) {
+            logPurchaseActivity(
+              order.buyerId,
+              orderRef.id,
+              order.listingId,
+              order.listingTitle
+            ).catch(err => console.error('Failed to log purchase activity:', err));
+            
+            // Check and award badges for buyer (non-blocking)
+            checkAndAwardBadges(order.buyerId).catch(err => 
+              console.error('Failed to check badges for buyer:', err)
+            );
+          }
+          
+          // Check and award badges for seller (non-blocking)
+          if (order.sellerId) {
+            checkAndAwardBadges(order.sellerId).catch(err => 
+              console.error('Failed to check badges for seller:', err)
+            );
+          }
           
           // Create notifications for buyer and seller
           try {

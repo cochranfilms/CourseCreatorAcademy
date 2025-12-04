@@ -662,6 +662,23 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
       const postRef = await addDoc(collection(db, 'messageBoardPosts'), postData);
       const postId = postRef.id;
 
+      // Check and award badges (non-blocking)
+      try {
+        const badgeResponse = await fetch('/api/message-board/check-badges', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ userId: user.uid }),
+        });
+        if (!badgeResponse.ok) {
+          console.error('Failed to check badges');
+        }
+      } catch (err) {
+        console.error('Error checking badges:', err);
+      }
+
       // Send notifications for mentions (via API)
       if (mentions.length > 0) {
         try {

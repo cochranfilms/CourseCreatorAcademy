@@ -89,10 +89,21 @@ service cloud.firestore {
         allow write: if isAuthenticated() && isOwner(userId);
       }
       
-      // Bookmarked posts subcollection - users can only access their own bookmarks
-      match /bookmarkedPosts/{postId} {
-        allow read, write: if isAuthenticated() && isOwner(userId);
-      }
+    // Bookmarked posts subcollection - users can only access their own bookmarks
+    match /bookmarkedPosts/{postId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Blocked users subcollection - users can read/write their own blocked list
+    match /blocked/{blockedUserId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // User badges subcollection - public read, users can write their own (via admin SDK)
+    match /badges/{badgeId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Admin SDK only
+    }
       
       // Progress tracking subcollection - users can only access their own progress
       match /progress/{progressId} {
@@ -434,5 +445,29 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
+  }
+  
+  // User reports collection - authenticated users can create, admins can read/update
+  match /userReports/{reportId} {
+    allow create: if isAuthenticated();
+    allow read, update: if isAuthenticated() && (hasRole('admin') || resource.data.reporterId == request.auth.uid);
+  }
+  
+  // User strikes collection - admin only
+  match /userStrikes/{strikeId} {
+    allow read, write: if isAuthenticated() && hasRole('admin');
+  }
+  
+  // User activity collection - public read for public activities, users can create their own
+  match /userActivity/{activityId} {
+    allow read: if resource.data.public == true || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    allow update, delete: if isAuthenticated() && hasRole('admin');
+  }
+  
+  // Badges collection - public read
+  match /badges/{badgeId} {
+    allow read: if true;
+    allow write: if false; // Admin SDK only
   }
 }

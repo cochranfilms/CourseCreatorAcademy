@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebaseAdmin';
+import { getUserIdFromAuthHeader } from '@/lib/api/auth';
+import { logDownloadActivity } from '@/lib/activityLogger';
 
 // GET /api/assets/sound-effect-download?assetId=xxx&soundEffectId=xxx
 // Returns a signed download URL for an individual sound effect
@@ -61,6 +63,23 @@ export async function GET(req: NextRequest) {
         action: 'read',
         expires: expiresAt,
       });
+
+      // Log download activity (non-blocking)
+      try {
+        const uid = await getUserIdFromAuthHeader(req);
+        if (uid) {
+          const assetDoc = await adminDb.collection('assets').doc(assetId).get();
+          if (assetDoc.exists) {
+            const assetData = assetDoc.data();
+            const assetTitle = assetData?.title || 'Sound Effect';
+            logDownloadActivity(uid, assetId, assetTitle, 'sound-effect').catch(err => 
+              console.error('Failed to log sound effect download activity:', err)
+            );
+          }
+        }
+      } catch (logError) {
+        console.error('Error logging sound effect download activity:', logError);
+      }
 
       return NextResponse.json({ downloadUrl: signedUrl });
     } catch (signError: any) {
