@@ -13,6 +13,7 @@ type MessageBoardPostData = {
   authorId: string;
   content: string;
   projectId?: string;
+  mediaUrls?: string[] | null;
   createdAt: any;
   updatedAt?: any;
   authorProfile?: {
@@ -59,6 +60,7 @@ export default function MessageBoardPage() {
             authorId: postData.authorId,
             content: postData.content,
             projectId: postData.projectId,
+            mediaUrls: postData.mediaUrls || null,
             createdAt: postData.createdAt,
             updatedAt: postData.updatedAt,
           };

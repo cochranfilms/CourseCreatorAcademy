@@ -11,6 +11,7 @@ type MessageBoardPostData = {
   authorId: string;
   content: string;
   projectId?: string;
+  mediaUrls?: string[] | null;
   createdAt: any;
   updatedAt?: any;
   authorProfile?: {
@@ -356,9 +357,74 @@ export function MessageBoardPost({ post }: { post: MessageBoardPostData }) {
       )}
 
       {/* Post Content */}
-      <div className="text-white mb-4 whitespace-pre-wrap break-words">
-        {post.content}
-      </div>
+      {post.content && (
+        <div className="text-white mb-4 whitespace-pre-wrap break-words">
+          {post.content}
+        </div>
+      )}
+
+      {/* Media Display */}
+      {post.mediaUrls && post.mediaUrls.length > 0 && (
+        <div className="mb-4">
+          <div className={`grid gap-3 ${
+            post.mediaUrls.length === 1 ? 'grid-cols-1' :
+            post.mediaUrls.length === 2 ? 'grid-cols-2' :
+            'grid-cols-2 sm:grid-cols-3'
+          }`}>
+            {post.mediaUrls.map((url, index) => {
+              // Detect media type from URL - check for file extensions or content type hints
+              const urlLower = url.toLowerCase();
+              const isImage = urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i) || 
+                             urlLower.includes('image') ||
+                             urlLower.includes('image%2F');
+              const isVideo = urlLower.match(/\.(mp4|webm|mov|avi|mkv|flv|wmv|m4v)$/i) || 
+                             urlLower.includes('video') ||
+                             urlLower.includes('video%2F');
+              
+              return (
+                <div key={index} className="relative group">
+                  {isImage ? (
+                    <div className="relative">
+                      <img
+                        src={url}
+                        alt={`Post image ${index + 1}`}
+                        className="w-full h-auto rounded-lg border border-neutral-700 cursor-pointer hover:opacity-90 transition max-h-96 object-contain bg-neutral-900"
+                        onClick={() => window.open(url, '_blank')}
+                        loading="lazy"
+                      />
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
+                        <div className="bg-black/50 rounded px-2 py-1 text-white text-xs">
+                          Click to view full size
+                        </div>
+                      </div>
+                    </div>
+                  ) : isVideo ? (
+                    <video
+                      src={url}
+                      controls
+                      className="w-full h-auto rounded-lg border border-neutral-700 max-h-96"
+                      preload="metadata"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : (
+                    <div className="w-full aspect-video bg-neutral-800 rounded-lg border border-neutral-700 flex items-center justify-center">
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-ccaBlue hover:text-ccaBlue/80 transition text-sm"
+                      >
+                        View media
+                      </a>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Reactions */}
       {Object.keys(reactionsByEmoji).length > 0 && (
