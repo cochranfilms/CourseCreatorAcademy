@@ -533,7 +533,7 @@ export default function ProfilePage() {
       {/* Profile Banner */}
       <div className="mb-5 sm:mb-6 rounded-xl overflow-hidden border border-neutral-800/60 shadow-xl shadow-black/50 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950">
         <div
-          className="h-24 sm:h-32 md:h-40 w-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 relative overflow-hidden"
+          className="h-32 sm:h-40 md:h-56 w-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 relative overflow-hidden"
           style={profile?.bannerUrl ? { backgroundImage: `url(${profile.bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
         >
           {!profile?.bannerUrl && (
@@ -544,7 +544,7 @@ export default function ProfilePage() {
         <div className="bg-gradient-to-b from-neutral-950/95 via-neutral-950/90 to-neutral-950 backdrop-blur-xl p-4 sm:p-5 md:p-6 border-t border-neutral-800/50">
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-5">
           {/* Profile Photo */}
-          <div className="relative -mt-12 sm:-mt-14 md:-mt-16 flex-shrink-0">
+          <div className="relative -mt-16 sm:-mt-20 md:-mt-24 flex-shrink-0">
             <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-xl overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900 flex-shrink-0 border-3 border-neutral-950 shadow-xl shadow-black/50 ring-1 ring-neutral-700/50">
               {photoURL ? (
                 <img

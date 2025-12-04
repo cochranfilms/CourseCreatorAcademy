@@ -71,7 +71,7 @@ export function BannerImageUpload({ onUploadComplete }: Props) {
 			/>
 			{uploading && <div className="text-xs text-neutral-400">Uploading… {progress.toFixed(0)}%</div>}
 			{error && <div className="text-xs text-red-400">{error}</div>}
-			<p className="text-xs text-neutral-500">Recommended size: 1600×400 or larger (wide)</p>
+			<p className="text-xs text-neutral-500">Recommended size: 1600×500px or larger (4:1.25 ratio, wide banner)</p>
 		</div>
 	);
 }
