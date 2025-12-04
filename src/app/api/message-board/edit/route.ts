@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getUserIdFromAuthHeader } from '@/lib/api/auth';
 import { extractHashtags, extractMentions, detectMediaEmbeds } from '@/lib/messageBoardUtils';
 
@@ -48,12 +48,12 @@ export async function POST(req: NextRequest) {
     // Get current edit history
     const editHistory = postData.editHistory || [];
     
-    // Add current version to history
+    // Add current version to history (use Timestamp.now() instead of FieldValue.serverTimestamp() for arrays)
     editHistory.push({
       content: postData.content,
       hashtags: postData.hashtags || null,
       mentions: postData.mentions || null,
-      editedAt: FieldValue.serverTimestamp(),
+      editedAt: Timestamp.now(),
     });
 
     // Update post
