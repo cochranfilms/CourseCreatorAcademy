@@ -37,6 +37,7 @@ service cloud.firestore {
 
     // Legacy creators catalog (public)
     match /legacy_creators/{creatorId} {
+      // Allow public read access (covers both get and list/query operations)
       allow read: if true;
       // Subcollections: public sample videos
       match /videos/{videoId} {

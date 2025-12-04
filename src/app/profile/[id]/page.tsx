@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
-import { db, firebaseReady } from '@/lib/firebaseClient';
+import { db, firebaseReady, auth } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -122,6 +122,8 @@ export default function ProfilePage() {
   const [followingCount, setFollowingCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
   const [loadingFollows, setLoadingFollows] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowingLoading, setIsFollowingLoading] = useState(false);
 
   // If this is a legacy creator, redirect to their public legacy kit page
   useEffect(() => {
@@ -327,6 +329,16 @@ export default function ProfilePage() {
           setLoadingFollows(false);
         }
 
+        // Check if current user is following this profile user
+        if (currentUser && currentUser.uid !== userId) {
+          try {
+            const followDoc = await getDoc(doc(db, 'users', currentUser.uid, 'following', userId));
+            setIsFollowing(followDoc.exists());
+          } catch (error) {
+            console.error('Error checking follow status:', error);
+          }
+        }
+
       } catch (error) {
         console.error('Error fetching profile:', error);
         setNotFound(true);
@@ -337,6 +349,48 @@ export default function ProfilePage() {
 
     fetchProfile();
   }, [userId, currentUser]);
+
+  // Handle follow/unfollow
+  const handleFollow = async () => {
+    if (!currentUser || !auth || currentUser.uid === userId || isFollowingLoading) return;
+    
+    setIsFollowingLoading(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+
+      const method = isFollowing ? 'DELETE' : 'POST';
+      const url = isFollowing
+        ? `/api/message-board/follow?targetUserId=${userId}`
+        : '/api/message-board/follow';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        ...(method === 'POST' && { body: JSON.stringify({ targetUserId: userId }) }),
+      });
+
+      if (response.ok) {
+        setIsFollowing(!isFollowing);
+        // Update followers count
+        if (isFollowing) {
+          setFollowersCount(prev => Math.max(0, prev - 1));
+        } else {
+          setFollowersCount(prev => prev + 1);
+        }
+      } else {
+        const error = await response.json();
+        console.error('Error toggling follow:', error);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    } finally {
+      setIsFollowingLoading(false);
+    }
+  };
 
   // Determine if viewing user has an active Legacy+ subscription (to toggle badges/CTAs)
   useEffect(() => {
@@ -495,15 +549,43 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   {currentUser && currentUser.uid !== userId && (
-                    <button
-                      onClick={() => setShowMessageModal(true)}
-                      className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 sm:px-4 md:px-6 rounded-lg transition flex items-center justify-center gap-2 touch-manipulation min-h-[44px] text-sm sm:text-base w-full sm:w-auto"
-                    >
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      Message
-                    </button>
+                    <>
+                      <button
+                        onClick={handleFollow}
+                        disabled={isFollowingLoading}
+                        className={`font-semibold py-2 px-3 sm:px-4 md:px-6 rounded-lg transition flex items-center justify-center gap-2 touch-manipulation min-h-[44px] text-sm sm:text-base w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isFollowing
+                            ? 'bg-ccaBlue/20 text-white border border-ccaBlue hover:bg-ccaBlue/30'
+                            : 'bg-ccaBlue hover:bg-ccaBlue/90 text-white'
+                        }`}
+                      >
+                        {isFollowingLoading ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            <span className="hidden sm:inline">Loading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isFollowing ? "M5 13l4 4L19 7" : "M12 4v16m8-8H4"} />
+                            </svg>
+                            {isFollowing ? 'Following' : 'Follow'}
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setShowMessageModal(true)}
+                        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 sm:px-4 md:px-6 rounded-lg transition flex items-center justify-center gap-2 touch-manipulation min-h-[44px] text-sm sm:text-base w-full sm:w-auto"
+                      >
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        Message
+                      </button>
+                    </>
                   )}
 
                   {/* When viewing own profile, show Legacy Subscriptions / Upgrade CTA (opens modal) */}
