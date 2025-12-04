@@ -2,9 +2,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, deleteDoc, where, getDocs } from 'firebase/firestore';
-import { db, firebaseReady } from '@/lib/firebaseClient';
+import { db, firebaseReady, auth } from '@/lib/firebaseClient';
 import Link from 'next/link';
 import { ReactionPicker } from './ReactionPicker';
+import { parseRichText, POST_CATEGORIES, extractHashtags, extractMentions } from '@/lib/messageBoardUtils';
 
 type MediaItem = {
   url: string;
@@ -16,10 +17,33 @@ type MessageBoardPostData = {
   authorId: string;
   content: string;
   projectId?: string;
+  category?: string;
+  hashtags?: string[] | null;
+  mentions?: string[] | null;
+  mediaEmbeds?: Array<{ type: 'youtube' | 'vimeo' | 'instagram' | 'url'; url: string; embedId?: string }> | null;
+  attachedOpportunityId?: string | null;
+  attachedListingId?: string | null;
+  attachedOpportunity?: {
+    id: string;
+    title: string;
+    company: string;
+    location: string;
+    type: string;
+    amount?: number;
+  };
+  attachedListing?: {
+    id: string;
+    title: string;
+    price: number;
+    condition: string;
+    images?: string[];
+  };
   mediaUrls?: string[] | null; // Legacy support
   media?: MediaItem[] | null; // New format with types
   createdAt: any;
   updatedAt?: any;
+  edited?: boolean;
+  editHistory?: any[];
   authorProfile?: {
     displayName?: string;
     photoURL?: string;
@@ -69,6 +93,11 @@ export function MessageBoardPost({ post }: { post: MessageBoardPostData }) {
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [userReactions, setUserReactions] = useState<Set<string>>(new Set());
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content);
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
     if (!firebaseReady || !db || !post.id) return;
@@ -198,16 +227,76 @@ export function MessageBoardPost({ post }: { post: MessageBoardPostData }) {
     };
   }, [post.id, user]);
 
+  // Check if user can edit (author and within 24 hours)
+  useEffect(() => {
+    if (!user || user.uid !== post.authorId) {
+      setCanEdit(false);
+      return;
+    }
+    const createdAt = post.createdAt?.toDate?.() || new Date(post.createdAt);
+    const hoursSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+    setCanEdit(hoursSinceCreation <= 24);
+  }, [user, post.authorId, post.createdAt]);
+
+  // Check bookmark status
+  useEffect(() => {
+    if (!user || !firebaseReady || !db) return;
+    const checkBookmark = async () => {
+      try {
+        const bookmarkDoc = await getDoc(doc(db, 'users', user.uid, 'bookmarkedPosts', post.id));
+        setIsBookmarked(bookmarkDoc.exists());
+      } catch (error) {
+        console.error('Error checking bookmark:', error);
+      }
+    };
+    checkBookmark();
+  }, [user, post.id]);
+
+  // Check follow status
+  useEffect(() => {
+    if (!user || !firebaseReady || !db || user.uid === post.authorId) return;
+    const checkFollow = async () => {
+      try {
+        const followDoc = await getDoc(doc(db, 'users', user.uid, 'following', post.authorId));
+        setIsFollowing(followDoc.exists());
+      } catch (error) {
+        console.error('Error checking follow:', error);
+      }
+    };
+    checkFollow();
+  }, [user, post.authorId]);
+
   const handleAddComment = async () => {
     if (!user || !firebaseReady || !db || !newComment.trim()) return;
 
     setSubmittingComment(true);
     try {
-      await addDoc(collection(db, 'messageBoardPosts', post.id, 'comments'), {
+      const commentRef = await addDoc(collection(db, 'messageBoardPosts', post.id, 'comments'), {
         authorId: user.uid,
         content: newComment.trim(),
         createdAt: serverTimestamp(),
       });
+
+      // Send notification
+      const token = await auth?.currentUser?.getIdToken();
+      if (token && post.authorId !== user.uid) {
+        try {
+          await fetch('/api/message-board/notify-comment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              postId: post.id,
+              commentId: commentRef.id,
+              postAuthorId: post.authorId,
+            }),
+          });
+        } catch (err) {
+          console.error('Error sending comment notification:', err);
+        }
+      }
 
       setNewComment('');
       setShowComments(true);
@@ -223,12 +312,39 @@ export function MessageBoardPost({ post }: { post: MessageBoardPostData }) {
     if (!user || !firebaseReady || !db || !replyContent.trim()) return;
 
     try {
-      await addDoc(collection(db, 'messageBoardPosts', post.id, 'comments'), {
+      // Find parent comment to get author ID
+      const parentComment = comments.find(c => c.id === parentCommentId) || 
+        comments.flatMap(c => c.replies || []).find(r => r.id === parentCommentId);
+      const commentAuthorId = parentComment?.authorId;
+
+      const replyRef = await addDoc(collection(db, 'messageBoardPosts', post.id, 'comments'), {
         authorId: user.uid,
         content: replyContent.trim(),
         parentCommentId,
         createdAt: serverTimestamp(),
       });
+
+      // Send notification
+      const token = await auth?.currentUser?.getIdToken();
+      if (token && commentAuthorId && commentAuthorId !== user.uid) {
+        try {
+          await fetch('/api/message-board/notify-reply', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              postId: post.id,
+              commentId: parentCommentId,
+              replyId: replyRef.id,
+              commentAuthorId,
+            }),
+          });
+        } catch (err) {
+          console.error('Error sending reply notification:', err);
+        }
+      }
 
       setReplyContent('');
       setReplyingTo(null);
@@ -264,6 +380,93 @@ export function MessageBoardPost({ post }: { post: MessageBoardPostData }) {
       }
     } catch (error) {
       console.error('Error toggling reaction:', error);
+    }
+  };
+
+  const handleBookmark = async () => {
+    if (!user || !auth) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+
+      const method = isBookmarked ? 'DELETE' : 'POST';
+      const url = isBookmarked 
+        ? `/api/message-board/bookmark?postId=${post.id}`
+        : '/api/message-board/bookmark';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        ...(method === 'POST' && { body: JSON.stringify({ postId: post.id }) }),
+      });
+
+      if (response.ok) {
+        setIsBookmarked(!isBookmarked);
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+    }
+  };
+
+  const handleFollow = async () => {
+    if (!user || !auth || user.uid === post.authorId) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+
+      const method = isFollowing ? 'DELETE' : 'POST';
+      const url = isFollowing
+        ? `/api/message-board/follow?targetUserId=${post.authorId}`
+        : '/api/message-board/follow';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        ...(method === 'POST' && { body: JSON.stringify({ targetUserId: post.authorId }) }),
+      });
+
+      if (response.ok) {
+        setIsFollowing(!isFollowing);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!user || !auth || !canEdit) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+
+      const response = await fetch('/api/message-board/edit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          postId: post.id,
+          content: editContent.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        setIsEditing(false);
+        // Post will update via real-time listener
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to edit post');
+      }
+    } catch (error) {
+      console.error('Error editing post:', error);
+      alert('Failed to edit post. Please try again.');
     }
   };
 
@@ -327,9 +530,85 @@ export function MessageBoardPost({ post }: { post: MessageBoardPostData }) {
             {authorHandle && (
               <span className="text-neutral-400 text-sm">@{authorHandle}</span>
             )}
+            {user && user.uid !== post.authorId && (
+              <button
+                onClick={handleFollow}
+                className={`px-2 py-0.5 rounded text-xs font-medium transition ${
+                  isFollowing
+                    ? 'bg-ccaBlue/20 text-ccaBlue border border-ccaBlue'
+                    : 'bg-neutral-800 text-neutral-300 border border-neutral-700 hover:border-neutral-600'
+                }`}
+              >
+                {isFollowing ? 'Following' : 'Follow'}
+              </button>
+            )}
             <span className="text-neutral-500 text-sm">·</span>
             <span className="text-neutral-400 text-sm">{formatDate(post.createdAt)}</span>
+            {post.edited && (
+              <>
+                <span className="text-neutral-500 text-sm">·</span>
+                <span className="text-neutral-500 text-xs italic">edited</span>
+              </>
+            )}
           </div>
+          {/* Category */}
+          {post.category && (
+            <div className="mt-1">
+              {(() => {
+                const category = POST_CATEGORIES.find(c => c.id === post.category);
+                return category ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-800 rounded text-xs text-neutral-300">
+                    <span>{category.icon}</span>
+                    {category.label}
+                  </span>
+                ) : null;
+              })()}
+            </div>
+          )}
+          {/* Hashtags */}
+          {post.hashtags && post.hashtags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {post.hashtags.map((tag) => (
+                <Link
+                  key={tag}
+                  href={`/message-board?hashtag=${tag}`}
+                  className="px-2 py-0.5 bg-ccaBlue/20 text-ccaBlue rounded text-xs hover:bg-ccaBlue/30 transition"
+                >
+                  #{tag}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Action buttons */}
+        <div className="flex items-center gap-2">
+          {canEdit && (
+            <button
+              onClick={() => {
+                setIsEditing(true);
+                setEditContent(post.content);
+              }}
+              className="p-2 text-neutral-400 hover:text-white transition"
+              title="Edit post"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          )}
+          {user && (
+            <button
+              onClick={handleBookmark}
+              className={`p-2 transition ${
+                isBookmarked ? 'text-ccaBlue' : 'text-neutral-400 hover:text-white'
+              }`}
+              title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+            >
+              <svg className="w-5 h-5" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -363,10 +642,132 @@ export function MessageBoardPost({ post }: { post: MessageBoardPostData }) {
       )}
 
       {/* Post Content */}
-      {post.content && (
-        <div className="text-white mb-4 whitespace-pre-wrap break-words">
-          {post.content}
+      {isEditing && canEdit ? (
+        <div className="mb-4">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={6}
+            className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent resize-none"
+          />
+          <div className="flex items-center justify-end gap-2 mt-2">
+            <button
+              onClick={() => {
+                setIsEditing(false);
+                setEditContent(post.content);
+              }}
+              className="px-4 py-2 text-neutral-400 hover:text-white transition text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleEdit}
+              disabled={!editContent.trim() || editContent.trim() === post.content}
+              className="px-4 py-2 bg-ccaBlue hover:bg-ccaBlue/90 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            >
+              Save
+            </button>
+          </div>
         </div>
+      ) : post.content ? (
+        <div 
+          className="text-white mb-4 whitespace-pre-wrap break-words prose prose-invert prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ __html: parseRichText(post.content) }}
+        />
+      ) : null}
+
+      {/* Mentions */}
+      {post.mentions && post.mentions.length > 0 && (
+        <div className="mb-4 text-sm">
+          <span className="text-neutral-400">Mentioned: </span>
+          {post.mentions.map((mention, index) => (
+            <span key={index}>
+              <Link href={`/message-board?mention=${mention}`} className="text-ccaBlue hover:underline">
+                @{mention}
+              </Link>
+              {index < post.mentions!.length - 1 && ', '}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* External Media Embeds */}
+      {post.mediaEmbeds && post.mediaEmbeds.length > 0 && (
+        <div className="mb-4 space-y-4">
+          {post.mediaEmbeds.map((embed, index) => (
+            <div key={index} className="rounded-lg overflow-hidden border border-neutral-700">
+              {embed.type === 'youtube' && embed.embedId && (
+                <iframe
+                  src={`https://www.youtube.com/embed/${embed.embedId}`}
+                  className="w-full aspect-video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              )}
+              {embed.type === 'vimeo' && embed.embedId && (
+                <iframe
+                  src={`https://player.vimeo.com/video/${embed.embedId}`}
+                  className="w-full aspect-video"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                />
+              )}
+              {embed.type === 'instagram' && embed.embedId && (
+                <div className="p-4 bg-neutral-800">
+                  <a
+                    href={embed.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-ccaBlue hover:underline"
+                  >
+                    View Instagram post
+                  </a>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Attached Opportunity */}
+      {post.attachedOpportunity && (
+        <Link href={`/opportunities?id=${post.attachedOpportunity.id}`} className="block mb-4 p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg hover:border-ccaBlue/50 transition group">
+          <div className="text-xs text-ccaBlue font-semibold mb-1">Attached Opportunity</div>
+          <div className="text-white font-semibold group-hover:text-ccaBlue transition">
+            {post.attachedOpportunity.title}
+          </div>
+          <div className="text-neutral-400 text-sm mt-1">
+            {post.attachedOpportunity.company} • {post.attachedOpportunity.location} • {post.attachedOpportunity.type}
+            {post.attachedOpportunity.amount && ` • $${(post.attachedOpportunity.amount / 100).toFixed(2)}`}
+          </div>
+        </Link>
+      )}
+
+      {/* Attached Listing */}
+      {post.attachedListing && (
+        <Link href={`/marketplace?id=${post.attachedListing.id}`} className="block mb-4 p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg hover:border-ccaBlue/50 transition group">
+          <div className="flex items-start gap-4">
+            {post.attachedListing.images && post.attachedListing.images.length > 0 && (
+              <img
+                src={post.attachedListing.images[0]}
+                alt={post.attachedListing.title}
+                className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-ccaBlue font-semibold mb-1">Attached Marketplace Item</div>
+              <div className="text-white font-semibold group-hover:text-ccaBlue transition">
+                {post.attachedListing.title}
+              </div>
+              <div className="text-neutral-400 text-sm mt-1">
+                ${post.attachedListing.price.toFixed(2)} • {post.attachedListing.condition}
+              </div>
+            </div>
+            <svg className="w-5 h-5 text-neutral-400 group-hover:text-ccaBlue transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </Link>
       )}
 
       {/* Media Display */}

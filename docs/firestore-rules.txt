@@ -76,6 +76,23 @@ service cloud.firestore {
         allow read, write: if isAuthenticated() && isOwner(userId);
       }
       
+      // Following subcollection - users can read/write their own following list
+      match /following/{targetUserId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // Followers subcollection - users can read their own followers
+      match /followers/{followerId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // Bookmarked posts subcollection - users can only access their own bookmarks
+      match /bookmarkedPosts/{postId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+      
       // Progress tracking subcollection - users can only access their own progress
       match /progress/{progressId} {
         allow read, write: if isAuthenticated() && isOwner(userId);

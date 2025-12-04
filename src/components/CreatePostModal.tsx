@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
-import { db, firebaseReady, storage } from '@/lib/firebaseClient';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
+import { db, firebaseReady, storage, auth } from '@/lib/firebaseClient';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { extractHashtags, extractMentions, POST_CATEGORIES, POST_TEMPLATES, detectMediaEmbeds, type PostCategory } from '@/lib/messageBoardUtils';
 
 type Project = {
   id: string;
@@ -15,6 +16,23 @@ type CreatePostModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+};
+
+type Opportunity = {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  type: string;
+  amount?: number;
+};
+
+type Listing = {
+  id: string;
+  title: string;
+  price: number;
+  condition: string;
+  images?: string[];
 };
 
 type MediaFile = {
@@ -29,25 +47,174 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<PostCategory | ''>('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState<string>('');
+  const [selectedListingId, setSelectedListingId] = useState<string>('');
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionSuggestions, setMentionSuggestions] = useState<Array<{ id: string; displayName: string; handle?: string }>>([]);
+  const [mentionCursorPosition, setMentionCursorPosition] = useState(0);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadingOpportunities, setLoadingOpportunities] = useState(false);
+  const [loadingListings, setLoadingListings] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [showAttachModal, setShowAttachModal] = useState(false);
+  const [attachType, setAttachType] = useState<'opportunity' | 'listing' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isOpen && user && firebaseReady && db) {
       loadProjects();
+      loadOpportunities();
+      loadListings();
     } else if (!isOpen) {
       // Reset form when modal closes
       setContent('');
       setSelectedProjectId('');
+      setSelectedCategory('');
+      setSelectedTemplate('');
+      setSelectedOpportunityId('');
+      setSelectedListingId('');
       setMediaFiles([]);
       setError(null);
+      setShowAttachModal(false);
+      setAttachType(null);
     }
   }, [isOpen, user]);
+
+  // Load user's opportunities
+  const loadOpportunities = async () => {
+    if (!user || !firebaseReady || !db) return;
+    setLoadingOpportunities(true);
+    try {
+      const opportunitiesQuery = query(
+        collection(db, 'opportunities'),
+        where('posterId', '==', user.uid)
+      );
+      const snapshot = await getDocs(opportunitiesQuery);
+      const opportunitiesData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Opportunity[];
+      setOpportunities(opportunitiesData);
+    } catch (error) {
+      console.error('Error loading opportunities:', error);
+    } finally {
+      setLoadingOpportunities(false);
+    }
+  };
+
+  // Load user's listings
+  const loadListings = async () => {
+    if (!user || !firebaseReady || !db) return;
+    setLoadingListings(true);
+    try {
+      const listingsQuery = query(
+        collection(db, 'listings'),
+        where('creatorId', '==', user.uid)
+      );
+      const snapshot = await getDocs(listingsQuery);
+      const listingsData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Listing[];
+      setListings(listingsData);
+    } catch (error) {
+      console.error('Error loading listings:', error);
+    } finally {
+      setLoadingListings(false);
+    }
+  };
+
+  // Handle mention autocomplete
+  useEffect(() => {
+    if (!mentionQuery || !db || !firebaseReady || !user) {
+      setShowMentionSuggestions(false);
+      return;
+    }
+
+    const searchUsers = async () => {
+      try {
+        // Search users by handle or displayName
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const matches = usersSnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter((u: any) => {
+            const handle = (u.handle || '').toLowerCase();
+            const displayName = (u.displayName || '').toLowerCase();
+            const query = mentionQuery.toLowerCase();
+            return (handle.includes(query) || displayName.includes(query)) && u.id !== user.uid;
+          })
+          .slice(0, 5);
+        
+        setMentionSuggestions(matches);
+        setShowMentionSuggestions(matches.length > 0);
+      } catch (error) {
+        console.error('Error searching users:', error);
+      }
+    };
+
+    const timeoutId = setTimeout(searchUsers, 300);
+    return () => clearTimeout(timeoutId);
+  }, [mentionQuery, user]);
+
+  // Handle template selection
+  const handleTemplateSelect = (templateId: string) => {
+    const template = POST_TEMPLATES.find(t => t.id === templateId);
+    if (template) {
+      setContent(template.content);
+      setSelectedTemplate(templateId);
+    }
+  };
+
+  // Handle mention insertion
+  const insertMention = (userId: string, displayName: string, handle?: string) => {
+    if (!textareaRef.current) return;
+    const textarea = textareaRef.current;
+    const start = mentionCursorPosition;
+    const before = content.substring(0, start);
+    const after = content.substring(start);
+    const mentionText = `@${handle || displayName} `;
+    setContent(before + mentionText + after);
+    setShowMentionSuggestions(false);
+    setMentionQuery('');
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + mentionText.length, start + mentionText.length);
+    }, 0);
+  };
+
+  // Handle textarea input for mentions
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    setContent(value);
+    setMentionCursorPosition(cursorPos);
+
+    // Check if user is typing @mention
+    const textBeforeCursor = value.substring(0, cursorPos);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+      if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
+        setMentionQuery(textAfterAt);
+        return;
+      }
+    }
+    setShowMentionSuggestions(false);
+    setMentionQuery('');
+  };
 
   const loadProjects = async () => {
     if (!user || !firebaseReady || !db) return;
@@ -215,14 +382,59 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
         media = await uploadMediaFiles();
       }
 
-      await addDoc(collection(db, 'messageBoardPosts'), {
+      // Extract hashtags and mentions
+      const hashtags = extractHashtags(content);
+      const mentions = extractMentions(content);
+      const mediaEmbeds = detectMediaEmbeds(content);
+
+      // Get auth token for API call
+      const token = await auth?.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      // Create post
+      const postData: any = {
         authorId: user.uid,
         content: content.trim() || '',
         projectId: selectedProjectId || null,
+        category: selectedCategory || null,
+        hashtags: hashtags.length > 0 ? hashtags : null,
+        mentions: mentions.length > 0 ? mentions : null,
+        mediaEmbeds: mediaEmbeds.length > 0 ? mediaEmbeds : null,
+        attachedOpportunityId: selectedOpportunityId || null,
+        attachedListingId: selectedListingId || null,
         media: media.length > 0 ? media : null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+        editHistory: [],
+      };
+
+      const postRef = await addDoc(collection(db, 'messageBoardPosts'), postData);
+      const postId = postRef.id;
+
+      // Send notifications for mentions (via API)
+      if (mentions.length > 0) {
+        try {
+          const response = await fetch('/api/message-board/notify-mentions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              postId,
+              mentions,
+              authorName: user.displayName || user.email?.split('@')[0] || 'Someone',
+            }),
+          });
+          if (!response.ok) {
+            console.error('Failed to send mention notifications');
+          }
+        } catch (err) {
+          console.error('Error sending mention notifications:', err);
+        }
+      }
 
       // Clean up preview URLs
       mediaFiles.forEach(file => {
@@ -234,6 +446,10 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
       // Reset form
       setContent('');
       setSelectedProjectId('');
+      setSelectedCategory('');
+      setSelectedTemplate('');
+      setSelectedOpportunityId('');
+      setSelectedListingId('');
       setMediaFiles([]);
       onSuccess();
     } catch (error: any) {
@@ -269,6 +485,54 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
             </div>
           )}
 
+          {/* Post Templates */}
+          <div>
+            <label className="block text-sm font-semibold text-white mb-2">
+              Choose a Template (Optional)
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {POST_TEMPLATES.map((template) => (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => handleTemplateSelect(template.id)}
+                  className={`px-3 py-2 rounded-lg border transition ${
+                    selectedTemplate === template.id
+                      ? 'bg-ccaBlue/20 border-ccaBlue text-white'
+                      : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:border-neutral-600'
+                  }`}
+                >
+                  <span className="text-lg mr-1">{template.icon}</span>
+                  <span className="text-xs font-medium">{template.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Category Selection */}
+          <div>
+            <label className="block text-sm font-semibold text-white mb-2">
+              Category (Optional)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {POST_CATEGORIES.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(selectedCategory === category.id ? '' : category.id)}
+                  className={`px-3 py-1.5 rounded-lg border transition text-sm ${
+                    selectedCategory === category.id
+                      ? 'bg-ccaBlue/20 border-ccaBlue text-white'
+                      : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:border-neutral-600'
+                  }`}
+                >
+                  <span className="mr-1">{category.icon}</span>
+                  {category.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Project Selection */}
           {projects.length > 0 && (
             <div>
@@ -289,6 +553,67 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
               </select>
             </div>
           )}
+
+          {/* Attach Opportunity or Marketplace Item */}
+          <div>
+            <label className="block text-sm font-semibold text-white mb-2">
+              Attach Opportunity or Marketplace Item (Optional)
+            </label>
+            <div className="flex gap-2">
+              {opportunities.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAttachType('opportunity');
+                    setShowAttachModal(true);
+                  }}
+                  className="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white hover:bg-neutral-700 transition text-sm"
+                >
+                  Attach Opportunity
+                </button>
+              )}
+              {listings.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAttachType('listing');
+                    setShowAttachModal(true);
+                  }}
+                  className="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white hover:bg-neutral-700 transition text-sm"
+                >
+                  Attach Marketplace Item
+                </button>
+              )}
+            </div>
+            {selectedOpportunityId && (
+              <div className="mt-2 p-3 bg-neutral-800 rounded-lg flex items-center justify-between">
+                <span className="text-white text-sm">
+                  {opportunities.find(o => o.id === selectedOpportunityId)?.title}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedOpportunityId('')}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+            {selectedListingId && (
+              <div className="mt-2 p-3 bg-neutral-800 rounded-lg flex items-center justify-between">
+                <span className="text-white text-sm">
+                  {listings.find(l => l.id === selectedListingId)?.title}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedListingId('')}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Media Upload */}
           <div>
@@ -355,20 +680,140 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
             )}
           </div>
 
+          {/* Rich Text Formatting Toolbar */}
+          <div className="flex items-center gap-2 p-2 bg-neutral-800 rounded-lg border border-neutral-700">
+            <button
+              type="button"
+              onClick={() => {
+                const textarea = textareaRef.current;
+                if (!textarea) return;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const selectedText = content.substring(start, end);
+                const newText = content.substring(0, start) + `**${selectedText || 'bold text'}**` + content.substring(end);
+                setContent(newText);
+                setTimeout(() => {
+                  textarea.focus();
+                  textarea.setSelectionRange(start + 2, start + 2 + (selectedText || 'bold text').length);
+                }, 0);
+              }}
+              className="p-2 hover:bg-neutral-700 rounded transition"
+              title="Bold"
+            >
+              <svg className="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const textarea = textareaRef.current;
+                if (!textarea) return;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const selectedText = content.substring(start, end);
+                const newText = content.substring(0, start) + `*${selectedText || 'italic text'}*` + content.substring(end);
+                setContent(newText);
+                setTimeout(() => {
+                  textarea.focus();
+                  textarea.setSelectionRange(start + 1, start + 1 + (selectedText || 'italic text').length);
+                }, 0);
+              }}
+              className="p-2 hover:bg-neutral-700 rounded transition"
+              title="Italic"
+            >
+              <svg className="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const textarea = textareaRef.current;
+                if (!textarea) return;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const selectedText = content.substring(start, end);
+                const newText = content.substring(0, start) + `\`${selectedText || 'code'}\`` + content.substring(end);
+                setContent(newText);
+                setTimeout(() => {
+                  textarea.focus();
+                  textarea.setSelectionRange(start + 1, start + 1 + (selectedText || 'code').length);
+                }, 0);
+              }}
+              className="p-2 hover:bg-neutral-700 rounded transition"
+              title="Code"
+            >
+              <svg className="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+            </button>
+            <div className="flex-1" />
+            <span className="text-xs text-neutral-500">Use @ to mention users, # for hashtags</span>
+          </div>
+
           {/* Content */}
-          <div>
+          <div className="relative">
             <label className="block text-sm font-semibold text-white mb-2">
               What's on your mind?
             </label>
             <textarea
+              ref={textareaRef}
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Share your project, discuss your onset experience, ask questions, or start a conversation..."
+              onChange={handleContentChange}
+              onKeyDown={(e) => {
+                if (showMentionSuggestions && e.key === 'ArrowDown') {
+                  e.preventDefault();
+                } else if (showMentionSuggestions && e.key === 'Enter') {
+                  e.preventDefault();
+                  if (mentionSuggestions.length > 0) {
+                    insertMention(mentionSuggestions[0].id, mentionSuggestions[0].displayName, mentionSuggestions[0].handle);
+                  }
+                }
+              }}
+              placeholder="Share your project, discuss your onset experience, ask questions, or start a conversation... Use @ to mention users, # for hashtags"
               rows={8}
               className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent resize-none"
             />
-            <div className="mt-2 text-sm text-neutral-400 text-right">
-              {content.length} characters
+            
+            {/* Mention Suggestions */}
+            {showMentionSuggestions && mentionSuggestions.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                {mentionSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.id}
+                    type="button"
+                    onClick={() => insertMention(suggestion.id, suggestion.displayName, suggestion.handle)}
+                    className="w-full px-4 py-2 text-left hover:bg-neutral-800 transition flex items-center gap-2"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-ccaBlue flex items-center justify-center text-white text-xs font-semibold">
+                      {suggestion.displayName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="text-white text-sm font-medium">{suggestion.displayName}</div>
+                      {suggestion.handle && (
+                        <div className="text-neutral-400 text-xs">@{suggestion.handle}</div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-2 flex items-center justify-between text-sm text-neutral-400">
+              <div>
+                {extractHashtags(content).length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {extractHashtags(content).map((tag) => (
+                      <span key={tag} className="px-2 py-0.5 bg-ccaBlue/20 text-ccaBlue rounded text-xs">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>{content.length} characters</div>
             </div>
           </div>
 
@@ -405,6 +850,108 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
             </button>
           </div>
         </form>
+
+        {/* Attach Opportunity/Listing Modal */}
+        {showAttachModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+              <div className="sticky top-0 bg-neutral-900 border-b border-neutral-800 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">
+                  Select {attachType === 'opportunity' ? 'Opportunity' : 'Marketplace Item'}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowAttachModal(false);
+                    setAttachType(null);
+                  }}
+                  className="text-neutral-400 hover:text-white transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6 space-y-3">
+                {attachType === 'opportunity' && (
+                  <>
+                    {loadingOpportunities ? (
+                      <div className="text-neutral-400 text-center py-8">Loading...</div>
+                    ) : opportunities.length === 0 ? (
+                      <div className="text-neutral-400 text-center py-8">No opportunities found</div>
+                    ) : (
+                      opportunities.map((opp) => (
+                        <button
+                          key={opp.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedOpportunityId(opp.id);
+                            setSelectedListingId(''); // Clear listing if opportunity selected
+                            setShowAttachModal(false);
+                            setAttachType(null);
+                          }}
+                          className={`w-full p-4 rounded-lg border text-left transition ${
+                            selectedOpportunityId === opp.id
+                              ? 'bg-ccaBlue/20 border-ccaBlue'
+                              : 'bg-neutral-800 border-neutral-700 hover:border-neutral-600'
+                          }`}
+                        >
+                          <div className="font-semibold text-white">{opp.title}</div>
+                          <div className="text-sm text-neutral-400 mt-1">
+                            {opp.company} • {opp.location} • {opp.type}
+                            {opp.amount && ` • $${(opp.amount / 100).toFixed(2)}`}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </>
+                )}
+                {attachType === 'listing' && (
+                  <>
+                    {loadingListings ? (
+                      <div className="text-neutral-400 text-center py-8">Loading...</div>
+                    ) : listings.length === 0 ? (
+                      <div className="text-neutral-400 text-center py-8">No listings found</div>
+                    ) : (
+                      listings.map((listing) => (
+                        <button
+                          key={listing.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedListingId(listing.id);
+                            setSelectedOpportunityId(''); // Clear opportunity if listing selected
+                            setShowAttachModal(false);
+                            setAttachType(null);
+                          }}
+                          className={`w-full p-4 rounded-lg border text-left transition ${
+                            selectedListingId === listing.id
+                              ? 'bg-ccaBlue/20 border-ccaBlue'
+                              : 'bg-neutral-800 border-neutral-700 hover:border-neutral-600'
+                          }`}
+                        >
+                          <div className="flex items-start gap-4">
+                            {listing.images && listing.images.length > 0 && (
+                              <img
+                                src={listing.images[0]}
+                                alt={listing.title}
+                                className="w-16 h-16 object-cover rounded-lg"
+                              />
+                            )}
+                            <div className="flex-1">
+                              <div className="font-semibold text-white">{listing.title}</div>
+                              <div className="text-sm text-neutral-400 mt-1">
+                                ${listing.price.toFixed(2)} • {listing.condition}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
