@@ -117,6 +117,11 @@ export default function ProfilePage() {
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [appliedOpportunityIds, setAppliedOpportunityIds] = useState<Set<string>>(new Set());
+  const [following, setFollowing] = useState<Array<{ id: string; displayName: string; handle?: string; photoURL?: string }>>([]);
+  const [followers, setFollowers] = useState<Array<{ id: string; displayName: string; handle?: string; photoURL?: string }>>([]);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [loadingFollows, setLoadingFollows] = useState(false);
 
   // If this is a legacy creator, redirect to their public legacy kit page
   useEffect(() => {
@@ -264,6 +269,62 @@ export default function ProfilePage() {
         } catch (error) {
           console.error('Error fetching opportunities:', error);
           setOpportunities([]);
+        }
+
+        // Fetch following and followers
+        setLoadingFollows(true);
+        try {
+          // Get following
+          const followingSnap = await getDocs(collection(db, 'users', userId, 'following'));
+          const followingIds = followingSnap.docs.map(doc => doc.id);
+          setFollowingCount(followingIds.length);
+          
+          const followingData: Array<{ id: string; displayName: string; handle?: string; photoURL?: string }> = [];
+          for (const followId of followingIds.slice(0, 20)) { // Limit to 20 for performance
+            try {
+              const followUserDoc = await getDoc(doc(db, 'users', followId));
+              if (followUserDoc.exists()) {
+                const followData = followUserDoc.data();
+                followingData.push({
+                  id: followId,
+                  displayName: followData.displayName || followData.handle || 'Unknown User',
+                  handle: followData.handle,
+                  photoURL: followData.photoURL,
+                });
+              }
+            } catch (error) {
+              console.error(`Error fetching following user ${followId}:`, error);
+            }
+          }
+          setFollowing(followingData);
+
+          // Get followers
+          const followersSnap = await getDocs(collection(db, 'users', userId, 'followers'));
+          const followerIds = followersSnap.docs.map(doc => doc.id);
+          setFollowersCount(followerIds.length);
+          
+          const followersData: Array<{ id: string; displayName: string; handle?: string; photoURL?: string }> = [];
+          for (const followerId of followerIds.slice(0, 20)) { // Limit to 20 for performance
+            try {
+              const followerUserDoc = await getDoc(doc(db, 'users', followerId));
+              if (followerUserDoc.exists()) {
+                const followerData = followerUserDoc.data();
+                followersData.push({
+                  id: followerId,
+                  displayName: followerData.displayName || followerData.handle || 'Unknown User',
+                  handle: followerData.handle,
+                  photoURL: followerData.photoURL,
+                });
+              }
+            } catch (error) {
+              console.error(`Error fetching follower user ${followerId}:`, error);
+            }
+          }
+          setFollowers(followersData);
+        } catch (error) {
+          console.error('Error fetching follows:', error);
+        } finally {
+          setLoadingFollows(false);
         }
 
       } catch (error) {

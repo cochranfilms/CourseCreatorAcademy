@@ -65,8 +65,11 @@ export default function MessageBoardPage() {
   const searchParams = useSearchParams();
   const [posts, setPosts] = useState<MessageBoardPostData[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<MessageBoardPostData[]>([]);
+  const [bookmarkedPosts, setBookmarkedPosts] = useState<MessageBoardPostData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingBookmarks, setLoadingBookmarks] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [activeView, setActiveView] = useState<'all' | 'bookmarked'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [sortBy, setSortBy] = useState<'newest' | 'most-reactions' | 'most-comments'>('newest');
@@ -87,6 +90,145 @@ export default function MessageBoardPage() {
     };
     loadFollowed();
   }, [user]);
+
+  // Load bookmarked posts
+  useEffect(() => {
+    if (!user || !firebaseReady || !db || activeView !== 'bookmarked') return;
+    
+    const loadBookmarkedPosts = async () => {
+      setLoadingBookmarks(true);
+      try {
+        const bookmarksSnapshot = await getDocs(collection(db, 'users', user.uid, 'bookmarkedPosts'));
+        const bookmarkedPostIds = bookmarksSnapshot.docs.map(doc => doc.id);
+        
+        if (bookmarkedPostIds.length === 0) {
+          setBookmarkedPosts([]);
+          setLoadingBookmarks(false);
+          return;
+        }
+
+        // Fetch the actual posts
+        const bookmarkedPostsData: MessageBoardPostData[] = [];
+        for (const postId of bookmarkedPostIds) {
+          try {
+            const postDoc = await getDoc(doc(db, 'messageBoardPosts', postId));
+            if (postDoc.exists()) {
+              const postData = postDoc.data();
+              const post: MessageBoardPostData = {
+                id: postDoc.id,
+                authorId: postData.authorId,
+                content: postData.content,
+                projectId: postData.projectId,
+                category: postData.category,
+                hashtags: postData.hashtags || null,
+                mentions: postData.mentions || null,
+                mediaEmbeds: postData.mediaEmbeds || null,
+                attachedOpportunityId: postData.attachedOpportunityId || null,
+                attachedListingId: postData.attachedListingId || null,
+                edited: postData.edited || false,
+                editHistory: postData.editHistory || [],
+                mediaUrls: postData.mediaUrls || null,
+                media: postData.media || null,
+                createdAt: postData.createdAt,
+                updatedAt: postData.updatedAt,
+              };
+
+              // Fetch author profile
+              try {
+                const authorDoc = await getDoc(doc(db, 'users', postData.authorId));
+                if (authorDoc.exists()) {
+                  const authorData = authorDoc.data();
+                  post.authorProfile = {
+                    displayName: authorData.displayName,
+                    photoURL: authorData.photoURL,
+                    handle: authorData.handle,
+                  };
+                }
+              } catch (error) {
+                console.error('Error fetching author profile:', error);
+              }
+
+              // Fetch project if linked
+              if (postData.projectId) {
+                try {
+                  const projectDoc = await getDoc(doc(db, 'projects', postData.projectId));
+                  if (projectDoc.exists()) {
+                    const projectData = projectDoc.data();
+                    post.project = {
+                      id: projectDoc.id,
+                      title: projectData.title,
+                      imageUrl: projectData.imageUrl,
+                      description: projectData.description,
+                    };
+                  }
+                } catch (error) {
+                  console.error('Error fetching project:', error);
+                }
+              }
+
+              // Fetch attached opportunity
+              if (postData.attachedOpportunityId) {
+                try {
+                  const oppDoc = await getDoc(doc(db, 'opportunities', postData.attachedOpportunityId));
+                  if (oppDoc.exists()) {
+                    const oppData = oppDoc.data();
+                    post.attachedOpportunity = {
+                      id: oppDoc.id,
+                      title: oppData.title,
+                      company: oppData.company,
+                      location: oppData.location,
+                      type: oppData.type,
+                      amount: oppData.amount,
+                    };
+                  }
+                } catch (error) {
+                  console.error('Error fetching opportunity:', error);
+                }
+              }
+
+              // Fetch attached listing
+              if (postData.attachedListingId) {
+                try {
+                  const listingDoc = await getDoc(doc(db, 'listings', postData.attachedListingId));
+                  if (listingDoc.exists()) {
+                    const listingData = listingDoc.data();
+                    post.attachedListing = {
+                      id: listingDoc.id,
+                      title: listingData.title,
+                      price: listingData.price,
+                      condition: listingData.condition,
+                      images: listingData.images,
+                    };
+                  }
+                } catch (error) {
+                  console.error('Error fetching listing:', error);
+                }
+              }
+
+              bookmarkedPostsData.push(post);
+            }
+          } catch (error) {
+            console.error(`Error fetching bookmarked post ${postId}:`, error);
+          }
+        }
+
+        // Sort by bookmark date (most recent first)
+        bookmarkedPostsData.sort((a, b) => {
+          const aDate = a.createdAt?.toDate?.() || new Date(a.createdAt);
+          const bDate = b.createdAt?.toDate?.() || new Date(b.createdAt);
+          return bDate.getTime() - aDate.getTime();
+        });
+
+        setBookmarkedPosts(bookmarkedPostsData);
+      } catch (error) {
+        console.error('Error loading bookmarked posts:', error);
+      } finally {
+        setLoadingBookmarks(false);
+      }
+    };
+
+    loadBookmarkedPosts();
+  }, [user, activeView]);
 
   // Get URL params
   useEffect(() => {
@@ -300,6 +442,35 @@ export default function MessageBoardPage() {
             </button>
           </div>
 
+          {/* View Tabs */}
+          {user && (
+            <div className="flex items-center gap-2 mb-4 border-b border-neutral-800">
+              <button
+                onClick={() => setActiveView('all')}
+                className={`px-4 py-2 font-medium transition ${
+                  activeView === 'all'
+                    ? 'text-white border-b-2 border-ccaBlue'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                All Posts
+              </button>
+              <button
+                onClick={() => setActiveView('bookmarked')}
+                className={`px-4 py-2 font-medium transition flex items-center gap-2 ${
+                  activeView === 'bookmarked'
+                    ? 'text-white border-b-2 border-ccaBlue'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+                Bookmarked Posts
+              </button>
+            </div>
+          )}
+
           {/* Search and Filters */}
           <div className="space-y-4 mt-6">
             {/* Search Bar */}
@@ -405,6 +576,42 @@ export default function MessageBoardPage() {
               Create First Post
             </button>
           </div>
+        ) : activeView === 'bookmarked' ? (
+          loadingBookmarks ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6 animate-pulse">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-neutral-800" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-neutral-800 rounded w-1/3 mb-2" />
+                      <div className="h-3 bg-neutral-800 rounded w-1/4" />
+                    </div>
+                  </div>
+                  <div className="h-4 bg-neutral-800 rounded w-full mb-2" />
+                  <div className="h-4 bg-neutral-800 rounded w-3/4" />
+                </div>
+              ))}
+            </div>
+          ) : bookmarkedPosts.length === 0 ? (
+            <div className="bg-gradient-to-br from-neutral-900/50 to-neutral-950/50 border border-neutral-800 rounded-xl p-8 sm:p-12 text-center">
+              <div className="text-6xl mb-4">🔖</div>
+              <h2 className="text-2xl font-bold text-white mb-2">No bookmarked posts</h2>
+              <p className="text-neutral-400 mb-6">Bookmark posts you want to save for later by clicking the bookmark icon</p>
+              <button
+                onClick={() => setActiveView('all')}
+                className="px-6 py-3 bg-ccaBlue hover:bg-ccaBlue/90 text-white font-semibold rounded-lg transition-all duration-200 inline-flex items-center gap-2"
+              >
+                Browse All Posts
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4 sm:space-y-6">
+              {bookmarkedPosts.map((post) => (
+                <MessageBoardPost key={post.id} post={post} />
+              ))}
+            </div>
+          )
         ) : filteredPosts.length === 0 ? (
           <div className="bg-gradient-to-br from-neutral-900/50 to-neutral-950/50 border border-neutral-800 rounded-xl p-8 sm:p-12 text-center">
             <div className="text-6xl mb-4">🔍</div>
