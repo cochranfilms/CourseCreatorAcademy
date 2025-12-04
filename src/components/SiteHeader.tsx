@@ -235,7 +235,6 @@ export function SiteHeader() {
   const isLegacyCreator = Boolean(profile?.isLegacyCreator);
   const dashboardHref = isLegacyCreator ? '/creator/legacy/profile' : '/dashboard';
   const dashboardLabel = isLegacyCreator ? 'Legacy Profile' : 'Dashboard';
-  const publicProfileHref = user?.uid ? `/profile/${user.uid}` : '/dashboard';
 
   // Hide header on waitlist page
   if (pathname === '/wait') {
@@ -427,7 +426,7 @@ export function SiteHeader() {
                     {dashboardLabel}
                   </Link>
                   <Link
-                    href={publicProfileHref}
+                    href={user?.uid ? `/profile/${user.uid}` : '/dashboard'}
                     className="block px-4 py-2 text-white hover:bg-neutral-800 transition text-sm"
                     onClick={() => setShowDropdown(false)}
                   >
@@ -628,7 +627,7 @@ export function SiteHeader() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    router.push(publicProfileHref);
+                    router.push(user?.uid ? `/profile/${user.uid}` : '/dashboard');
                   }}
                   className="w-full px-4 py-3 bg-neutral-900/50 text-white active:bg-neutral-800 hover:bg-neutral-800 rounded-lg transition text-left font-medium text-sm sm:text-base touch-manipulation"
                 >
