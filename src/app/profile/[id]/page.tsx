@@ -35,6 +35,9 @@ type Listing = {
   createdAt?: any;
   images?: string[];
   description?: string;
+  creatorId?: string;
+  shipping?: number;
+  connectAccountId?: string;
 };
 
 type Course = {
@@ -150,6 +153,8 @@ export default function ProfilePage() {
   const [loadingFollows, setLoadingFollows] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [myConnectAccountId, setMyConnectAccountId] = useState<string | null>(null);
 
   // If this is a legacy creator, redirect to their public legacy kit page
   useEffect(() => {
@@ -215,10 +220,29 @@ export default function ProfilePage() {
             orderBy('createdAt', 'desc')
           );
           const listingsSnap = await getDocs(listingsQuery);
-          const listingsData: Listing[] = listingsSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          } as Listing));
+          const listingsData: Listing[] = await Promise.all(
+            listingsSnap.docs.map(async (doc) => {
+              const data = doc.data();
+              // Fetch connectAccountId from user document if not on listing
+              let connectAccountId = data.connectAccountId || '';
+              if (!connectAccountId && data.creatorId) {
+                try {
+                  const userDoc = await getDoc(doc(db, 'users', data.creatorId));
+                  if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    connectAccountId = userData.connectAccountId || '';
+                  }
+                } catch (error) {
+                  console.error('Error fetching creator connectAccountId:', error);
+                }
+              }
+              return {
+                id: doc.id,
+                ...data,
+                connectAccountId
+              } as Listing;
+            })
+          );
           setListings(listingsData);
         } catch (error) {
           console.error('Error fetching listings:', error);
@@ -299,6 +323,19 @@ export default function ProfilePage() {
           setOpportunities([]);
         }
 
+        // Fetch current user's connectAccountId if logged in
+        if (currentUser) {
+          try {
+            const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
+            if (currentUserDoc.exists()) {
+              const currentUserData = currentUserDoc.data();
+              setMyConnectAccountId(currentUserData.connectAccountId || null);
+            }
+          } catch (error) {
+            console.error('Error fetching current user connectAccountId:', error);
+          }
+        }
+
         // Fetch following and followers
         setLoadingFollows(true);
         try {
@@ -362,6 +399,21 @@ export default function ProfilePage() {
             setIsFollowing(followDoc.exists());
           } catch (error) {
             console.error('Error checking follow status:', error);
+          }
+        }
+
+        // Fetch applied opportunities for current user
+        if (currentUser) {
+          try {
+            const appliedQuery = query(
+              collection(db, 'jobApplications'),
+              where('applicantId', '==', currentUser.uid)
+            );
+            const appliedSnap = await getDocs(appliedQuery);
+            const appliedIds = new Set(appliedSnap.docs.map(doc => doc.data().opportunityId));
+            setAppliedOpportunityIds(appliedIds);
+          } catch (error) {
+            console.error('Error fetching applied opportunities:', error);
           }
         }
 
@@ -970,7 +1022,7 @@ export default function ProfilePage() {
             {opportunities.map((o) => {
               const isOwnOpportunity = currentUser && o.posterId === currentUser.uid;
               const hasApplied = appliedOpportunityIds.has(o.id);
-              const canApply = currentUser && !isOwnOpportunity && !hasApplied;
+              const canApply = !isOwnOpportunity && !hasApplied;
               
               return (
                 <div key={o.id} className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border-2 border-neutral-800/60 rounded-2xl p-6 flex flex-col shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 hover:border-neutral-700/60 transition-all duration-300 transform hover:-translate-y-1">
@@ -988,12 +1040,16 @@ export default function ProfilePage() {
                     <div className="mt-auto pt-4 border-t-2 border-neutral-800/50">
                       <button
                         onClick={() => {
+                          if (!currentUser) {
+                            router.push('/login');
+                            return;
+                          }
                           setSelectedOpportunity(o);
                           setShowApplicationModal(true);
                         }}
                         className="w-full px-6 py-3 bg-gradient-to-r from-white to-neutral-100 text-black hover:from-neutral-100 hover:to-white border-2 border-ccaBlue font-bold transition-all duration-200 text-base rounded-xl shadow-lg shadow-ccaBlue/20 hover:shadow-xl hover:shadow-ccaBlue/30 transform hover:scale-105 active:scale-95"
                       >
-                        Apply Now
+                        {hasApplied ? 'Applied' : 'Apply Now'}
                       </button>
                       {o.amount && (
                         <div className="text-sm font-bold text-neutral-300 mt-3 text-center">
@@ -1014,45 +1070,105 @@ export default function ProfilePage() {
         <div className="mb-8">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-6 tracking-tight">Marketplace Listings</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {listings.map((listing) => (
-              <Link
-                key={listing.id}
-                href={`/marketplace`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  // You could open a modal or navigate to marketplace with listing ID
-                  router.push(`/marketplace`);
-                }}
-                className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border-2 border-neutral-800/60 rounded-2xl overflow-hidden hover:border-neutral-700/60 transition-all duration-300 group shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 transform hover:-translate-y-1"
-              >
-                <div className="aspect-video bg-gradient-to-br from-neutral-900 to-neutral-800 relative overflow-hidden">
-                  {listing.images && listing.images.length > 0 ? (
-                    <img
-                      src={listing.images[0]}
-                      alt={listing.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-800 to-neutral-900">
-                      <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+            {listings.map((listing) => {
+              const isOwnListing = currentUser && listing.creatorId === currentUser.uid;
+              const canPurchase = !isOwnListing && listing.connectAccountId;
+              
+              return (
+                <div
+                  key={listing.id}
+                  className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border-2 border-neutral-800/60 rounded-2xl overflow-hidden hover:border-neutral-700/60 transition-all duration-300 group shadow-xl shadow-black/30 hover:shadow-2xl hover:shadow-black/50 transform hover:-translate-y-1 flex flex-col"
+                >
+                  <div className="aspect-video bg-gradient-to-br from-neutral-900 to-neutral-800 relative overflow-hidden cursor-pointer"
+                    onClick={() => {
+                      if (!canPurchase) return;
+                      setSelectedListing(listing);
+                    }}
+                  >
+                    {listing.images && listing.images.length > 0 ? (
+                      <img
+                        src={listing.images[0]}
+                        alt={listing.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-gradient-to-br from-neutral-800 to-neutral-900">
+                        <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-5 sm:p-6 flex-1 flex flex-col">
+                    <h3 className="font-bold text-lg text-white mb-3 line-clamp-2 group-hover:text-ccaBlue transition-colors duration-200">
+                      {listing.title}
+                    </h3>
+                    {listing.description && (
+                      <p className="text-sm text-neutral-400 mb-4 line-clamp-2 flex-1">{listing.description}</p>
+                    )}
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-neutral-800/50">
+                      <div>
+                        <span className="text-2xl font-extrabold text-white">${listing.price.toFixed(2)}</span>
+                        {listing.shipping && listing.shipping > 0 && (
+                          <span className="text-xs text-neutral-400 ml-2">+ ${listing.shipping.toFixed(2)} shipping</span>
+                        )}
+                      </div>
+                      <span className="text-xs font-bold text-neutral-400 bg-gradient-to-r from-neutral-800/80 to-neutral-800/60 px-3 py-1.5 rounded-lg border border-neutral-700/50 uppercase tracking-wider">
+                        {listing.condition}
+                      </span>
                     </div>
-                  )}
-                </div>
-                <div className="p-5 sm:p-6">
-                  <h3 className="font-bold text-lg text-white mb-3 line-clamp-2 group-hover:text-ccaBlue transition-colors duration-200">
-                    {listing.title}
-                  </h3>
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-800/50">
-                    <span className="text-2xl font-extrabold text-white bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">${listing.price.toFixed(2)}</span>
-                    <span className="text-xs font-bold text-neutral-400 bg-gradient-to-r from-neutral-800/80 to-neutral-800/60 px-3 py-1.5 rounded-lg border border-neutral-700/50 uppercase tracking-wider">
-                      {listing.condition}
-                    </span>
+                    {canPurchase && (
+                      <button
+                        onClick={async () => {
+                          if (!currentUser) {
+                            router.push('/login');
+                            return;
+                          }
+                          if (!listing.connectAccountId) {
+                            alert('Seller has not connected Stripe yet.');
+                            return;
+                          }
+                          if (!myConnectAccountId) {
+                            const shouldConnect = confirm('You must connect your Stripe account before purchasing. Go to Connect now?');
+                            if (shouldConnect) {
+                              router.push('/creator/onboarding');
+                            }
+                            return;
+                          }
+                          const totalCents = Math.round((Number(listing.price || 0) + Number(listing.shipping || 0)) * 100);
+                          try {
+                            const res = await fetch('/api/checkout/listing', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                amount: totalCents,
+                                currency: 'usd',
+                                sellerAccountId: listing.connectAccountId,
+                                listingId: listing.id,
+                                listingTitle: listing.title,
+                                buyerId: currentUser.uid,
+                                sellerId: listing.creatorId
+                              })
+                            });
+                            const json = await res.json();
+                            if (json.url) {
+                              window.location.href = json.url;
+                            } else if (json.error) {
+                              alert(json.error);
+                            }
+                          } catch (e: any) {
+                            alert(e.message || 'Failed to start checkout');
+                          }
+                        }}
+                        className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 sm:py-3 rounded-lg transition shadow-lg shadow-red-600/20 text-sm sm:text-base"
+                      >
+                        Buy Now
+                      </button>
+                    )}
                   </div>
                 </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
