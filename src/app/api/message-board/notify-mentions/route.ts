@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const usersSnapshot = await adminDb.collection('users').get();
     const userMap = new Map<string, string>();
     
-    usersSnapshot.forEach((doc) => {
+    usersSnapshot.forEach((doc: any) => {
       const data = doc.data();
       const handle = data.handle?.toLowerCase();
       const displayName = data.displayName?.toLowerCase();

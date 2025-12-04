@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, doc, orderBy } from 'firebase/firestore';
 import { db, firebaseReady, storage, auth } from '@/lib/firebaseClient';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { extractHashtags, extractMentions, POST_CATEGORIES, POST_TEMPLATES, detectMediaEmbeds, type PostCategory } from '@/lib/messageBoardUtils';
@@ -71,8 +71,10 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (isOpen && user && firebaseReady && db) {
-      loadProjects();
+    if (isOpen && firebaseReady && db) {
+      if (user) {
+        loadProjects();
+      }
       loadOpportunities();
       loadListings();
     } else if (!isOpen) {
@@ -90,20 +92,33 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     }
   }, [isOpen, user]);
 
-  // Load user's opportunities
+  // Load all opportunities (not just user's own)
   const loadOpportunities = async () => {
-    if (!user || !firebaseReady || !db) return;
+    if (!firebaseReady || !db) return;
     setLoadingOpportunities(true);
     try {
-      const opportunitiesQuery = query(
-        collection(db, 'opportunities'),
-        where('posterId', '==', user.uid)
-      );
-      const snapshot = await getDocs(opportunitiesQuery);
+      // Try with orderBy first, fallback to simple query if index doesn't exist
+      let snapshot;
+      try {
+        const opportunitiesQuery = query(
+          collection(db, 'opportunities'),
+          orderBy('createdAt', 'desc')
+        );
+        snapshot = await getDocs(opportunitiesQuery);
+      } catch (orderError) {
+        // Fallback to simple query if orderBy fails (index might not exist)
+        snapshot = await getDocs(collection(db, 'opportunities'));
+      }
       const opportunitiesData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Opportunity[];
+      // Sort manually if orderBy didn't work
+      opportunitiesData.sort((a, b) => {
+        const aDate = (a as any).createdAt?.toDate?.() || new Date(0);
+        const bDate = (b as any).createdAt?.toDate?.() || new Date(0);
+        return bDate.getTime() - aDate.getTime();
+      });
       setOpportunities(opportunitiesData);
     } catch (error) {
       console.error('Error loading opportunities:', error);
@@ -112,20 +127,33 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     }
   };
 
-  // Load user's listings
+  // Load all listings (not just user's own)
   const loadListings = async () => {
-    if (!user || !firebaseReady || !db) return;
+    if (!firebaseReady || !db) return;
     setLoadingListings(true);
     try {
-      const listingsQuery = query(
-        collection(db, 'listings'),
-        where('creatorId', '==', user.uid)
-      );
-      const snapshot = await getDocs(listingsQuery);
+      // Try with orderBy first, fallback to simple query if index doesn't exist
+      let snapshot;
+      try {
+        const listingsQuery = query(
+          collection(db, 'listings'),
+          orderBy('createdAt', 'desc')
+        );
+        snapshot = await getDocs(listingsQuery);
+      } catch (orderError) {
+        // Fallback to simple query if orderBy fails (index might not exist)
+        snapshot = await getDocs(collection(db, 'listings'));
+      }
       const listingsData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Listing[];
+      // Sort manually if orderBy didn't work
+      listingsData.sort((a, b) => {
+        const aDate = (a as any).createdAt?.toDate?.() || new Date(0);
+        const bDate = (b as any).createdAt?.toDate?.() || new Date(0);
+        return bDate.getTime() - aDate.getTime();
+      });
       setListings(listingsData);
     } catch (error) {
       console.error('Error loading listings:', error);
@@ -557,7 +585,7 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
           {/* Attach Opportunity or Marketplace Item */}
           <div>
             <label className="block text-sm font-semibold text-white mb-2">
-              Attach Opportunity or Marketplace Item (Optional)
+              Attach Opportunity and/or Marketplace Item (Optional)
             </label>
             <div className="flex gap-2">
               {opportunities.length > 0 && (
@@ -569,7 +597,7 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
                   }}
                   className="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white hover:bg-neutral-700 transition text-sm"
                 >
-                  Attach Opportunity
+                  {selectedOpportunityId ? 'Change Opportunity' : 'Attach Opportunity'}
                 </button>
               )}
               {listings.length > 0 && (
@@ -581,7 +609,7 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
                   }}
                   className="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white hover:bg-neutral-700 transition text-sm"
                 >
-                  Attach Marketplace Item
+                  {selectedListingId ? 'Change Marketplace Item' : 'Attach Marketplace Item'}
                 </button>
               )}
             </div>
@@ -885,7 +913,6 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
                           type="button"
                           onClick={() => {
                             setSelectedOpportunityId(opp.id);
-                            setSelectedListingId(''); // Clear listing if opportunity selected
                             setShowAttachModal(false);
                             setAttachType(null);
                           }}
@@ -918,7 +945,6 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
                           type="button"
                           onClick={() => {
                             setSelectedListingId(listing.id);
-                            setSelectedOpportunityId(''); // Clear opportunity if listing selected
                             setShowAttachModal(false);
                             setAttachType(null);
                           }}
