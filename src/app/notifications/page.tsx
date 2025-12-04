@@ -17,7 +17,16 @@ export default function NotificationsPage() {
     ? notifications
     : notifications.filter(n => n.type === activeFilter);
 
-  const handleNotificationClick = async (notification: Notification) => {
+  const handleMarkAsRead = async (notification: Notification) => {
+    if (!user) return;
+    
+    // Mark as read if unread
+    if (!notification.read) {
+      await markNotificationAsRead(user.uid, notification.id);
+    }
+  };
+
+  const handleActionClick = async (notification: Notification) => {
     if (!user) return;
     
     // Mark as read if unread
@@ -246,10 +255,10 @@ export default function NotificationsPage() {
                   </h2>
                   <div className="space-y-2">
                     {dateNotifications.map((notification) => (
-                      <button
+                      <div
                         key={notification.id}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={`w-full text-left p-4 rounded-lg border transition ${
+                        onClick={() => handleMarkAsRead(notification)}
+                        className={`w-full text-left p-4 rounded-lg border transition cursor-pointer ${
                           !notification.read
                             ? 'bg-neutral-900 border-ccaBlue/50 hover:border-ccaBlue'
                             : 'bg-neutral-900/50 border-neutral-800 hover:border-neutral-700'
@@ -279,15 +288,21 @@ export default function NotificationsPage() {
                               <span className="text-xs text-neutral-500">
                                 {formatTimeAgo(notification.createdAt)}
                               </span>
-                              {notification.actionLabel && (
-                                <span className="text-xs text-ccaBlue font-medium">
+                              {notification.actionLabel && notification.actionUrl && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleActionClick(notification);
+                                  }}
+                                  className="text-xs text-white hover:text-neutral-300 transition font-medium"
+                                >
                                   {notification.actionLabel} →
-                                </span>
+                                </button>
                               )}
                             </div>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>

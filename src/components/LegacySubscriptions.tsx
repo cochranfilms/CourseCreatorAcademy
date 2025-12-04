@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { db, firebaseReady } from '@/lib/firebaseClient';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { SubscriptionManager } from './SubscriptionManager';
 
 type Subscription = {
   id: string;
@@ -86,6 +87,7 @@ export function LegacySubscriptions() {
   const [changingPlan, setChangingPlan] = useState(false);
   const [prorationPreview, setProrationPreview] = useState<{ amount: number; isUpgrade: boolean; message: string; planType: string } | null>(null);
   const [hasAllAccess, setHasAllAccess] = useState(false);
+  const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -369,87 +371,15 @@ export function LegacySubscriptions() {
                   </div>
                 )}
 
-                {/* Upgrade/Downgrade Buttons */}
-                <div className="flex flex-wrap gap-3 pt-4 border-t border-neutral-800">
-                  {availablePlans.upgrades.map((upgradePlan) => (
-                    <button
-                      key={upgradePlan}
-                      onClick={() => handleChangePlan(upgradePlan, true)}
-                      disabled={changingPlan}
-                      className="px-4 py-2 bg-ccaBlue hover:bg-ccaBlue/90 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {changingPlan ? 'Processing...' : `Upgrade to ${PLAN_FEATURES[upgradePlan].name}`}
-                    </button>
-                  ))}
-                  {availablePlans.downgrade && (
-                    <button
-                      onClick={() => handleChangePlan(availablePlans.downgrade!, true)}
-                      disabled={changingPlan}
-                      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {changingPlan ? 'Processing...' : `Downgrade to ${PLAN_FEATURES[availablePlans.downgrade].name}`}
-                    </button>
-                  )}
+                {/* Change Subscription Button */}
+                <div className="pt-4 border-t border-neutral-800">
+                  <button
+                    onClick={() => setShowSubscriptionManager(true)}
+                    className="px-6 py-3 bg-ccaBlue hover:bg-ccaBlue/90 text-white rounded-lg text-sm font-medium transition w-full sm:w-auto"
+                  >
+                    Change Subscription
+                  </button>
                 </div>
-
-                {/* Proration Preview/Status Modal */}
-                {prorationPreview && (
-                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-6 max-w-md w-full shadow-xl">
-                      <div className="mb-4">
-                        <h3 className="text-lg font-semibold text-white mb-2">
-                          {prorationPreview.isUpgrade ? 'Confirm Upgrade' : prorationPreview.message.includes('successfully') ? 'Plan Changed' : 'Confirm Plan Change'}
-                        </h3>
-                        <div className={`text-sm ${
-                          prorationPreview.message.includes('successfully') || prorationPreview.message.includes('Credit')
-                            ? 'text-green-400'
-                            : prorationPreview.message.includes('Failed')
-                            ? 'text-red-400'
-                            : 'text-neutral-300'
-                        }`}>
-                          {prorationPreview.message}
-                        </div>
-                        {prorationPreview.amount > 0 && (
-                          <div className={`mt-3 text-lg font-semibold ${
-                            prorationPreview.isUpgrade ? 'text-white' : 'text-green-400'
-                          }`}>
-                            {prorationPreview.isUpgrade 
-                              ? `Amount to Pay: $${(prorationPreview.amount / 100).toFixed(2)}`
-                              : `Credit Applied: $${(prorationPreview.amount / 100).toFixed(2)}`
-                            }
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-3">
-                        {!prorationPreview.message.includes('successfully') && !prorationPreview.message.includes('Credit') && (
-                          <button
-                            onClick={() => handleChangePlan(prorationPreview.planType, false)}
-                            disabled={changingPlan}
-                            className="flex-1 px-4 py-2 bg-ccaBlue hover:bg-ccaBlue/90 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {changingPlan ? 'Processing...' : prorationPreview.isUpgrade ? 'Proceed to Payment' : 'Confirm Change'}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            setProrationPreview(null);
-                            if (prorationPreview.message.includes('successfully')) {
-                              window.location.reload();
-                            }
-                          }}
-                          disabled={changingPlan}
-                          className={`px-4 py-2 ${
-                            prorationPreview.message.includes('successfully') || prorationPreview.message.includes('Credit')
-                              ? 'bg-ccaBlue hover:bg-ccaBlue/90'
-                              : 'bg-neutral-700 hover:bg-neutral-600'
-                          } text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          {prorationPreview.message.includes('successfully') || prorationPreview.message.includes('Credit') ? 'OK' : 'Cancel'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="text-sm text-neutral-400">
@@ -530,6 +460,14 @@ export function LegacySubscriptions() {
           </div>
         )}
       </div>
+
+      {/* Subscription Manager Modal */}
+      <SubscriptionManager
+        isOpen={showSubscriptionManager}
+        onClose={() => setShowSubscriptionManager(false)}
+        currentPlanType={planType}
+        membershipActive={membershipActive}
+      />
     </div>
   );
 }

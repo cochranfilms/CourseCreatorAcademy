@@ -46,10 +46,15 @@ export function NotificationBell() {
     }
   }, [isOpen]);
 
-  const handleNotificationClick = async (notificationId: string, actionUrl?: string) => {
+  const handleMarkAsRead = async (notificationId: string) => {
+    if (!user) return;
+    await markNotificationAsRead(user.uid, notificationId);
+  };
+
+  const handleActionClick = async (notificationId: string, actionUrl?: string) => {
     if (!user) return;
     
-    // Mark as read
+    // Mark as read if unread
     await markNotificationAsRead(user.uid, notificationId);
     
     // Close dropdown
@@ -191,10 +196,10 @@ export function NotificationBell() {
             ) : (
               <div className="divide-y divide-neutral-800">
                 {notifications.map((notification) => (
-                  <button
+                  <div
                     key={notification.id}
-                    onClick={() => handleNotificationClick(notification.id, notification.actionUrl)}
-                    className={`w-full text-left p-4 hover:bg-neutral-800 transition ${
+                    onClick={() => handleMarkAsRead(notification.id)}
+                    className={`w-full text-left p-4 hover:bg-neutral-800 transition cursor-pointer ${
                       !notification.read ? 'bg-neutral-800/50' : ''
                     }`}
                   >
@@ -222,15 +227,21 @@ export function NotificationBell() {
                           <span className="text-xs text-neutral-500">
                             {formatTimeAgo(notification.createdAt)}
                           </span>
-                          {notification.actionLabel && (
-                            <span className="text-xs text-ccaBlue">
+                          {notification.actionLabel && notification.actionUrl && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleActionClick(notification.id, notification.actionUrl);
+                              }}
+                              className="text-xs text-white hover:text-neutral-300 transition font-medium"
+                            >
                               {notification.actionLabel} →
-                            </span>
+                            </button>
                           )}
                         </div>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
