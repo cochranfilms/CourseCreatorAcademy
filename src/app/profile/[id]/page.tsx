@@ -97,6 +97,32 @@ function getInitials(name: string, email?: string): string {
   return '?';
 }
 
+function getSocialMediaUrl(platform: 'linkedin' | 'instagram' | 'youtube', username: string): string {
+  if (!username || username.trim() === '') return '';
+  
+  const cleanUsername = username.trim();
+  
+  // If it's already a full URL, return it as-is
+  if (cleanUsername.startsWith('http://') || cleanUsername.startsWith('https://')) {
+    return cleanUsername;
+  }
+  
+  switch (platform) {
+    case 'linkedin':
+      return `https://www.linkedin.com/in/${cleanUsername}`;
+    case 'instagram':
+      // Remove @ if present
+      const instagramHandle = cleanUsername.replace(/^@/, '');
+      return `https://www.instagram.com/${instagramHandle}/`;
+    case 'youtube':
+      // Remove @ if present (YouTube handles can be with or without @)
+      const youtubeHandle = cleanUsername.replace(/^@/, '');
+      return `https://www.youtube.com/@${youtubeHandle}`;
+    default:
+      return '';
+  }
+}
+
 export default function ProfilePage() {
   const params = useParams();
   const router = useRouter();
@@ -895,7 +921,7 @@ export default function ProfilePage() {
           <div className="flex flex-wrap gap-4">
             {profile.linkedin && (
               <a
-                href={profile.linkedin}
+                href={getSocialMediaUrl('linkedin', profile.linkedin)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 text-neutral-300 hover:text-white transition-all duration-200 px-6 py-3 bg-gradient-to-r from-neutral-800/60 to-neutral-800/40 rounded-xl border-2 border-neutral-700/50 hover:border-blue-500/50 hover:from-blue-500/20 hover:to-blue-600/20 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-blue-500/20 transform hover:-translate-y-0.5 font-semibold"
@@ -908,7 +934,7 @@ export default function ProfilePage() {
             )}
             {profile.instagram && (
               <a
-                href={profile.instagram}
+                href={getSocialMediaUrl('instagram', profile.instagram)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 text-neutral-300 hover:text-white transition-all duration-200 px-6 py-3 bg-gradient-to-r from-neutral-800/60 to-neutral-800/40 rounded-xl border-2 border-neutral-700/50 hover:border-pink-500/50 hover:from-pink-500/20 hover:to-purple-500/20 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-pink-500/20 transform hover:-translate-y-0.5 font-semibold"
@@ -921,7 +947,7 @@ export default function ProfilePage() {
             )}
             {profile.youtube && (
               <a
-                href={profile.youtube}
+                href={getSocialMediaUrl('youtube', profile.youtube)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 text-neutral-300 hover:text-white transition-all duration-200 px-6 py-3 bg-gradient-to-r from-neutral-800/60 to-neutral-800/40 rounded-xl border-2 border-neutral-700/50 hover:border-red-500/50 hover:from-red-500/20 hover:to-red-600/20 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-red-500/20 transform hover:-translate-y-0.5 font-semibold"

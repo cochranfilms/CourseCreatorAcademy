@@ -141,9 +141,6 @@ export default function DashboardPage() {
   const [emailChanging, setEmailChanging] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
-  // Claim purchases
-  const [claiming, setClaiming] = useState(false);
-  const [claimMessage, setClaimMessage] = useState<string | null>(null);
   
   // Marketplace data
   const [listings, setListings] = useState<Listing[]>([]);
@@ -838,104 +835,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-          {/* Email Change + Claim Purchases */}
-          <div className="mt-8 p-4 rounded-xl border border-neutral-800 bg-neutral-900/40">
-            <div className="mb-4">
-              <div className="font-semibold text-white">Email & Purchases</div>
-              <div className="text-sm text-neutral-400">Update your sign-in email and claim purchases tied to your email.</div>
-            </div>
-            {emailError && <div className="mb-3 p-3 border border-red-500/40 text-red-300 bg-red-500/10 text-sm">{emailError}</div>}
-            {emailSuccess && <div className="mb-3 p-3 border border-green-500/40 text-green-300 bg-green-500/10 text-sm">{emailSuccess}</div>}
-            <div className="grid gap-4 max-w-md">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-neutral-300">New email</label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
-                />
-              </div>
-              {/* Reauth with password if available */}
-              {!needsPassword && (
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-neutral-300">Current password (for verification)</label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full bg-transparent border border-neutral-800 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
-                  />
-                </div>
-              )}
-              <div className="flex gap-2">
-                <button
-                  disabled={emailChanging}
-                  onClick={async () => {
-                    if (!auth?.currentUser) return;
-                    setEmailError(null);
-                    setEmailSuccess(null);
-                    try {
-                      if (!newEmail || !newEmail.includes('@')) {
-                        setEmailError('Enter a valid email.');
-                        return;
-                      }
-                      setEmailChanging(true);
-                      // Re-auth if password available; otherwise allow update to trigger requires-recent-login error
-                      if (auth.currentUser.email && currentPassword) {
-                        const cred = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
-                        await reauthenticateWithCredential(auth.currentUser, cred);
-                      }
-                      await updateEmail(auth.currentUser, newEmail);
-                      try { await sendEmailVerification(auth.currentUser); } catch {}
-                      if (firebaseReady && db && user) {
-                        await updateDoc(doc(db, 'users', user.uid), { email: newEmail, updatedAt: new Date() } as any);
-                      }
-                      setEmailSuccess('Email updated. Please verify your new address.');
-                      setNewEmail('');
-                      setCurrentPassword('');
-                    } catch (e: any) {
-                      const msg = e?.message || 'Failed to update email.';
-                      setEmailError(msg);
-                    } finally {
-                      setEmailChanging(false);
-                    }
-                  }}
-                  className="px-4 py-2 rounded-lg bg-ccaBlue text-white hover:bg-ccaBlue/90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {emailChanging ? 'Updating…' : 'Change Email'}
-                </button>
-                <button
-                  disabled={claiming}
-                  onClick={async () => {
-                    if (!auth?.currentUser) return;
-                    setClaimMessage(null);
-                    try {
-                      setClaiming(true);
-                      const idt = await auth.currentUser.getIdToken();
-                      const res = await fetch('/api/legacy/claim/by-email', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idt}` },
-                        body: JSON.stringify({}) // use current email
-                      });
-                      const json = await res.json();
-                      if (!res.ok) throw new Error(json?.error || 'Failed to claim purchases.');
-                      setClaimMessage(`Claim complete: reassigned ${json.updatedLegacySubs || 0} creator subscriptions${json.membershipActivated ? ' and activated membership' : ''}.`);
-                    } catch (e: any) {
-                      setClaimMessage(e?.message || 'Claim failed.');
-                    } finally {
-                      setClaiming(false);
-                    }
-                  }}
-                  className="px-4 py-2 rounded-lg bg-neutral-800 text-white hover:bg-neutral-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {claiming ? 'Claiming…' : 'Claim purchases for my email'}
-                </button>
-              </div>
-              {claimMessage && <div className="text-sm text-neutral-300">{claimMessage}</div>}
-            </div>
-          </div>
             {/* Right Side - Action Buttons */}
             <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 w-full md:w-auto">
               <button 
@@ -1354,6 +1253,83 @@ export default function DashboardPage() {
                     className="px-4 py-2 rounded-lg bg-ccaBlue text-white hover:bg-ccaBlue/90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {changingPassword ? 'Saving…' : (needsPassword ? 'Set password' : 'Change password')}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Email Change */}
+            <div className="mt-8 p-4 rounded-xl border border-neutral-800 bg-neutral-900/40">
+              <div className="mb-4">
+                <div className="font-semibold text-white">Change Email</div>
+                <div className="text-sm text-neutral-400">Update your sign-in email address.</div>
+              </div>
+              {emailError && <div className="mb-3 p-3 border border-red-500/40 text-red-300 bg-red-500/10 text-sm">{emailError}</div>}
+              {emailSuccess && <div className="mb-3 p-3 border border-green-500/40 text-green-300 bg-green-500/10 text-sm">{emailSuccess}</div>}
+              <div className="grid gap-4 max-w-md">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-neutral-300">New email</label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full bg-neutral-900 border border-neutral-800 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+                  />
+                </div>
+                {/* Reauth with password if available */}
+                {!needsPassword && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-neutral-300">Current password (for verification)</label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full bg-transparent border border-neutral-800 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent"
+                    />
+                  </div>
+                )}
+                <div>
+                  <button
+                    disabled={emailChanging}
+                    onClick={async () => {
+                      if (!auth?.currentUser) return;
+                      setEmailError(null);
+                      setEmailSuccess(null);
+                      try {
+                        if (!newEmail || !newEmail.includes('@')) {
+                          setEmailError('Enter a valid email.');
+                          return;
+                        }
+                        setEmailChanging(true);
+                        // Re-auth if password available; otherwise allow update to trigger requires-recent-login error
+                        if (auth.currentUser.email && currentPassword) {
+                          const cred = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+                          await reauthenticateWithCredential(auth.currentUser, cred);
+                        }
+                        await updateEmail(auth.currentUser, newEmail);
+                        try { await sendEmailVerification(auth.currentUser); } catch {}
+                        if (firebaseReady && db && user) {
+                          await updateDoc(doc(db, 'users', user.uid), { email: newEmail, updatedAt: new Date() } as any);
+                        }
+                        setEmailSuccess('Email updated successfully. You will be logged out to sign in with your new email.');
+                        setNewEmail('');
+                        setCurrentPassword('');
+                        // Log out the user after a short delay to show the success message
+                        setTimeout(async () => {
+                          await logout();
+                          router.push('/login');
+                        }, 2000);
+                      } catch (e: any) {
+                        const msg = e?.message || 'Failed to update email.';
+                        setEmailError(msg);
+                      } finally {
+                        setEmailChanging(false);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg bg-ccaBlue text-white hover:bg-ccaBlue/90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {emailChanging ? 'Updating…' : 'Change Email'}
                   </button>
                 </div>
               </div>
