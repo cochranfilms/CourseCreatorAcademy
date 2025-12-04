@@ -174,11 +174,15 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
         // Search users by handle or displayName
         const usersSnapshot = await getDocs(collection(db, 'users'));
         const matches = usersSnapshot.docs
-          .map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          }))
-          .filter((u: any) => {
+          .map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              displayName: data.displayName || data.handle || 'Unknown User',
+              handle: data.handle,
+            };
+          })
+          .filter((u) => {
             const handle = (u.handle || '').toLowerCase();
             const displayName = (u.displayName || '').toLowerCase();
             const query = mentionQuery.toLowerCase();
