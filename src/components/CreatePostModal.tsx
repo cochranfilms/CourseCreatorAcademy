@@ -5,6 +5,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, doc
 import { db, firebaseReady, storage, auth } from '@/lib/firebaseClient';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { extractHashtags, extractMentions, POST_CATEGORIES, POST_TEMPLATES, detectMediaEmbeds, type PostCategory } from '@/lib/messageBoardUtils';
+import { htmlToMarkdown, markdownToHtml, applyFormatting } from '@/lib/richTextUtils';
 
 type Project = {
   id: string;
@@ -68,7 +69,8 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
   const [showAttachModal, setShowAttachModal] = useState(false);
   const [attachType, setAttachType] = useState<'opportunity' | 'listing' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [htmlContent, setHtmlContent] = useState('');
 
   useEffect(() => {
     if (isOpen && firebaseReady && db) {
@@ -80,6 +82,7 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     } else if (!isOpen) {
       // Reset form when modal closes
       setContent('');
+      setHtmlContent('');
       setSelectedProjectId('');
       setSelectedCategory('');
       setSelectedTemplate('');
@@ -89,8 +92,20 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
       setError(null);
       setShowAttachModal(false);
       setAttachType(null);
+      setShowMentionSuggestions(false);
+      setMentionQuery('');
+      if (editorRef.current) {
+        editorRef.current.innerHTML = '';
+      }
     }
   }, [isOpen, user]);
+
+  // Sync htmlContent with editor innerHTML when htmlContent changes externally (e.g., from templates)
+  useEffect(() => {
+    if (editorRef.current && htmlContent && htmlContent !== editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = htmlContent;
+    }
+  }, [htmlContent]);
 
   // Load all opportunities (not just user's own)
   const loadOpportunities = async () => {
@@ -204,46 +219,108 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
   // Handle template selection
   const handleTemplateSelect = (templateId: string) => {
     const template = POST_TEMPLATES.find(t => t.id === templateId);
-    if (template) {
+    if (template && editorRef.current) {
+      const html = markdownToHtml(template.content);
+      setHtmlContent(html);
       setContent(template.content);
       setSelectedTemplate(templateId);
+      
+      // Clear and set HTML content
+      editorRef.current.innerHTML = html;
+      
+      // Move cursor to end
+      const range = document.createRange();
+      const selection = window.getSelection();
+      range.selectNodeContents(editorRef.current);
+      range.collapse(false);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      
+      editorRef.current.focus();
+      
+      // Trigger input event to sync state
+      editorRef.current.dispatchEvent(new Event('input', { bubbles: true }));
     }
   };
 
   // Handle mention insertion
   const insertMention = (userId: string, displayName: string, handle?: string) => {
-    if (!textareaRef.current) return;
-    const textarea = textareaRef.current;
-    const start = mentionCursorPosition;
-    const before = content.substring(0, start);
-    const after = content.substring(start);
+    if (!editorRef.current) return;
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    const range = selection.getRangeAt(0);
     const mentionText = `@${handle || displayName} `;
-    setContent(before + mentionText + after);
+    const textNode = document.createTextNode(mentionText);
+    range.deleteContents();
+    range.insertNode(textNode);
+    range.setStartAfter(textNode);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    // Update content
+    const html = editor.innerHTML;
+    setHtmlContent(html);
+    const markdown = htmlToMarkdown(html);
+    setContent(markdown);
+    
     setShowMentionSuggestions(false);
     setMentionQuery('');
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + mentionText.length, start + mentionText.length);
-    }, 0);
+    editor.focus();
   };
 
-  // Handle textarea input for mentions
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    const cursorPos = e.target.selectionStart;
-    setContent(value);
-    setMentionCursorPosition(cursorPos);
-
-    // Check if user is typing @mention
-    const textBeforeCursor = value.substring(0, cursorPos);
-    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-    if (lastAtIndex !== -1) {
-      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
-      if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
-        setMentionQuery(textAfterAt);
-        return;
+  // Handle editor input
+  const handleEditorInput = () => {
+    if (!editorRef.current) return;
+    const html = editorRef.current.innerHTML;
+    setHtmlContent(html);
+    const markdown = htmlToMarkdown(html);
+    setContent(markdown);
+    
+    // Check for @ mentions
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const textContent = editorRef.current.textContent || '';
+      const cursorPos = range.startOffset;
+      
+      // Get text before cursor position
+      let textBeforeCursor = '';
+      const walker = document.createTreeWalker(
+        editorRef.current,
+        NodeFilter.SHOW_TEXT,
+        null
+      );
+      
+      let currentPos = 0;
+      let node;
+      while ((node = walker.nextNode())) {
+        const nodeText = node.textContent || '';
+        const nodeLength = nodeText.length;
+        
+        if (currentPos + nodeLength >= cursorPos) {
+          // Cursor is in this node
+          textBeforeCursor += nodeText.substring(0, cursorPos - currentPos);
+          break;
+        } else {
+          textBeforeCursor += nodeText;
+          currentPos += nodeLength;
+        }
+      }
+      
+      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+      if (lastAtIndex !== -1) {
+        const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+        // Check if we're still typing a mention (no space, newline, or @)
+        if (textAfterAt && !textAfterAt.match(/[\s\n@]/)) {
+          setMentionQuery(textAfterAt);
+          return;
+        }
       }
     }
+    
     setShowMentionSuggestions(false);
     setMentionQuery('');
   };
@@ -399,7 +476,12 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
       return;
     }
 
-    if (!content.trim() && mediaFiles.length === 0) {
+    // Check if editor has content
+    const hasContent = editorRef.current ? 
+      (editorRef.current.textContent?.trim() || editorRef.current.innerHTML.trim() !== '<br>') : 
+      content.trim();
+    
+    if (!hasContent && mediaFiles.length === 0) {
       setError('Please enter some content or upload media for your post');
       return;
     }
@@ -408,6 +490,13 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
     setError(null);
 
     try {
+      // Convert HTML to markdown before submitting
+      let finalContent = content;
+      if (editorRef.current) {
+        const html = editorRef.current.innerHTML;
+        finalContent = htmlToMarkdown(html);
+      }
+
       // Upload media files first
       let media: Array<{ url: string; type: 'image' | 'video' }> = [];
       if (mediaFiles.length > 0) {
@@ -415,9 +504,9 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
       }
 
       // Extract hashtags and mentions
-      const hashtags = extractHashtags(content);
-      const mentions = extractMentions(content);
-      const mediaEmbeds = detectMediaEmbeds(content);
+      const hashtags = extractHashtags(finalContent);
+      const mentions = extractMentions(finalContent);
+      const mediaEmbeds = detectMediaEmbeds(finalContent);
 
       // Get auth token for API call
       const token = await auth?.currentUser?.getIdToken();
@@ -428,7 +517,7 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
       // Create post
       const postData: any = {
         authorId: user.uid,
-        content: content.trim() || '',
+        content: finalContent.trim() || '',
         projectId: selectedProjectId || null,
         category: selectedCategory || null,
         hashtags: hashtags.length > 0 ? hashtags : null,
@@ -477,12 +566,18 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
 
       // Reset form
       setContent('');
+      setHtmlContent('');
+      if (editorRef.current) {
+        editorRef.current.innerHTML = '';
+      }
       setSelectedProjectId('');
       setSelectedCategory('');
       setSelectedTemplate('');
       setSelectedOpportunityId('');
       setSelectedListingId('');
       setMediaFiles([]);
+      setShowMentionSuggestions(false);
+      setMentionQuery('');
       onSuccess();
     } catch (error: any) {
       console.error('Error creating post:', error);
@@ -716,70 +811,52 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
           <div className="flex items-center gap-2 p-2 bg-neutral-800 rounded-lg border border-neutral-700">
             <button
               type="button"
-              onClick={() => {
-                const textarea = textareaRef.current;
-                if (!textarea) return;
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                const selectedText = content.substring(start, end);
-                const newText = content.substring(0, start) + `**${selectedText || 'bold text'}**` + content.substring(end);
-                setContent(newText);
-                setTimeout(() => {
-                  textarea.focus();
-                  textarea.setSelectionRange(start + 2, start + 2 + (selectedText || 'bold text').length);
-                }, 0);
+              onClick={(e) => {
+                e.preventDefault();
+                applyFormatting('bold', editorRef);
               }}
-              className="p-2 hover:bg-neutral-700 rounded transition"
-              title="Bold"
+              className="p-2 hover:bg-neutral-700 rounded transition group relative"
+              title="Bold (Ctrl+B)"
             >
-              <svg className="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-neutral-300 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z" />
               </svg>
+              <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-neutral-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
+                Bold
+              </span>
             </button>
             <button
               type="button"
-              onClick={() => {
-                const textarea = textareaRef.current;
-                if (!textarea) return;
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                const selectedText = content.substring(start, end);
-                const newText = content.substring(0, start) + `*${selectedText || 'italic text'}*` + content.substring(end);
-                setContent(newText);
-                setTimeout(() => {
-                  textarea.focus();
-                  textarea.setSelectionRange(start + 1, start + 1 + (selectedText || 'italic text').length);
-                }, 0);
+              onClick={(e) => {
+                e.preventDefault();
+                applyFormatting('italic', editorRef);
               }}
-              className="p-2 hover:bg-neutral-700 rounded transition"
-              title="Italic"
+              className="p-2 hover:bg-neutral-700 rounded transition group relative"
+              title="Italic (Ctrl+I)"
             >
-              <svg className="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-neutral-300 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
               </svg>
+              <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-neutral-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
+                Italic
+              </span>
             </button>
             <button
               type="button"
-              onClick={() => {
-                const textarea = textareaRef.current;
-                if (!textarea) return;
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                const selectedText = content.substring(start, end);
-                const newText = content.substring(0, start) + `\`${selectedText || 'code'}\`` + content.substring(end);
-                setContent(newText);
-                setTimeout(() => {
-                  textarea.focus();
-                  textarea.setSelectionRange(start + 1, start + 1 + (selectedText || 'code').length);
-                }, 0);
+              onClick={(e) => {
+                e.preventDefault();
+                applyFormatting('code', editorRef);
               }}
-              className="p-2 hover:bg-neutral-700 rounded transition"
-              title="Code"
+              className="p-2 hover:bg-neutral-700 rounded transition group relative"
+              title="Inline Code"
             >
-              <svg className="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-neutral-300 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
               </svg>
+              <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-neutral-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
+                Code
+              </span>
             </button>
             <div className="flex-1" />
             <span className="text-xs text-neutral-500">Use @ to mention users, # for hashtags</span>
@@ -790,48 +867,63 @@ export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalP
             <label className="block text-sm font-semibold text-white mb-2">
               What's on your mind?
             </label>
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={handleContentChange}
-              onKeyDown={(e) => {
-                if (showMentionSuggestions && e.key === 'ArrowDown') {
-                  e.preventDefault();
-                } else if (showMentionSuggestions && e.key === 'Enter') {
-                  e.preventDefault();
-                  if (mentionSuggestions.length > 0) {
-                    insertMention(mentionSuggestions[0].id, mentionSuggestions[0].displayName, mentionSuggestions[0].handle);
+            <div className="relative">
+              <div
+                ref={editorRef}
+                contentEditable
+                onInput={handleEditorInput}
+                onKeyDown={(e) => {
+                  if (showMentionSuggestions && e.key === 'ArrowDown') {
+                    e.preventDefault();
+                  } else if (showMentionSuggestions && e.key === 'Enter') {
+                    e.preventDefault();
+                    if (mentionSuggestions.length > 0) {
+                      insertMention(mentionSuggestions[0].id, mentionSuggestions[0].displayName, mentionSuggestions[0].handle);
+                    }
+                  } else if (e.key === 'Enter' && !e.shiftKey) {
+                    // Allow Enter to create new line
+                    document.execCommand('insertLineBreak', false);
+                    e.preventDefault();
                   }
-                }
-              }}
-              placeholder="Share your project, discuss your onset experience, ask questions, or start a conversation... Use @ to mention users, # for hashtags"
-              rows={8}
-              className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent resize-none"
-            />
-            
-            {/* Mention Suggestions */}
-            {showMentionSuggestions && mentionSuggestions.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                {mentionSuggestions.map((suggestion) => (
-                  <button
-                    key={suggestion.id}
-                    type="button"
-                    onClick={() => insertMention(suggestion.id, suggestion.displayName, suggestion.handle)}
-                    className="w-full px-4 py-2 text-left hover:bg-neutral-800 transition flex items-center gap-2"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-ccaBlue flex items-center justify-center text-white text-xs font-semibold">
-                      {suggestion.displayName.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="text-white text-sm font-medium">{suggestion.displayName}</div>
-                      {suggestion.handle && (
-                        <div className="text-neutral-400 text-xs">@{suggestion.handle}</div>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+                }}
+                data-placeholder="Share your project, discuss your onset experience, ask questions, or start a conversation... Use @ to mention users, # for hashtags"
+                className="w-full min-h-[200px] px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-ccaBlue focus:border-transparent resize-none"
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+                suppressContentEditableWarning={true}
+              />
+              {!htmlContent && (
+                <div className="absolute top-3 left-4 text-neutral-500 pointer-events-none">
+                  Share your project, discuss your onset experience, ask questions, or start a conversation... Use @ to mention users, # for hashtags
+                </div>
+              )}
+              
+              {/* Mention Suggestions */}
+              {showMentionSuggestions && mentionSuggestions.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                  {mentionSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      type="button"
+                      onClick={() => insertMention(suggestion.id, suggestion.displayName, suggestion.handle)}
+                      className="w-full px-4 py-2 text-left hover:bg-neutral-800 transition flex items-center gap-2"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-ccaBlue flex items-center justify-center text-white text-xs font-semibold">
+                        {suggestion.displayName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-white text-sm font-medium">{suggestion.displayName}</div>
+                        {suggestion.handle && (
+                          <div className="text-neutral-400 text-xs">@{suggestion.handle}</div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="mt-2 flex items-center justify-between text-sm text-neutral-400">
               <div>
