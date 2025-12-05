@@ -12,6 +12,7 @@ import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
 import { JobApplicationModal } from '@/components/JobApplicationModal';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { UserBadges } from '@/components/UserBadges';
+import { ReportUserModal } from '@/components/ReportUserModal';
 
 type UserProfile = {
   displayName?: string;
