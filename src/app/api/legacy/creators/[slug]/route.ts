@@ -7,14 +7,14 @@ import { hasAccessToCreator } from '@/lib/entitlements';
 // If userId is provided and user has active subscription to this creator,
 // the response also includes all non-sample videos.
 export async function GET(req: NextRequest, context: any) {
+  const { searchParams } = new URL(req.url);
+  const slug = decodeURIComponent(String(context?.params?.slug || ''));
+  const userId = searchParams.get('userId') || undefined;
+  
   try {
     if (!adminDb) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     }
-
-    const slug = decodeURIComponent(String(context?.params?.slug || ''));
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId') || undefined;
 
     // Find creator by kitSlug, fallback to doc id, then by ownerUserId
     let creatorDoc: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot | null = null;
