@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db, firebaseReady } from '@/lib/firebaseClient';
-import { getBadgeDefinition, BADGE_DEFINITIONS, type BadgeDefinition } from '@/lib/badges';
+import { getBadgeDefinition, type BadgeDefinition } from '@/lib/badgeDefinitions';
 
 interface UserBadge {
   badgeId: string;
