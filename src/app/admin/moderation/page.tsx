@@ -214,33 +214,33 @@ function AdminModerationDashboard() {
       <h1 className="text-3xl font-bold text-white mb-6">Moderation Dashboard</h1>
 
       {/* Tabs */}
-      <div className="flex gap-4 mb-6 border-b border-neutral-800">
+      <div className="flex gap-4 mb-6">
         <button
           onClick={() => setActiveTab('reports')}
-          className={`px-4 py-2 font-semibold transition-colors ${
+          className={`px-4 py-2 font-semibold transition-colors rounded-lg border-2 ${
             activeTab === 'reports'
-              ? 'text-ccaBlue border-b-2 border-ccaBlue'
-              : 'text-neutral-400 hover:text-white'
+              ? 'bg-neutral-900/80 border-ccaBlue text-ccaBlue'
+              : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
           }`}
         >
           Reports ({reports.filter(r => r.status === 'pending').length})
         </button>
         <button
           onClick={() => setActiveTab('strikes')}
-          className={`px-4 py-2 font-semibold transition-colors ${
+          className={`px-4 py-2 font-semibold transition-colors rounded-lg border-2 ${
             activeTab === 'strikes'
-              ? 'text-ccaBlue border-b-2 border-ccaBlue'
-              : 'text-neutral-400 hover:text-white'
+              ? 'bg-neutral-900/80 border-ccaBlue text-ccaBlue'
+              : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
           }`}
         >
           Strikes ({strikes.length})
         </button>
         <button
           onClick={() => setActiveTab('removed')}
-          className={`px-4 py-2 font-semibold transition-colors ${
+          className={`px-4 py-2 font-semibold transition-colors rounded-lg border-2 ${
             activeTab === 'removed'
-              ? 'text-ccaBlue border-b-2 border-ccaBlue'
-              : 'text-neutral-400 hover:text-white'
+              ? 'bg-neutral-900/80 border-ccaBlue text-ccaBlue'
+              : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
           }`}
         >
           Removed Profiles
@@ -249,17 +249,18 @@ function AdminModerationDashboard() {
 
       {/* Reports Tab */}
       {activeTab === 'reports' && (
-        <div className="space-y-4">
-          {reports.filter(r => r.status === 'pending').length === 0 ? (
-            <p className="text-neutral-400">No pending reports.</p>
-          ) : (
-            reports
-              .filter(r => r.status === 'pending')
-              .map((report) => (
-                <div
-                  key={report.id}
-                  className="bg-gradient-to-br from-neutral-900/90 to-neutral-950/90 border border-neutral-800 rounded-xl p-6"
-                >
+        <div className="bg-neutral-900/60 backdrop-blur-sm border border-neutral-800 rounded-xl p-6">
+          <div className="space-y-4">
+            {reports.filter(r => r.status === 'pending').length === 0 ? (
+              <p className="text-neutral-400">No pending reports.</p>
+            ) : (
+              reports
+                .filter(r => r.status === 'pending')
+                .map((report) => (
+                  <div
+                    key={report.id}
+                    className="bg-gradient-to-br from-neutral-900/90 to-neutral-950/90 border border-neutral-800 rounded-xl p-6"
+                  >
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-white font-semibold mb-2">
@@ -290,23 +291,25 @@ function AdminModerationDashboard() {
                       </button>
                     </div>
                   </div>
-                </div>
-              ))
-          )}
+                  </div>
+                ))
+            )}
+          </div>
         </div>
       )}
 
       {/* Strikes Tab */}
       {activeTab === 'strikes' && (
-        <div className="space-y-4">
-          {strikes.length === 0 ? (
-            <p className="text-neutral-400">No strikes issued.</p>
-          ) : (
-            strikes.map((strike) => (
-              <div
-                key={strike.id}
-                className="bg-gradient-to-br from-neutral-900/90 to-neutral-950/90 border border-neutral-800 rounded-xl p-6"
-              >
+        <div className="bg-neutral-900/60 backdrop-blur-sm border border-neutral-800 rounded-xl p-6">
+          <div className="space-y-4">
+            {strikes.length === 0 ? (
+              <p className="text-neutral-400">No strikes issued.</p>
+            ) : (
+              strikes.map((strike) => (
+                <div
+                  key={strike.id}
+                  className="bg-gradient-to-br from-neutral-900/90 to-neutral-950/90 border border-neutral-800 rounded-xl p-6"
+                >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h3 className="text-white font-semibold mb-2">
@@ -328,16 +331,17 @@ function AdminModerationDashboard() {
                   >
                     Delete Strike
                   </button>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       )}
 
       {/* Removed Profiles Tab */}
       {activeTab === 'removed' && (
-        <div>
+        <div className="bg-neutral-900/60 backdrop-blur-sm border border-neutral-800 rounded-xl p-6">
           <p className="text-neutral-400">Removed profiles functionality coming soon.</p>
         </div>
       )}
