@@ -19,7 +19,8 @@ export type NotificationType =
   | 'membership_expiring'             // Member: subscription expiring soon
   | 'membership_expired'               // Member: subscription expired
   | 'legacy_subscription_active'       // User: Legacy+ subscription active
-  | 'legacy_subscription_canceled';     // User: Legacy+ subscription canceled
+  | 'legacy_subscription_canceled'     // User: Legacy+ subscription canceled
+  | 'user_reported';                  // Admin: user profile reported
 
 export interface NotificationData {
   type: NotificationType;
