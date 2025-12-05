@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
         });
         
         strikesSnap = {
-          docs: strikesArray.map(item => item.doc),
+          docs: strikesArray.map((item: { doc: QueryDocumentSnapshot; data: any }) => item.doc),
         } as any;
       } else {
         throw error;
