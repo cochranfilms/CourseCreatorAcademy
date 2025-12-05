@@ -81,6 +81,7 @@ export async function GET(req: NextRequest) {
           reportedUserId: data.reportedUserId,
           reason: data.reason,
           details: data.details,
+          attachments: data.attachments || null,
           status: data.status,
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : null,
           reviewedAt: data.reviewedAt?.toDate ? data.reviewedAt.toDate().toISOString() : null,

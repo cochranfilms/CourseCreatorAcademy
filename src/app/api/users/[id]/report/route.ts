@@ -42,6 +42,7 @@ export async function POST(
     const body = await req.json();
     const reason = body.reason as ReportReason;
     const details = body.details as string | undefined;
+    const attachments = body.attachments as string[] | undefined;
 
     if (!reason || !REPORT_REASONS.includes(reason)) {
       return NextResponse.json(
@@ -52,6 +53,24 @@ export async function POST(
 
     if (!adminDb) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+    }
+
+    // Check if this is the first report from this reporter to this reported user
+    const existingReportsSnap = await adminDb
+      .collection('userReports')
+      .where('reporterId', '==', reporterId)
+      .where('reportedUserId', '==', reportedUserId)
+      .limit(1)
+      .get();
+    
+    const isFirstReport = existingReportsSnap.empty;
+
+    // Only allow attachments on first report
+    if (!isFirstReport && attachments && attachments.length > 0) {
+      return NextResponse.json(
+        { error: 'Attachments can only be uploaded with the first report' },
+        { status: 400 }
+      );
     }
 
     // Get reporter and reported user info for notification
@@ -80,6 +99,7 @@ export async function POST(
       reportedUserId,
       reason,
       details: details || null,
+      attachments: attachments && attachments.length > 0 ? attachments : null,
       status: 'pending',
       createdAt: FieldValue.serverTimestamp(),
       strikeIssued: false,

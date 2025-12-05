@@ -12,6 +12,7 @@ interface Report {
   reportedUserId: string;
   reason: string;
   details?: string;
+  attachments?: string[] | null;
   status: string;
   createdAt: string;
   reporterInfo?: any;

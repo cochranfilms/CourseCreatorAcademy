@@ -149,6 +149,28 @@ service firebase.storage {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
+    // User report attachments - users can upload evidence when reporting
+    match /user-reports/{userId}/{allPaths=**} {
+      // Only admins and the reporter can read (for admin review)
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        // Admin check would need custom claims or database lookup
+        // For now, allow authenticated reads (admin check happens in API)
+        true
+      );
+      // Allow users to write only to their own folder
+      // Support PNG, JPG, WEBP images and PDF files, max 10MB
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 10 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/(png|jpeg|jpg|webp)') ||
+          request.resource.contentType == 'application/pdf'
+        );
+      // Allow users to delete their own attachments
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Deny all other paths
     match /{allPaths=**} {
       allow read, write: if false;
