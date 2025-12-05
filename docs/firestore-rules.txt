@@ -461,8 +461,11 @@ service cloud.firestore {
     allow read, update: if isAuthenticated() && (hasRole('admin') || resource.data.reporterId == request.auth.uid);
   }
   
-  // User strikes collection - admin only
+  // User strikes collection - users can read their own strikes, admins can read/write all
   match /userStrikes/{strikeId} {
+    // Users can read their own strikes
+    allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    // Admins can read and write all strikes
     allow read, write: if isAuthenticated() && hasRole('admin');
   }
   

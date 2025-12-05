@@ -8,6 +8,7 @@ import { updateProfile, fetchSignInMethodsForEmail, EmailAuthProvider, updatePas
 import { db, auth, firebaseReady, storage } from '@/lib/firebaseClient';
 import { ProfileImageUpload } from '@/components/ProfileImageUpload';
 import { BannerImageUpload } from '@/components/BannerImageUpload';
+import { UserStrikes } from '@/components/UserStrikes';
 import Link from 'next/link';
 import OrdersTab from './OrdersTab';
 import OnboardingTab from './OnboardingTab';
@@ -937,6 +938,9 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* User Strikes Section - Only show if user has strikes */}
+        <UserStrikes />
 
         {/* Sub-Navigation Tabs */}
         <div className="flex gap-1.5 mb-3 sm:mb-4 overflow-x-auto pb-2 scrollbar-hide w-full -mx-3 sm:mx-0 px-3 sm:px-0">

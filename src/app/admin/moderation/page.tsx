@@ -45,6 +45,9 @@ function AdminModerationDashboard() {
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [removedProfiles, setRemovedProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showStrikeModal, setShowStrikeModal] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [strikeDetails, setStrikeDetails] = useState('');
 
   useEffect(() => {
     if (!user || !firebaseReady || !db) {
@@ -111,7 +114,7 @@ function AdminModerationDashboard() {
     }
   };
 
-  const handleIssueStrike = async (reportId: string, userId: string, reason: string) => {
+  const handleIssueStrike = async (reportId: string, userId: string, reason: string, details?: string) => {
     if (!auth.currentUser) return;
     
     try {
@@ -122,7 +125,7 @@ function AdminModerationDashboard() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userId, reportId, reason }),
+        body: JSON.stringify({ userId, reportId, reason, details: details || null }),
       });
 
       if (response.ok) {
@@ -130,6 +133,9 @@ function AdminModerationDashboard() {
         if (data.shouldRemove) {
           alert('User has reached 3 strikes. Profile has been automatically removed.');
         }
+        setShowStrikeModal(false);
+        setSelectedReport(null);
+        setStrikeDetails('');
         fetchData();
       } else {
         const error = await response.json();
@@ -139,6 +145,11 @@ function AdminModerationDashboard() {
       console.error('Error issuing strike:', err);
       alert('Failed to issue strike');
     }
+  };
+
+  const openStrikeModal = (report: Report) => {
+    setSelectedReport(report);
+    setShowStrikeModal(true);
   };
 
   const handleDismissReport = async (reportId: string) => {
@@ -284,7 +295,7 @@ function AdminModerationDashboard() {
                         Dismiss
                       </button>
                       <button
-                        onClick={() => handleIssueStrike(report.id, report.reportedUserId, report.reason)}
+                        onClick={() => openStrikeModal(report)}
                         className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
                       >
                         Issue Strike
@@ -315,7 +326,14 @@ function AdminModerationDashboard() {
                     <h3 className="text-white font-semibold mb-2">
                       {strike.userInfo?.displayName || 'User'} - Strike {strike.strikeNumber}/3
                     </h3>
-                    <p className="text-neutral-400 text-sm">Reason: {strike.reason}</p>
+                    <p className="text-neutral-400 text-sm mb-1">
+                      Reason: <span className="text-white capitalize">{strike.reason.replace('_', ' ')}</span>
+                    </p>
+                    {strike.details && (
+                      <p className="text-neutral-300 text-sm mt-2 bg-neutral-800/50 p-2 rounded border border-neutral-700/50">
+                        {strike.details}
+                      </p>
+                    )}
                     <p className="text-neutral-500 text-xs mt-2">
                       Issued: {new Date(strike.issuedAt).toLocaleDateString()}
                     </p>
@@ -343,6 +361,67 @@ function AdminModerationDashboard() {
       {activeTab === 'removed' && (
         <div className="bg-neutral-900/60 backdrop-blur-sm border border-neutral-800 rounded-xl p-6">
           <p className="text-neutral-400">Removed profiles functionality coming soon.</p>
+        </div>
+      )}
+
+      {/* Issue Strike Modal */}
+      {showStrikeModal && selectedReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold text-white mb-4">Issue Strike</h2>
+            <div className="space-y-4">
+              <div>
+                <p className="text-neutral-400 text-sm mb-2">
+                  Reporting: <span className="text-white">{selectedReport.reportedUserInfo?.displayName || 'User'}</span>
+                </p>
+                <p className="text-neutral-400 text-sm mb-2">
+                  Reason: <span className="text-white capitalize">{selectedReport.reason.replace('_', ' ')}</span>
+                </p>
+                <p className="text-neutral-400 text-sm mb-4">
+                  Current Strikes: <span className="text-white">{selectedReport.strikeCount}/3</span>
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-300 mb-2">
+                  Details / Reason for Strike (Required)
+                </label>
+                <textarea
+                  value={strikeDetails}
+                  onChange={(e) => setStrikeDetails(e.target.value)}
+                  placeholder="Explain why this strike is being issued. This will be visible to the user."
+                  rows={4}
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
+                />
+                <p className="text-xs text-neutral-500 mt-1">
+                  This information will be shown to the user so they understand why they received the strike.
+                </p>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowStrikeModal(false);
+                    setSelectedReport(null);
+                    setStrikeDetails('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!strikeDetails.trim()) {
+                      alert('Please provide details for the strike.');
+                      return;
+                    }
+                    handleIssueStrike(selectedReport.id, selectedReport.reportedUserId, selectedReport.reason, strikeDetails);
+                  }}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition-colors"
+                >
+                  Issue Strike
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </main>

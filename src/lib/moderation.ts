@@ -1,5 +1,6 @@
 import { adminDb } from './firebaseAdmin';
 import { FieldValue, QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import { createNotification } from './notifications';
 
 export interface Strike {
   id: string;
@@ -114,6 +115,32 @@ export async function issueStrike(
 
     if (shouldRemove) {
       await removeUserProfile(userId, issuedBy, `Automatic removal after 3rd strike. Reason: ${reason}`);
+    }
+
+    // Notify user about the strike
+    try {
+      const reasonDisplay = reason.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const strikeMessage = shouldRemove
+        ? `You have received your 3rd strike (${reasonDisplay}). Your profile has been removed.`
+        : `You have received a strike (${reasonDisplay}). You now have ${newStrikeCount} of 3 strikes.${details ? ` Details: ${details}` : ''}`;
+      
+      await createNotification(userId, {
+        type: 'strike_issued',
+        title: shouldRemove ? 'Profile Removed - 3 Strikes' : `Strike Issued (${newStrikeCount}/3)`,
+        message: strikeMessage,
+        actionUrl: '/dashboard?tab=strikes',
+        actionLabel: 'View Strikes',
+        metadata: {
+          strikeId: strikeRef.id,
+          strikeCount: newStrikeCount,
+          reason,
+          details: details || null,
+          reportId,
+        },
+      });
+    } catch (notifError) {
+      // Don't fail the strike issuance if notification fails
+      console.error('Error creating strike notification:', notifError);
     }
 
     return {
