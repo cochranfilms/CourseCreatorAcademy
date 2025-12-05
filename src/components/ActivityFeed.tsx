@@ -115,9 +115,9 @@ export function ActivityFeed({ userId, limitCount = 30 }: ActivityFeedProps) {
         setActivities(activitiesData);
       } catch (error: any) {
         // If permission error, silently fail (user may not have permission to view activities)
-        // This is expected for public profiles where activities might be private
+        // This can happen if Firestore rules aren't deployed yet or if activities are private
         if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
-          console.warn('Permission denied for activities - user may not have access or activities are private');
+          // Silently handle - don't log warnings for expected permission scenarios
           setActivities([]);
         } else {
           console.error('Error fetching activities:', error);

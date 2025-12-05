@@ -864,7 +864,7 @@ export default function ProfilePage() {
                         </svg>
                         Message
                       </button>
-                      <div className="relative z-50 menu-container">
+                      <div className="relative z-[9999] menu-container">
                         <button
                           onClick={() => setShowMenu(!showMenu)}
                           className="bg-gradient-to-r from-neutral-700 to-neutral-800 hover:from-neutral-600 hover:to-neutral-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center touch-manipulation min-h-[36px] text-xs sm:text-sm w-full sm:w-auto shadow-md transform hover:scale-[1.02] active:scale-[0.98]"
@@ -874,7 +874,7 @@ export default function ProfilePage() {
                           </svg>
                         </button>
                         {showMenu && (
-                          <div className="absolute right-0 bottom-full mb-2 w-48 bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 rounded-lg shadow-xl z-[100]">
+                          <div className="absolute right-0 bottom-full mb-2 w-48 bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 rounded-lg shadow-xl z-[9999]">
                             <button
                               onClick={handleBlock}
                               className="w-full text-left px-4 py-2 text-sm text-white hover:bg-neutral-800 transition-colors first:rounded-t-lg"
