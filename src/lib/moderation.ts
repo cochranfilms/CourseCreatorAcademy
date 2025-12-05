@@ -1,5 +1,5 @@
 import { adminDb } from './firebaseAdmin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 export interface Strike {
   id: string;
@@ -25,7 +25,7 @@ export async function getUserStrikes(userId: string): Promise<Strike[]> {
       .orderBy('issuedAt', 'desc')
       .get();
 
-    return strikesSnap.docs.map(doc => {
+    return strikesSnap.docs.map((doc: QueryDocumentSnapshot) => {
       const data = doc.data();
       return {
         id: doc.id,
