@@ -283,7 +283,7 @@ export default function ProfilePage() {
           );
           const listingsSnap = await getDocs(listingsQuery);
           const listingsData: Listing[] = await Promise.all(
-            listingsSnap.docs.map(async (doc) => {
+            listingsSnap.docs.map(async (doc: QueryDocumentSnapshot<DocumentData>) => {
               const data = doc.data();
               // Fetch connectAccountId from user document if not on listing
               let connectAccountId = data.connectAccountId || '';
