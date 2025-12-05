@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { ensureAdmin } from '@/lib/api/admin';
 import { issueStrike, getUserStrikes } from '@/lib/moderation';
+import { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 // POST /api/admin/moderation/strikes
 // Issue a strike to a user
@@ -81,7 +82,7 @@ export async function GET(req: NextRequest) {
     const strikesSnap = await strikesQuery.limit(100).get();
 
     const strikes = await Promise.all(
-      strikesSnap.docs.map(async (doc) => {
+      strikesSnap.docs.map(async (doc: QueryDocumentSnapshot) => {
         const data = doc.data();
         
         // Get user info
