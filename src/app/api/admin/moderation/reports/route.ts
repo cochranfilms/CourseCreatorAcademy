@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { ensureAdmin } from '@/lib/api/admin';
+import { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 // GET /api/admin/moderation/reports
 // List all reports with filters
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     const reportsSnap = await reportsQuery.limit(100).get();
     
     const reports = await Promise.all(
-      reportsSnap.docs.map(async (doc) => {
+      reportsSnap.docs.map(async (doc: QueryDocumentSnapshot) => {
         const data = doc.data();
         
         // Get reporter info
