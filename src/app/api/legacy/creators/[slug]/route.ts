@@ -97,6 +97,14 @@ export async function GET(req: NextRequest, context: any) {
 
     return NextResponse.json({ creator, subscribed, samples, full });
   } catch (err: any) {
+    console.error('Error in legacy creators API:', err);
+    console.error('Error details:', {
+      slug: context?.params?.slug,
+      userId: searchParams.get('userId'),
+      errorMessage: err?.message,
+      errorStack: err?.stack,
+      errorCode: err?.code,
+    });
     return NextResponse.json({ error: err?.message || 'Failed' }, { status: 500 });
   }
 }
