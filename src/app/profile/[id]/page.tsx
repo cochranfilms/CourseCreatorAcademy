@@ -284,8 +284,8 @@ export default function ProfilePage() {
           );
           const listingsSnap = await getDocs(listingsQuery);
           const listingsData: Listing[] = await Promise.all(
-            listingsSnap.docs.map(async (doc: QueryDocumentSnapshot<DocumentData>) => {
-              const data = doc.data();
+            listingsSnap.docs.map(async (listingDoc: QueryDocumentSnapshot<DocumentData>) => {
+              const data = listingDoc.data();
               // Fetch connectAccountId from user document if not on listing
               let connectAccountId = data.connectAccountId || '';
               if (!connectAccountId && data.creatorId) {
@@ -300,7 +300,7 @@ export default function ProfilePage() {
                 }
               }
               return {
-                id: doc.id,
+                id: listingDoc.id,
                 ...data,
                 connectAccountId
               } as Listing;
