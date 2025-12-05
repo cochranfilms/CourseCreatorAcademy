@@ -6,7 +6,7 @@ import { removeUserProfile, restoreUserProfile } from '@/lib/moderation';
 // Remove user profile
 export async function POST(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const adminId = await ensureAdmin(req);
@@ -14,6 +14,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { userId } = await params;
     const body = await req.json();
     const { reason } = body;
 
@@ -21,7 +22,7 @@ export async function POST(
       return NextResponse.json({ error: 'Reason is required' }, { status: 400 });
     }
 
-    const success = await removeUserProfile(params.userId, adminId, reason);
+    const success = await removeUserProfile(userId, adminId, reason);
 
     if (!success) {
       return NextResponse.json({ error: 'Failed to remove profile' }, { status: 400 });
@@ -41,7 +42,7 @@ export async function POST(
 // Restore user profile
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const adminId = await ensureAdmin(req);
@@ -49,7 +50,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const success = await restoreUserProfile(params.userId, adminId);
+    const { userId } = await params;
+    const success = await restoreUserProfile(userId, adminId);
 
     if (!success) {
       return NextResponse.json({ error: 'Failed to restore profile' }, { status: 400 });

@@ -7,7 +7,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 // Get single report details
 export async function GET(
   req: NextRequest,
-  { params }: { params: { reportId: string } }
+  { params }: { params: Promise<{ reportId: string }> }
 ) {
   try {
     const adminId = await ensureAdmin(req);
@@ -19,7 +19,8 @@ export async function GET(
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     }
 
-    const reportDoc = await adminDb.collection('userReports').doc(params.reportId).get();
+    const { reportId } = await params;
+    const reportDoc = await adminDb.collection('userReports').doc(reportId).get();
     if (!reportDoc.exists) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 });
     }
@@ -44,7 +45,7 @@ export async function GET(
 // Update report status
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { reportId: string } }
+  { params }: { params: Promise<{ reportId: string }> }
 ) {
   try {
     const adminId = await ensureAdmin(req);
@@ -56,6 +57,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     }
 
+    const { reportId } = await params;
     const body = await req.json();
     const { status } = body;
 
@@ -69,7 +71,7 @@ export async function PATCH(
       reviewedBy: adminId,
     };
 
-    await adminDb.collection('userReports').doc(params.reportId).update(updateData);
+    await adminDb.collection('userReports').doc(reportId).update(updateData);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

@@ -7,7 +7,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 // Block a user
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const blockerId = await getUserIdFromAuthHeader(req);
@@ -15,7 +15,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const blockedUserId = params.id;
+    const { id: blockedUserId } = await params;
     if (!blockedUserId || blockedUserId === blockerId) {
       return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
     }
@@ -48,7 +48,7 @@ export async function POST(
 // Unblock a user
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const blockerId = await getUserIdFromAuthHeader(req);
@@ -56,7 +56,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const blockedUserId = params.id;
+    const { id: blockedUserId } = await params;
     if (!blockedUserId) {
       return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
     }

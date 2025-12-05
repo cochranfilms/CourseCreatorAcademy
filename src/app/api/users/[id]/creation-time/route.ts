@@ -5,10 +5,10 @@ import { adminAuth } from '@/lib/firebaseAdmin';
 // Returns the user's creation time from Firebase Auth (public endpoint for profile viewing)
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = params.id;
+    const { id: userId } = await params;
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });

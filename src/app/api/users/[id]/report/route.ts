@@ -10,7 +10,7 @@ type ReportReason = typeof REPORT_REASONS[number];
 // Report a user
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const reporterId = await getUserIdFromAuthHeader(req);
@@ -18,7 +18,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const reportedUserId = params.id;
+    const { id: reportedUserId } = await params;
     if (!reportedUserId || reportedUserId === reporterId) {
       return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
     }

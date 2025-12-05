@@ -6,7 +6,7 @@ import { removeStrike } from '@/lib/moderation';
 // Remove a strike
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { strikeId: string } }
+  { params }: { params: Promise<{ strikeId: string }> }
 ) {
   try {
     const adminId = await ensureAdmin(req);
@@ -14,7 +14,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const success = await removeStrike(params.strikeId, adminId);
+    const { strikeId } = await params;
+    const success = await removeStrike(strikeId, adminId);
 
     if (!success) {
       return NextResponse.json({ error: 'Failed to remove strike' }, { status: 400 });
