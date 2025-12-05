@@ -7,6 +7,14 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    // Helper function to check if user has a specific role
+    function hasRole(role) {
+      return isAuthenticated() && 
+        (request.auth.token[role] == true || 
+         request.auth.token.roles[role] == true ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles[role] == true);
+    }
+    
     // Pending membership claims:
     // Created by server-side webhook when buyer email is known but no userId is present.
     // Allow the authenticated user whose email matches to mark the record as claimed.
@@ -460,7 +468,13 @@ service cloud.firestore {
   
   // User activity collection - public read for public activities, users can create their own
   match /userActivity/{activityId} {
-    allow read: if resource.data.public == true || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    // Allow read for public activities (any authenticated user can read public activities)
+    // OR activities owned by the authenticated user (users can read their own activities)
+    // This works for both single document reads and queries
+    allow read: if isAuthenticated() && (
+      resource.data.public == true || 
+      resource.data.userId == request.auth.uid
+    );
     allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     allow update, delete: if isAuthenticated() && hasRole('admin');
   }

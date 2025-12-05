@@ -59,7 +59,10 @@ export async function GET(req: NextRequest, context: any) {
     if (userId) {
       try {
         subscribed = await hasAccessToCreator(userId, creatorId);
-      } catch {}
+      } catch (err) {
+        // Silently fail - subscription check is optional
+        console.error('Error checking subscription status:', err);
+      }
     }
 
     // Fetch sample videos (visible to all)

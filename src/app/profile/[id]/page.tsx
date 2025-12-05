@@ -419,13 +419,33 @@ export default function ProfilePage() {
 
         // Fetch message board posts
         try {
-          const postsQuery = query(
-            collection(db, 'messageBoardPosts'),
-            where('authorId', '==', userId),
-            orderBy('createdAt', 'desc'),
-            limit(10)
-          );
-          const postsSnap = await getDocs(postsQuery);
+          let postsSnap;
+          try {
+            const postsQuery = query(
+              collection(db, 'messageBoardPosts'),
+              where('authorId', '==', userId),
+              orderBy('createdAt', 'desc'),
+              limit(10)
+            );
+            postsSnap = await getDocs(postsQuery);
+          } catch (queryError: any) {
+            // If query fails due to missing index, fall back to client-side filtering
+            if (queryError?.code === 'failed-precondition' || queryError?.message?.includes('index')) {
+              console.warn('Message board posts query requires an index. Falling back to client-side filter.');
+              const allPostsSnap = await getDocs(collection(db, 'messageBoardPosts'));
+              postsSnap = {
+                docs: allPostsSnap.docs.filter(doc => doc.data().authorId === userId)
+                  .sort((a, b) => {
+                    const aTime = a.data().createdAt?.toDate?.() || a.data().createdAt || 0;
+                    const bTime = b.data().createdAt?.toDate?.() || b.data().createdAt || 0;
+                    return bTime - aTime;
+                  })
+                  .slice(0, 10)
+              } as any;
+            } else {
+              throw queryError;
+            }
+          }
           const postsData: MessageBoardPostData[] = await Promise.all(
             postsSnap.docs.map(async (postDoc: QueryDocumentSnapshot<DocumentData>) => {
               const postData = postDoc.data();
@@ -854,7 +874,7 @@ export default function ProfilePage() {
                           </svg>
                         </button>
                         {showMenu && (
-                          <div className="absolute right-0 top-full mt-2 w-48 bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 rounded-lg shadow-xl z-[100]">
+                          <div className="absolute right-0 bottom-full mb-2 w-48 bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 rounded-lg shadow-xl z-[100]">
                             <button
                               onClick={handleBlock}
                               className="w-full text-left px-4 py-2 text-sm text-white hover:bg-neutral-800 transition-colors first:rounded-t-lg"

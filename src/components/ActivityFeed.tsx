@@ -86,6 +86,7 @@ export function ActivityFeed({ userId, limitCount = 30 }: ActivityFeedProps) {
     const fetchActivities = async () => {
       try {
         // Fetch activities from userActivity collection
+        // Only fetch public activities (activities with public == true)
         const activitiesQuery = query(
           collection(db, 'userActivity'),
           where('userId', '==', userId),
@@ -112,8 +113,15 @@ export function ActivityFeed({ userId, limitCount = 30 }: ActivityFeedProps) {
         });
 
         setActivities(activitiesData);
-      } catch (error) {
-        console.error('Error fetching activities:', error);
+      } catch (error: any) {
+        // If permission error, silently fail (user may not have permission to view activities)
+        // This is expected for public profiles where activities might be private
+        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+          console.warn('Permission denied for activities - user may not have access or activities are private');
+          setActivities([]);
+        } else {
+          console.error('Error fetching activities:', error);
+        }
       } finally {
         setLoading(false);
       }
