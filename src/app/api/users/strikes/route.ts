@@ -36,29 +36,47 @@ export async function GET(req: NextRequest) {
         .get();
     } catch (error: any) {
       // Fallback if index is missing - fetch all and sort client-side
-      if (error.code === 'failed-precondition' && error.message?.includes('index')) {
+      // Check for various error formats that indicate missing index
+      const errorCode = error?.code || error?.status || '';
+      const errorMessage = String(error?.message || error || '');
+      const isIndexError = 
+        errorCode === 'failed-precondition' || 
+        errorCode === 9 || 
+        errorCode === '9' ||
+        errorMessage.includes('index') ||
+        errorMessage.includes('FAILED_PRECONDITION') ||
+        errorMessage.includes('requires an index') ||
+        errorMessage.includes('9 FAILED_PRECONDITION');
+      
+      if (isIndexError) {
         console.warn('Missing index for userStrikes query, falling back to client-side sort');
-        const allStrikesSnap = await adminDb
-          .collection('userStrikes')
-          .where('userId', '==', userId)
-          .get();
-        
-        // Sort client-side by issuedAt descending
-        const strikesArray = allStrikesSnap.docs.map((doc: QueryDocumentSnapshot) => ({
-          doc,
-          data: doc.data(),
-        }));
-        
-        strikesArray.sort((a: { doc: QueryDocumentSnapshot; data: any }, b: { doc: QueryDocumentSnapshot; data: any }) => {
-          const aTime = a.data.issuedAt?.toDate ? a.data.issuedAt.toDate().getTime() : 0;
-          const bTime = b.data.issuedAt?.toDate ? b.data.issuedAt.toDate().getTime() : 0;
-          return bTime - aTime;
-        });
-        
-        strikesSnap = {
-          docs: strikesArray.map((item: { doc: QueryDocumentSnapshot; data: any }) => item.doc),
-        } as any;
+        try {
+          const allStrikesSnap = await adminDb
+            .collection('userStrikes')
+            .where('userId', '==', userId)
+            .get();
+          
+          // Sort client-side by issuedAt descending
+          const strikesArray = allStrikesSnap.docs.map((doc: QueryDocumentSnapshot) => ({
+            doc,
+            data: doc.data(),
+          }));
+          
+          strikesArray.sort((a: { doc: QueryDocumentSnapshot; data: any }, b: { doc: QueryDocumentSnapshot; data: any }) => {
+            const aTime = a.data.issuedAt?.toDate ? a.data.issuedAt.toDate().getTime() : 0;
+            const bTime = b.data.issuedAt?.toDate ? b.data.issuedAt.toDate().getTime() : 0;
+            return bTime - aTime;
+          });
+          
+          strikesSnap = {
+            docs: strikesArray.map((item: { doc: QueryDocumentSnapshot; data: any }) => item.doc),
+          } as any;
+        } catch (fallbackError: any) {
+          console.error('Error in fallback query:', fallbackError);
+          throw fallbackError;
+        }
       } else {
+        console.error('Unexpected error fetching strikes:', error);
         throw error;
       }
     }
