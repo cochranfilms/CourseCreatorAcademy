@@ -24,6 +24,7 @@ interface Strike {
   userId: string;
   reportId: string;
   reason: string;
+  details?: string | null;
   strikeNumber: number;
   issuedAt: string;
   userInfo?: any;
