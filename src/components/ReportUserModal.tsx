@@ -106,7 +106,7 @@ export function ReportUserModal({ isOpen, onClose, userId, userName, onSuccess }
 
         if (response.ok) {
           const data = await response.json();
-          setIsFirstReport(data.isFirstReport);
+          setIsFirstReport(data.isFirstReport === true);
         } else {
           // Default to allowing uploads if check fails
           setIsFirstReport(true);
@@ -298,7 +298,7 @@ export function ReportUserModal({ isOpen, onClose, userId, userName, onSuccess }
               </label>
               <p className="text-xs text-neutral-400 mb-2">
                 Upload PNG, JPG, WEBP, or PDF files (max 10MB each)
-                {isFirstReport === false && ' - Attachments only allowed on first report'}
+                {isFirstReport !== null && !isFirstReport && ' - Attachments only allowed on first report'}
               </p>
               <input
                 ref={fileInputRef}
