@@ -10,6 +10,7 @@ const PUBLIC_PAGES = [
   '/login',
   '/forgot-password',
   '/wait',
+  '/blueprint',
   '/',
 ];
 
