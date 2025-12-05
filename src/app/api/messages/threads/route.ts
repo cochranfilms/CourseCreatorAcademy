@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { getUserIdFromAuthHeader } from '@/lib/api/auth';
 import { badRequest, serverError } from '@/lib/api/responses';
 
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       .where('members', 'array-contains', userId)
       .get();
 
-    const existingThread = threadsSnap.docs.find((doc) => {
+    const existingThread = threadsSnap.docs.find((doc: QueryDocumentSnapshot) => {
       const data = doc.data();
       return data.members.includes(recipientUserId) && data.members.length === 2;
     });
