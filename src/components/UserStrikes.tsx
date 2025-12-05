@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/lib/firebaseClient';
+import { Messages } from '@/components/Messages';
 
 interface Strike {
   id: string;
@@ -18,6 +19,9 @@ export function UserStrikes() {
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [strikeCount, setStrikeCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [adminUserId, setAdminUserId] = useState<string | null>(null);
+  const [selectedStrike, setSelectedStrike] = useState<Strike | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -53,6 +57,22 @@ export function UserStrikes() {
 
     fetchStrikes();
   }, [user]);
+
+  // Fetch admin user ID
+  useEffect(() => {
+    const fetchAdminUserId = async () => {
+      try {
+        const response = await fetch('/api/admin/user-id');
+        if (response.ok) {
+          const data = await response.json();
+          setAdminUserId(data.userId);
+        }
+      } catch (error) {
+        console.error('Error fetching admin user ID:', error);
+      }
+    };
+    fetchAdminUserId();
+  }, []);
 
   // Don't render anything if user has no strikes
   if (loading || strikeCount === 0) {
@@ -137,15 +157,226 @@ export function UserStrikes() {
         <p className="text-neutral-400 text-xs mb-3">
           If you believe a strike was issued in error, please contact us to dispute it.
         </p>
-        <a
-          href="mailto:info@cochranfilms.com?subject=Strike Dispute"
+        <button
+          onClick={() => {
+            // If multiple strikes, let user select which one to dispute
+            // For now, we'll include all strikes in the message
+            setShowMessageModal(true);
+          }}
           className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white rounded-lg text-sm transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
           Contact Support
-        </a>
+        </button>
+      </div>
+
+      {/* Messages Modal */}
+      {showMessageModal && adminUserId && (
+        <StrikeDisputeMessage
+          isOpen={showMessageModal}
+          onClose={() => setShowMessageModal(false)}
+          adminUserId={adminUserId}
+          strikes={strikes}
+          strikeCount={strikeCount}
+        />
+      )}
+    </div>
+  );
+}
+
+// Component to handle strike dispute messages
+function StrikeDisputeMessage({
+  isOpen,
+  onClose,
+  adminUserId,
+  strikes,
+  strikeCount,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  adminUserId: string;
+  strikes: Strike[];
+  strikeCount: number;
+}) {
+  const { user } = useAuth();
+  const [messageText, setMessageText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [initialMessageSent, setInitialMessageSent] = useState(false);
+  const [initializing, setInitializing] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !user || !adminUserId || initialMessageSent) return;
+
+    const createThreadAndSendInitialMessage = async () => {
+      try {
+        setInitializing(true);
+        const token = await user.getIdToken();
+        if (!token) {
+          console.error('No auth token');
+          return;
+        }
+
+        // Create or get existing thread with admin
+        const threadsResponse = await fetch('/api/messages/threads', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ recipientUserId: adminUserId }),
+        });
+
+        if (!threadsResponse.ok) {
+          throw new Error('Failed to create/get thread');
+        }
+
+        const threadData = await threadsResponse.json();
+        setThreadId(threadData.threadId);
+
+        // Create strike details message
+        const reasonDisplay = (reason: string) => {
+          return reason.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        };
+
+        let strikeDetailsMessage = `Strike Dispute Request\n\n`;
+        strikeDetailsMessage += `Current Strike Count: ${strikeCount}/3\n\n`;
+        strikeDetailsMessage += `Strike Details:\n`;
+        strikeDetailsMessage += `${'='.repeat(50)}\n\n`;
+
+        strikes.forEach((strike) => {
+          strikeDetailsMessage += `Strike ${strike.strikeNumber}/3\n`;
+          strikeDetailsMessage += `Date: ${new Date(strike.issuedAt).toLocaleDateString()}\n`;
+          strikeDetailsMessage += `Reason: ${reasonDisplay(strike.reason)}\n`;
+          if (strike.details) {
+            strikeDetailsMessage += `Details: ${strike.details}\n`;
+          }
+          strikeDetailsMessage += `\n${'='.repeat(50)}\n\n`;
+        });
+
+        strikeDetailsMessage += `\n---\n\nPlease review the above strike(s). I would like to dispute this/these strike(s) for the following reason(s):\n\n`;
+
+        // Send initial message with strike details
+        const sendResponse = await fetch('/api/messages/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            threadId: threadData.threadId,
+            text: strikeDetailsMessage,
+          }),
+        });
+
+        if (!sendResponse.ok) {
+          throw new Error('Failed to send initial message');
+        }
+
+        setInitialMessageSent(true);
+      } catch (error: any) {
+        console.error('Error creating thread:', error);
+        alert(error.message || 'Failed to open support conversation. Please try again.');
+        onClose();
+      } finally {
+        setInitializing(false);
+      }
+    };
+
+    createThreadAndSendInitialMessage();
+  }, [isOpen, user, adminUserId, strikes, strikeCount, initialMessageSent, onClose]);
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim() || !threadId || !user) return;
+
+    try {
+      setSending(true);
+      const token = await user.getIdToken();
+      if (!token) return;
+
+      const response = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          threadId,
+          text: messageText.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      setMessageText('');
+      onClose();
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      alert(error.message || 'Failed to send message');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-white">Dispute Strike</h2>
+          <button
+            onClick={onClose}
+            className="text-neutral-400 hover:text-white transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto mb-4">
+          {initializing ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-neutral-400">Setting up support conversation...</div>
+            </div>
+          ) : (
+            <>
+              <p className="text-neutral-300 text-sm mb-4">
+                A message has been sent to support with your strike details. You can add your response below:
+              </p>
+
+              <textarea
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder="Explain why you believe this strike was issued in error..."
+                rows={6}
+                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-ccaBlue resize-none"
+              />
+            </>
+          )}
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg text-sm transition-colors"
+            disabled={sending}
+          >
+            Close
+          </button>
+          <button
+            onClick={handleSendMessage}
+            disabled={!messageText.trim() || sending || initializing}
+            className="flex-1 px-4 py-2 bg-ccaBlue hover:bg-blue-600 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {sending ? 'Sending...' : initializing ? 'Setting up...' : 'Send Message'}
+          </button>
+        </div>
       </div>
     </div>
   );
