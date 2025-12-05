@@ -143,7 +143,7 @@ export function ActivityFeed({ userId, limitCount = 30 }: ActivityFeedProps) {
       {activities.map((activity) => (
         <Link
           key={activity.id}
-          href={getActivityLink(activity)}
+          href={getActivityLink(activity) as any}
           className="block bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-4 rounded-xl hover:border-neutral-700/60 transition-all duration-200 group"
         >
           <div className="flex items-start gap-3">
