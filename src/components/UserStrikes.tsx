@@ -39,9 +39,13 @@ export function UserStrikes() {
           const data = await response.json();
           setStrikes(data.strikes || []);
           setStrikeCount(data.strikeCount || 0);
+        } else {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Error fetching strikes - API returned error:', response.status, errorData);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching strikes:', error);
+        console.error('Error details:', error.message, error.stack);
       } finally {
         setLoading(false);
       }

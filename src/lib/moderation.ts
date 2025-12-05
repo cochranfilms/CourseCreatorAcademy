@@ -124,11 +124,11 @@ export async function issueStrike(
         ? `You have received your 3rd strike (${reasonDisplay}). Your profile has been removed.`
         : `You have received a strike (${reasonDisplay}). You now have ${newStrikeCount} of 3 strikes.${details ? ` Details: ${details}` : ''}`;
       
-      await createNotification(userId, {
+      const notificationId = await createNotification(userId, {
         type: 'strike_issued',
         title: shouldRemove ? 'Profile Removed - 3 Strikes' : `Strike Issued (${newStrikeCount}/3)`,
         message: strikeMessage,
-        actionUrl: '/dashboard?tab=strikes',
+        actionUrl: '/dashboard',
         actionLabel: 'View Strikes',
         metadata: {
           strikeId: strikeRef.id,
@@ -138,9 +138,21 @@ export async function issueStrike(
           reportId,
         },
       });
-    } catch (notifError) {
-      // Don't fail the strike issuance if notification fails
+      
+      if (!notificationId) {
+        console.warn(`Failed to create notification for strike ${strikeRef.id} - notificationId is null`);
+      } else {
+        console.log(`Successfully created strike notification ${notificationId} for user ${userId}`);
+      }
+    } catch (notifError: any) {
+      // Don't fail the strike issuance if notification fails, but log it
       console.error('Error creating strike notification:', notifError);
+      console.error('Notification error details:', {
+        userId,
+        strikeId: strikeRef.id,
+        error: notifError.message,
+        stack: notifError.stack,
+      });
     }
 
     return {

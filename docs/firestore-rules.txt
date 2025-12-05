@@ -449,42 +449,42 @@ service cloud.firestore {
       }
     }
     
+    // User reports collection - authenticated users can create, admins can read/update
+    match /userReports/{reportId} {
+      allow create: if isAuthenticated();
+      allow read, update: if isAuthenticated() && (hasRole('admin') || resource.data.reporterId == request.auth.uid);
+    }
+    
+    // User strikes collection - users can read their own strikes, admins can read/write all
+    match /userStrikes/{strikeId} {
+      // Users can read their own strikes
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Admins can read and write all strikes
+      allow read, write: if isAuthenticated() && hasRole('admin');
+    }
+    
+    // User activity collection - public read for public activities, users can create their own
+    match /userActivity/{activityId} {
+      // Allow read for public activities (anyone can read public activities, authenticated or not)
+      // OR activities owned by the authenticated user (users can read their own activities)
+      // This works for both single document reads and queries
+      allow read: if (
+        resource.data.public == true || 
+        (isAuthenticated() && resource.data.userId == request.auth.uid)
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && hasRole('admin');
+    }
+    
+    // Badges collection - public read
+    match /badges/{badgeId} {
+      allow read: if true;
+      allow write: if false; // Admin SDK only
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;
     }
-  }
-  
-  // User reports collection - authenticated users can create, admins can read/update
-  match /userReports/{reportId} {
-    allow create: if isAuthenticated();
-    allow read, update: if isAuthenticated() && (hasRole('admin') || resource.data.reporterId == request.auth.uid);
-  }
-  
-  // User strikes collection - users can read their own strikes, admins can read/write all
-  match /userStrikes/{strikeId} {
-    // Users can read their own strikes
-    allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-    // Admins can read and write all strikes
-    allow read, write: if isAuthenticated() && hasRole('admin');
-  }
-  
-  // User activity collection - public read for public activities, users can create their own
-  match /userActivity/{activityId} {
-    // Allow read for public activities (anyone can read public activities, authenticated or not)
-    // OR activities owned by the authenticated user (users can read their own activities)
-    // This works for both single document reads and queries
-    allow read: if (
-      resource.data.public == true || 
-      (isAuthenticated() && resource.data.userId == request.auth.uid)
-    );
-    allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-    allow update, delete: if isAuthenticated() && hasRole('admin');
-  }
-  
-  // Badges collection - public read
-  match /badges/{badgeId} {
-    allow read: if true;
-    allow write: if false; // Admin SDK only
   }
 }

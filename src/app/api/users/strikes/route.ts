@@ -26,11 +26,42 @@ export async function GET(req: NextRequest) {
     }
 
     // Get all strikes for this user
-    const strikesSnap = await adminDb
-      .collection('userStrikes')
-      .where('userId', '==', userId)
-      .orderBy('issuedAt', 'desc')
-      .get();
+    // Try ordered query first, fallback to unordered if index missing
+    let strikesSnap;
+    try {
+      strikesSnap = await adminDb
+        .collection('userStrikes')
+        .where('userId', '==', userId)
+        .orderBy('issuedAt', 'desc')
+        .get();
+    } catch (error: any) {
+      // Fallback if index is missing - fetch all and sort client-side
+      if (error.code === 'failed-precondition' && error.message?.includes('index')) {
+        console.warn('Missing index for userStrikes query, falling back to client-side sort');
+        const allStrikesSnap = await adminDb
+          .collection('userStrikes')
+          .where('userId', '==', userId)
+          .get();
+        
+        // Sort client-side by issuedAt descending
+        const strikesArray = allStrikesSnap.docs.map((doc: QueryDocumentSnapshot) => ({
+          doc,
+          data: doc.data(),
+        }));
+        
+        strikesArray.sort((a, b) => {
+          const aTime = a.data.issuedAt?.toDate ? a.data.issuedAt.toDate().getTime() : 0;
+          const bTime = b.data.issuedAt?.toDate ? b.data.issuedAt.toDate().getTime() : 0;
+          return bTime - aTime;
+        });
+        
+        strikesSnap = {
+          docs: strikesArray.map(item => item.doc),
+        } as any;
+      } else {
+        throw error;
+      }
+    }
 
     const strikes = strikesSnap.docs.map((doc: QueryDocumentSnapshot) => {
       const data = doc.data();
