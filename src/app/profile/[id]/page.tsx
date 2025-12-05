@@ -161,9 +161,6 @@ export default function ProfilePage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [profileRemoved, setProfileRemoved] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   // If this is a legacy creator, redirect to their public legacy kit page
   useEffect(() => {
