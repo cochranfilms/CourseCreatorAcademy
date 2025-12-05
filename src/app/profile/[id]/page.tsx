@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, collection, query, where, getDocs, orderBy, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, limit, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db, firebaseReady, auth } from '@/lib/firebaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ import { JobApplicationModal } from '@/components/JobApplicationModal';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { UserBadges } from '@/components/UserBadges';
 import { ReportUserModal } from '@/components/ReportUserModal';
+import { MessageBoardPost } from '@/components/MessageBoardPost';
 
 type UserProfile = {
   displayName?: string;
@@ -76,6 +77,20 @@ type Project = {
   url?: string;
   createdAt?: any;
   skills?: string[];
+};
+
+type MessageBoardPostData = {
+  id: string;
+  authorId: string;
+  content: string;
+  category?: string;
+  createdAt: any;
+  updatedAt?: any;
+  authorProfile?: {
+    displayName?: string;
+    photoURL?: string;
+    handle?: string;
+  };
 };
 
 function getMuxThumbnailUrl(playbackId?: string, durationSec?: number) {
@@ -164,6 +179,7 @@ export default function ProfilePage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [profileRemoved, setProfileRemoved] = useState(false);
+  const [messageBoardPosts, setMessageBoardPosts] = useState<MessageBoardPostData[]>([]);
 
   // If this is a legacy creator, redirect to their public legacy kit page
   useEffect(() => {
@@ -401,6 +417,51 @@ export default function ProfilePage() {
           }
         }
 
+        // Fetch message board posts
+        try {
+          const postsQuery = query(
+            collection(db, 'messageBoardPosts'),
+            where('authorId', '==', userId),
+            orderBy('createdAt', 'desc'),
+            limit(10)
+          );
+          const postsSnap = await getDocs(postsQuery);
+          const postsData: MessageBoardPostData[] = await Promise.all(
+            postsSnap.docs.map(async (postDoc: QueryDocumentSnapshot<DocumentData>) => {
+              const postData = postDoc.data();
+              const post: MessageBoardPostData = {
+                id: postDoc.id,
+                authorId: postData.authorId,
+                content: postData.content,
+                category: postData.category,
+                createdAt: postData.createdAt,
+                updatedAt: postData.updatedAt,
+              };
+              
+              // Fetch author profile
+              try {
+                const authorDoc = await getDoc(doc(db, 'users', postData.authorId));
+                if (authorDoc.exists()) {
+                  const authorData = authorDoc.data();
+                  post.authorProfile = {
+                    displayName: authorData.displayName,
+                    photoURL: authorData.photoURL,
+                    handle: authorData.handle,
+                  };
+                }
+              } catch (error) {
+                console.error('Error fetching author profile:', error);
+              }
+              
+              return post;
+            })
+          );
+          setMessageBoardPosts(postsData);
+        } catch (error) {
+          console.error('Error fetching message board posts:', error);
+          setMessageBoardPosts([]);
+        }
+
         // Fetch following and followers
         setLoadingFollows(true);
         try {
@@ -599,6 +660,22 @@ export default function ProfilePage() {
     return () => { cancelled = true; };
   }, [currentUser]);
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMenu && !(event.target as Element).closest('.menu-container')) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showMenu]);
+
   // Fetch applied opportunities for current user
   useEffect(() => {
     if (!firebaseReady || !db || !currentUser) {
@@ -679,7 +756,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen max-w-7xl mx-auto px-3 sm:px-4 md:px-5 py-4 sm:py-5 md:py-6">
       {/* Profile Banner */}
-      <div className="mb-5 sm:mb-6 rounded-xl overflow-hidden border border-neutral-800/60 shadow-xl shadow-black/50 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950">
+      <div className="mb-5 sm:mb-6 rounded-xl overflow-visible border border-neutral-800/60 shadow-xl shadow-black/50 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950">
         <div
           className="h-32 sm:h-40 md:h-56 w-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 relative overflow-hidden"
           style={profile?.bannerUrl ? { backgroundImage: `url(${profile.bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
@@ -689,7 +766,7 @@ export default function ProfilePage() {
           )}
         </div>
         {/* Profile Header */}
-        <div className="bg-gradient-to-b from-neutral-950/95 via-neutral-950/90 to-neutral-950 backdrop-blur-xl p-4 sm:p-5 md:p-6 border-t border-neutral-800/50">
+        <div className="bg-gradient-to-b from-neutral-950/95 via-neutral-950/90 to-neutral-950 backdrop-blur-xl p-4 sm:p-5 md:p-6 border-t border-neutral-800/50 relative">
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-5">
           {/* Profile Photo */}
           <div className="relative -mt-16 sm:-mt-20 md:-mt-24 flex-shrink-0">
@@ -767,7 +844,7 @@ export default function ProfilePage() {
                         </svg>
                         Message
                       </button>
-                      <div className="relative">
+                      <div className="relative z-50 menu-container">
                         <button
                           onClick={() => setShowMenu(!showMenu)}
                           className="bg-gradient-to-r from-neutral-700 to-neutral-800 hover:from-neutral-600 hover:to-neutral-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center touch-manipulation min-h-[36px] text-xs sm:text-sm w-full sm:w-auto shadow-md transform hover:scale-[1.02] active:scale-[0.98]"
@@ -777,7 +854,7 @@ export default function ProfilePage() {
                           </svg>
                         </button>
                         {showMenu && (
-                          <div className="absolute right-0 mt-2 w-48 bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 rounded-lg shadow-xl z-50">
+                          <div className="absolute right-0 top-full mt-2 w-48 bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 rounded-lg shadow-xl z-[100]">
                             <button
                               onClick={handleBlock}
                               className="w-full text-left px-4 py-2 text-sm text-white hover:bg-neutral-800 transition-colors first:rounded-t-lg"
@@ -1061,6 +1138,33 @@ export default function ProfilePage() {
         </div>
         <ActivityFeed userId={userId} limitCount={20} />
       </div>
+
+      {/* Message Board Posts Section */}
+      {messageBoardPosts.length > 0 && (
+        <div className="bg-gradient-to-br from-neutral-900/90 via-neutral-900/80 to-neutral-950/90 backdrop-blur-xl border border-neutral-800/60 p-4 sm:p-5 md:p-6 mb-5 sm:mb-6 rounded-xl shadow-lg shadow-black/30">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-ccaBlue/20 to-blue-500/20 border border-ccaBlue/40 text-ccaBlue flex items-center justify-center shadow-md shadow-ccaBlue/20">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Message Board Posts</h2>
+            </div>
+            <Link
+              href={`/message-board?user=${userId}`}
+              className="text-sm text-ccaBlue hover:text-blue-400 font-semibold transition-colors"
+            >
+              View All
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {messageBoardPosts.map((post) => (
+              <MessageBoardPost key={post.id} post={post as any} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Projects Section */}
       {projects.length > 0 && (
