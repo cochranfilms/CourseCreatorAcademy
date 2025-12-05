@@ -11,6 +11,7 @@ import { Messages } from '@/components/Messages';
 import { LegacyUpgradeModal } from '@/components/LegacyUpgradeModal';
 import { JobApplicationModal } from '@/components/JobApplicationModal';
 import { ActivityFeed } from '@/components/ActivityFeed';
+import { UserBadges } from '@/components/UserBadges';
 
 type UserProfile = {
   displayName?: string;
