@@ -468,12 +468,12 @@ service cloud.firestore {
   
   // User activity collection - public read for public activities, users can create their own
   match /userActivity/{activityId} {
-    // Allow read for public activities (any authenticated user can read public activities)
+    // Allow read for public activities (anyone can read public activities, authenticated or not)
     // OR activities owned by the authenticated user (users can read their own activities)
     // This works for both single document reads and queries
-    allow read: if isAuthenticated() && (
+    allow read: if (
       resource.data.public == true || 
-      resource.data.userId == request.auth.uid
+      (isAuthenticated() && resource.data.userId == request.auth.uid)
     );
     allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     allow update, delete: if isAuthenticated() && hasRole('admin');
