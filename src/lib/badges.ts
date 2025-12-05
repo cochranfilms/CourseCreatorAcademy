@@ -1,5 +1,6 @@
 import { adminDb } from './firebaseAdmin';
 import { BADGE_DEFINITIONS, type BadgeDefinition } from './badgeDefinitions';
+import { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 export type BadgeCategory = 'membership' | 'activity' | 'social' | 'marketplace' | 'community';
 export type BadgeRarity = 'common' | 'rare' | 'epic' | 'legendary';
@@ -157,7 +158,7 @@ export async function getUserBadges(userId: string): Promise<UserBadge[]> {
       .collection('badges')
       .get();
 
-    return badgesSnap.docs.map(doc => {
+    return badgesSnap.docs.map((doc: QueryDocumentSnapshot) => {
       const data = doc.data();
       return {
         badgeId: doc.id,
