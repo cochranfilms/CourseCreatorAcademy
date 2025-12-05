@@ -14,14 +14,14 @@ html {
 }
 
 body { 
-  height: 100%;
+  min-height: 100%;
   width: 100%;
   overflow-x: hidden;
   color: white;
   margin: 0;
   padding: 0;
-  min-height: 100vh;
-  /* Background removed - handled by html element to prevent double background */
+  background: linear-gradient(180deg, #1B00FF 0%, #000000 100%);
+  /* Background fallback for mobile */
 }
 
 #__next {
@@ -45,7 +45,16 @@ body {
 @media (max-width: 768px) {
   html {
     background-attachment: scroll;
-    background-size: 100% 100%;
+    background-size: 100% 500vh;
+    min-height: 100%;
+    background-color: #000000;
+  }
+  
+  body {
+    background-attachment: scroll;
+    background-size: 100% 500vh;
+    min-height: 100%;
+    background-color: #000000;
   }
 }
 
