@@ -26,6 +26,7 @@ type UserProfile = {
   profilePublic?: boolean;
   photoURL?: string;
   bannerUrl?: string;
+  profileRemoved?: boolean;
 };
 
 type Listing = {
