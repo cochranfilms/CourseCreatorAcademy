@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
           data: doc.data(),
         }));
         
-        strikesArray.sort((a, b) => {
+        strikesArray.sort((a: { doc: QueryDocumentSnapshot; data: any }, b: { doc: QueryDocumentSnapshot; data: any }) => {
           const aTime = a.data.issuedAt?.toDate ? a.data.issuedAt.toDate().getTime() : 0;
           const bTime = b.data.issuedAt?.toDate ? b.data.issuedAt.toDate().getTime() : 0;
           return bTime - aTime;
