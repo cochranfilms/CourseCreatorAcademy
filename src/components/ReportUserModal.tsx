@@ -306,17 +306,17 @@ export function ReportUserModal({ isOpen, onClose, userId, userName, onSuccess }
                 accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
                 multiple
                 onChange={handleFileSelect}
-                disabled={submitting || uploadingFiles || checkingFirstReport || isFirstReport === false}
+                disabled={submitting || uploadingFiles || checkingFirstReport || (isFirstReport !== null && !isFirstReport)}
                 className="hidden"
                 id="report-file-input"
               />
               <label
                 htmlFor="report-file-input"
                 className={`block w-full px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-center cursor-pointer hover:bg-neutral-700 transition-colors ${
-                  submitting || uploadingFiles || checkingFirstReport || isFirstReport === false ? 'opacity-50 cursor-not-allowed' : ''
+                  submitting || uploadingFiles || checkingFirstReport || (isFirstReport !== null && !isFirstReport) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
-                {checkingFirstReport ? 'Checking...' : uploadingFiles ? 'Uploading...' : isFirstReport === false ? 'Attachments Only on First Report' : 'Choose Files'}
+                {checkingFirstReport ? 'Checking...' : uploadingFiles ? 'Uploading...' : (isFirstReport !== null && !isFirstReport) ? 'Attachments Only on First Report' : 'Choose Files'}
               </label>
 
             {selectedFiles.length > 0 && (
